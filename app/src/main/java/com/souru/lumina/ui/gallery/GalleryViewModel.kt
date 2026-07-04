@@ -16,11 +16,15 @@ import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.data.pairing.PairCandidate
 import com.souru.lumina.data.pairing.RawJpegPairer
 import com.souru.lumina.util.formatDateHeader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -31,10 +35,13 @@ data class GalleryUiState(
     val slotIndexOfEntry: Map<Long, Int> = emptyMap(),
     val filter: RawFilterMode = RawFilterMode.JPEG,
     val columns: Int = SettingsRepository.DEFAULT_COLUMNS,
-    val selection: Set<Long> = emptySet(),
-) {
-    val selectionMode: Boolean get() = selection.isNotEmpty()
-}
+)
+
+/** メディア一覧とペアリング結果。ペアリングはメディア変更時のみ再計算する。 */
+private data class PairedMedia(
+    val media: List<MediaItem>,
+    val pairs: Map<Long, Long>,
+)
 
 class GalleryViewModel(
     private val mediaRepository: MediaRepository,
@@ -42,37 +49,45 @@ class GalleryViewModel(
 ) : ViewModel() {
 
     private val selection = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** 選択状態はグリッド構造と独立して流す(選択のたびのスロット再構築を避ける)。 */
     val selectionFlow: StateFlow<Set<Long>> = selection.asStateFlow()
+
+    private val pairedMedia: Flow<PairedMedia> = mediaRepository.observeMedia()
+        .map { media ->
+            val pairs = RawJpegPairer.pair(
+                media.filter { it.kind == MediaKind.IMAGE }
+                    .map { PairCandidate(it.id, it.baseName, it.dateTakenMs, it.isRaw) },
+            )
+            PairedMedia(media, pairs)
+        }
+        .flowOn(Dispatchers.Default)
 
     val uiState: StateFlow<GalleryUiState> =
         combine(
-            mediaRepository.observeMedia(),
+            pairedMedia,
             settingsRepository.rawFilter,
             settingsRepository.gridColumns,
-            selection,
-        ) { media, filter, columns, selected ->
-            buildState(media, filter, columns, selected)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState())
+        ) { paired, filter, columns ->
+            buildState(paired, filter, columns)
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState())
 
     private fun buildState(
-        media: List<MediaItem>,
+        paired: PairedMedia,
         filter: RawFilterMode,
         columns: Int,
-        selected: Set<Long>,
     ): GalleryUiState {
-        val pairs = RawJpegPairer.pair(
-            media.filter { it.kind == MediaKind.IMAGE }
-                .map { PairCandidate(it.id, it.baseName, it.dateTakenMs, it.isRaw) },
-        )
-        val byId = media.associateBy { it.id }
+        val byId = paired.media.associateBy { it.id }
 
         // 動画はペアリング対象外なので全モードで表示する
         val visible = when (filter) {
-            RawFilterMode.ALL -> media
-            RawFilterMode.JPEG -> media.filter { it.kind == MediaKind.VIDEO || !it.isRaw }
-            RawFilterMode.RAW -> media.filter { it.kind == MediaKind.VIDEO || it.isRaw }
+            RawFilterMode.ALL -> paired.media
+            RawFilterMode.JPEG -> paired.media.filter { it.kind == MediaKind.VIDEO || !it.isRaw }
+            RawFilterMode.RAW -> paired.media.filter { it.kind == MediaKind.VIDEO || it.isRaw }
         }
-        val entries = visible.map { GalleryEntry(it, pairs[it.id]?.let(byId::get)) }
+        val entries = visible.map { GalleryEntry(it, paired.pairs[it.id]?.let(byId::get)) }
 
         val slots = ArrayList<GridSlot>(entries.size + 32)
         val slotIndexOfEntry = HashMap<Long, Int>(entries.size * 2)
@@ -96,8 +111,6 @@ class GalleryViewModel(
             slotIndexOfEntry = slotIndexOfEntry,
             filter = filter,
             columns = columns,
-            selection = selected.takeIf { sel -> sel.isEmpty() || entries.any { it.id in sel } }
-                ?: emptySet(),
         )
     }
 

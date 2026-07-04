@@ -68,10 +68,11 @@ fun VideoPage(
     isActive: Boolean,
     chromeVisible: Boolean,
     onToggleChrome: () -> Unit,
+    containerModifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     Box(
-        modifier = Modifier
+        modifier = containerModifier
             .fillMaxSize()
             .pointerInput(entry.id) { detectTapGestures(onTap = { onToggleChrome() }) },
     ) {

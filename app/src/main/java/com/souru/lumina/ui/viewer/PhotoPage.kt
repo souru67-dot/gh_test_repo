@@ -46,6 +46,7 @@ fun PhotoPage(
     onToggleChrome: () -> Unit,
     onDismiss: () -> Unit,
     onDismissProgress: (Float) -> Unit,
+    imageModifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -169,7 +170,7 @@ fun PhotoPage(
                 .build(),
             contentDescription = item.displayName,
             contentScale = ContentScale.Fit,
-            modifier = Modifier
+            modifier = imageModifier
                 .fillMaxSize()
                 .graphicsLayer {
                     val dismissScale = 1f - (dismissY.value / (dismissThresholdPx * 8f)).coerceIn(0f, 0.15f)

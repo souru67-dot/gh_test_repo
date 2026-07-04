@@ -1,7 +1,13 @@
 package com.souru.lumina.ui.viewer
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -36,6 +42,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +55,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.souru.lumina.ui.gallery.sharedMediaKey
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
@@ -58,11 +71,15 @@ import com.souru.lumina.util.shareMediaItem
  * 没入型ビューア。横スワイプで前後のメディアへ、タップでUI表示切替、
  * 下スワイプ/戻る操作で閉じる。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ViewerScreen(
     entries: List<GalleryEntry>,
     initialIndex: Int,
     onClose: () -> Unit,
+    sharedScope: SharedTransitionScope? = null,
+    animatedScope: AnimatedVisibilityScope? = null,
+    onFocusedIdChange: (Long) -> Unit = {},
     onEditPhoto: (MediaItem) -> Unit = {},
     onEditVideo: (MediaItem) -> Unit = {},
     onSendToLightroom: (GalleryEntry) -> Unit = {},
@@ -79,6 +96,36 @@ fun ViewerScreen(
     var dismissProgress by remember { mutableFloatStateOf(0f) }
 
     BackHandler(onBack = onClose)
+
+    // ページ切替を親に伝え、共有要素の戻り先セルを追従させる
+    LaunchedEffect(pagerState.currentPage) {
+        entries.getOrNull(pagerState.currentPage)?.let { onFocusedIdChange(it.id) }
+    }
+
+    // UI非表示時はシステムバーも隠して完全没入にする
+    val view = LocalView.current
+    DisposableEffect(chromeVisible) {
+        val window = view.context.findActivity()?.window
+        if (window != null) {
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (chromeVisible) {
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            } else {
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        onDispose { }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            view.context.findActivity()?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view)
+                    .show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
 
     val backgroundAlpha = (1f - dismissProgress * 1.2f).coerceIn(0f, 1f)
 
@@ -101,9 +148,22 @@ fun ViewerScreen(
         ) { page ->
             val entry = entries[page]
             val displayItem = displayItemOf(entry)
+            // 現在ページのみ、グリッドのセルとの共有要素として扱う
+            val sharedModifier =
+                if (sharedScope != null && animatedScope != null && page == pagerState.currentPage) {
+                    with(sharedScope) {
+                        Modifier.sharedElement(
+                            rememberSharedContentState(sharedMediaKey(entry.id)),
+                            animatedVisibilityScope = animatedScope,
+                        )
+                    }
+                } else {
+                    Modifier
+                }
             when (displayItem.kind) {
                 MediaKind.IMAGE -> PhotoPage(
                     item = displayItem,
+                    imageModifier = sharedModifier,
                     onToggleChrome = { chromeVisible = !chromeVisible },
                     onDismiss = onClose,
                     onDismissProgress = { progress ->
@@ -115,6 +175,7 @@ fun ViewerScreen(
                     entry = entry,
                     isActive = pagerState.settledPage == page,
                     chromeVisible = chromeVisible,
+                    containerModifier = sharedModifier,
                     onToggleChrome = { chromeVisible = !chromeVisible },
                 )
             }
@@ -210,6 +271,12 @@ private fun ViewerBottomBar(
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable

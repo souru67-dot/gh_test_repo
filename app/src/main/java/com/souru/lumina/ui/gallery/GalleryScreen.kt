@@ -2,7 +2,10 @@ package com.souru.lumina.ui.gallery
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,12 +36,12 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
@@ -52,9 +55,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,7 +84,11 @@ import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.ui.viewer.ViewerScreen
 import com.souru.lumina.util.Lightroom
 import com.souru.lumina.util.formatDuration
+import kotlinx.coroutines.launch
 
+fun sharedMediaKey(id: Long): String = "media-$id"
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun GalleryRoute(
     onOpenPhotoEditor: (Long) -> Unit,
@@ -89,11 +96,19 @@ fun GalleryRoute(
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val selection by viewModel.selectionFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    // ビューアで現在表示中のエントリID(共有要素の対応付けと戻りスクロールに使う)
+    var focusedId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showLightroomDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = state.selectionMode && viewerIndex == null) {
+    // グリッドのスクロール位置はビューア表示をまたいで保持する
+    val gridState = rememberLazyGridState()
+
+    BackHandler(enabled = selection.isNotEmpty() && viewerIndex == null) {
         viewModel.clearSelection()
     }
 
@@ -107,42 +122,68 @@ fun GalleryRoute(
         }
     }
 
+    fun closeViewer() {
+        // 共有要素の戻り先セルが画面内に来るようスクロールしてから閉じる
+        val slotIndex = focusedId?.let { state.slotIndexOfEntry[it] }
+        scope.launch {
+            if (slotIndex != null &&
+                gridState.layoutInfo.visibleItemsInfo.none { it.index == slotIndex }
+            ) {
+                gridState.scrollToItem(slotIndex)
+            }
+            viewerIndex = null
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        AnimatedContent(
-            targetState = viewerIndex,
-            transitionSpec = {
-                if (targetState != null) {
-                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.94f, animationSpec = tween(220)))
-                        .togetherWith(fadeOut(tween(160)))
+        SharedTransitionLayout {
+            AnimatedContent(
+                targetState = viewerIndex,
+                transitionSpec = {
+                    if (targetState != null) {
+                        (fadeIn(tween(220)) + scaleIn(initialScale = 0.96f, animationSpec = tween(220)))
+                            .togetherWith(fadeOut(tween(160)))
+                    } else {
+                        fadeIn(tween(200))
+                            .togetherWith(fadeOut(tween(200)) + scaleOut(targetScale = 0.98f, animationSpec = tween(200)))
+                    }
+                },
+                label = "galleryViewer",
+            ) { index ->
+                if (index == null) {
+                    GalleryGridScreen(
+                        state = state,
+                        selection = selection,
+                        gridState = gridState,
+                        focusedId = focusedId,
+                        sharedScope = this@SharedTransitionLayout,
+                        animatedScope = this@AnimatedContent,
+                        viewModel = viewModel,
+                        onOpenViewer = { entry ->
+                            focusedId = entry.entry.id
+                            viewerIndex = entry.entryIndex
+                        },
+                        onSendSelectionToLightroom = {
+                            sendToLightroom(state.entries.filter { it.id in selection })
+                        },
+                    )
                 } else {
-                    fadeIn(tween(200))
-                        .togetherWith(fadeOut(tween(200)) + scaleOut(targetScale = 0.96f, animationSpec = tween(200)))
+                    ViewerScreen(
+                        entries = state.entries,
+                        initialIndex = index,
+                        sharedScope = this@SharedTransitionLayout,
+                        animatedScope = this@AnimatedContent,
+                        onFocusedIdChange = { focusedId = it },
+                        onClose = ::closeViewer,
+                        onEditPhoto = { item -> onOpenPhotoEditor(item.id) },
+                        onEditVideo = { item -> onOpenVideoEditor(item.id) },
+                        onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
+                    )
                 }
-            },
-            label = "galleryViewer",
-        ) { index ->
-            if (index == null) {
-                GalleryGridScreen(
-                    state = state,
-                    viewModel = viewModel,
-                    onOpenViewer = { entryIndex -> viewerIndex = entryIndex },
-                    onSendSelectionToLightroom = {
-                        sendToLightroom(state.entries.filter { it.id in state.selection })
-                    },
-                )
-            } else {
-                ViewerScreen(
-                    entries = state.entries,
-                    initialIndex = index,
-                    onClose = { viewerIndex = null },
-                    onEditPhoto = { item -> onOpenPhotoEditor(item.id) },
-                    onEditVideo = { item -> onOpenVideoEditor(item.id) },
-                    onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
-                )
             }
         }
 
@@ -171,17 +212,23 @@ fun GalleryRoute(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun GalleryGridScreen(
     state: GalleryUiState,
+    selection: Set<Long>,
+    gridState: LazyGridState,
+    focusedId: Long?,
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
     viewModel: GalleryViewModel,
-    onOpenViewer: (Int) -> Unit,
+    onOpenViewer: (GridSlot.Cell) -> Unit,
     onSendSelectionToLightroom: () -> Unit,
 ) {
-    val gridState = rememberLazyGridState()
     val columnsProvider = rememberColumnsProvider(state.columns)
     val layoutDirection = LocalLayoutDirection.current
     val systemBarPadding = WindowInsets.systemBars.asPaddingValues()
+    val selectionMode = selection.isNotEmpty()
 
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
@@ -216,13 +263,16 @@ private fun GalleryGridScreen(
                     is GridSlot.Header -> DateHeader(slot.label)
                     is GridSlot.Cell -> MediaCell(
                         entry = slot.entry,
-                        selected = slot.entry.id in state.selection,
-                        selectionMode = state.selectionMode,
+                        selected = slot.entry.id in selection,
+                        selectionMode = selectionMode,
+                        isSharedElement = slot.entry.id == focusedId,
+                        sharedScope = sharedScope,
+                        animatedScope = animatedScope,
                         onClick = {
-                            if (state.selectionMode) {
+                            if (selectionMode) {
                                 viewModel.toggleSelection(slot.entry.id)
                             } else {
-                                onOpenViewer(slot.entryIndex)
+                                onOpenViewer(slot)
                             }
                         },
                         onLongClick = { viewModel.toggleSelection(slot.entry.id) },
@@ -247,6 +297,7 @@ private fun GalleryGridScreen(
 
         GalleryTopBar(
             state = state,
+            selection = selection,
             onClearSelection = viewModel::clearSelection,
             onSelectFilter = viewModel::setFilter,
             onSendSelectionToLightroom = onSendSelectionToLightroom,
@@ -269,6 +320,7 @@ private fun GalleryGridScreen(
 @Composable
 private fun GalleryTopBar(
     state: GalleryUiState,
+    selection: Set<Long>,
     onClearSelection: () -> Unit,
     onSelectFilter: (RawFilterMode) -> Unit,
     onSendSelectionToLightroom: () -> Unit,
@@ -286,7 +338,7 @@ private fun GalleryTopBar(
             )
             .padding(statusBarPadding),
     ) {
-        if (state.selectionMode) {
+        if (selection.isNotEmpty()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -302,7 +354,7 @@ private fun GalleryTopBar(
                     )
                 }
                 Text(
-                    text = "${state.selection.size}件を選択中",
+                    text = "${selection.size}件を選択中",
                     style = MaterialTheme.typography.titleSmall,
                     color = Color.White,
                 )
@@ -382,12 +434,15 @@ private fun DateHeader(label: String) {
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 private fun LazyGridItemScope.MediaCell(
     entry: GalleryEntry,
     selected: Boolean,
     selectionMode: Boolean,
+    isSharedElement: Boolean,
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -398,13 +453,19 @@ private fun LazyGridItemScope.MediaCell(
             .aspectRatio(1f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
-        val imageModifier = if (selected) {
-            Modifier
-                .fillMaxSize()
+        var imageModifier: Modifier = Modifier.fillMaxSize()
+        if (isSharedElement) {
+            with(sharedScope) {
+                imageModifier = imageModifier.sharedElement(
+                    rememberSharedContentState(sharedMediaKey(entry.id)),
+                    animatedVisibilityScope = animatedScope,
+                )
+            }
+        }
+        if (selected) {
+            imageModifier = imageModifier
                 .padding(8.dp)
                 .clip(RoundedCornerShape(12.dp))
-        } else {
-            Modifier.fillMaxSize()
         }
         AsyncImage(
             model = ImageRequest.Builder(context)
