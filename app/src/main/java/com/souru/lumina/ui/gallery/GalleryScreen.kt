@@ -85,6 +85,7 @@ import com.souru.lumina.util.formatDuration
 @Composable
 fun GalleryRoute(
     onOpenPhotoEditor: (Long) -> Unit,
+    onOpenVideoEditor: (Long) -> Unit,
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -139,6 +140,7 @@ fun GalleryRoute(
                     initialIndex = index,
                     onClose = { viewerIndex = null },
                     onEditPhoto = { item -> onOpenPhotoEditor(item.id) },
+                    onEditVideo = { item -> onOpenVideoEditor(item.id) },
                     onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
                 )
             }

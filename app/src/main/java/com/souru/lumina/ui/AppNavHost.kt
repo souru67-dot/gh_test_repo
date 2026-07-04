@@ -19,14 +19,17 @@ import androidx.navigation.navArgument
 import com.souru.lumina.ui.gallery.GalleryRoute
 import com.souru.lumina.ui.onboarding.OnboardingScreen
 import com.souru.lumina.ui.photoedit.PhotoEditScreen
+import com.souru.lumina.ui.videoedit.VideoEditScreen
 import com.souru.lumina.util.hasMediaAccess
 
 object Routes {
     const val Onboarding = "onboarding"
     const val Gallery = "gallery"
     const val PhotoEdit = "photoEdit/{mediaId}"
+    const val VideoEdit = "videoEdit/{mediaId}"
 
     fun photoEdit(mediaId: Long) = "photoEdit/$mediaId"
+    fun videoEdit(mediaId: Long) = "videoEdit/$mediaId"
 }
 
 @Composable
@@ -56,6 +59,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenPhotoEditor = { mediaId ->
                     navController.navigate(Routes.photoEdit(mediaId))
                 },
+                onOpenVideoEditor = { mediaId ->
+                    navController.navigate(Routes.videoEdit(mediaId))
+                },
             )
         }
         composable(
@@ -64,6 +70,16 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         ) { backStackEntry ->
             val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: return@composable
             PhotoEditScreen(
+                mediaId = mediaId,
+                onClose = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.VideoEdit,
+            arguments = listOf(navArgument("mediaId") { type = NavType.LongType }),
+        ) { backStackEntry ->
+            val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: return@composable
+            VideoEditScreen(
                 mediaId = mediaId,
                 onClose = { navController.popBackStack() },
             )

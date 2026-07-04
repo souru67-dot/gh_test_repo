@@ -13,10 +13,12 @@ import com.souru.lumina.data.coil.DngPreviewKeyer
 import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.coil.MediaThumbFetcher
 import com.souru.lumina.data.coil.MediaThumbKeyer
+import com.souru.lumina.data.luts.LutRepository
 
 class AppContainer(context: Context) {
     val settingsRepository = SettingsRepository(context)
     val mediaRepository = MediaRepository(context)
+    val lutRepository = LutRepository(context)
 }
 
 class LuminaApplication : Application(), SingletonImageLoader.Factory {

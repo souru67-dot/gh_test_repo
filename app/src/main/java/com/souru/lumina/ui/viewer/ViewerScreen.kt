@@ -64,6 +64,7 @@ fun ViewerScreen(
     initialIndex: Int,
     onClose: () -> Unit,
     onEditPhoto: (MediaItem) -> Unit = {},
+    onEditVideo: (MediaItem) -> Unit = {},
     onSendToLightroom: (GalleryEntry) -> Unit = {},
 ) {
     if (entries.isEmpty()) {
@@ -134,6 +135,11 @@ fun ViewerScreen(
                     swappedIds = swappedIds.let {
                         if (current.id in it) it - current.id else it + current.id
                     }
+                },
+                onEditVideo = if (displayItemOf(current).kind == MediaKind.VIDEO) {
+                    { onEditVideo(displayItemOf(current)) }
+                } else {
+                    null
                 },
             )
         }
@@ -235,6 +241,7 @@ private fun ViewerTopBar(
     isPaired: Boolean,
     onClose: () -> Unit,
     onSwapRawJpeg: () -> Unit,
+    onEditVideo: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -278,6 +285,23 @@ private fun ViewerTopBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onEditVideo != null) {
+                // LUT適用・トリム・書き出しへ
+                TextButton(onClick = onEditVideo) {
+                    Icon(
+                        Icons.Outlined.Tune,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "編集",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                    )
+                }
+            }
             if (isPaired) {
                 // 同一構図のままRAW⇔JPEGを切り替える
                 TextButton(onClick = onSwapRawJpeg) {
