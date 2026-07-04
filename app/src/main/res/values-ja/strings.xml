@@ -50,6 +50,28 @@
     <string name="repeat_yearly">毎年</string>
     <string name="repeat_custom">カスタム</string>
 
+    <!-- Views & settings -->
+    <string name="switch_view">表示切替</string>
+    <string name="view_week">週表示</string>
+    <string name="view_day">日表示</string>
+    <string name="settings">設定</string>
+    <string name="settings_week_start">週の開始曜日</string>
+    <string name="week_start_sunday">日曜日</string>
+    <string name="week_start_monday">月曜日</string>
+    <string name="settings_month_scroll">月表示のスクロール</string>
+    <string name="settings_vertical_scroll">縦方向に連続スクロール</string>
+    <string name="settings_theme">テーマ</string>
+    <string name="theme_system">システムに合わせる</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+    <string name="settings_calendars">表示するカレンダー</string>
+
+    <!-- Widgets -->
+    <string name="widget_month_label">月カレンダー</string>
+    <string name="widget_month_description">今月をひと目で。予定のある日にドットを表示します。</string>
+    <string name="widget_today_label">今日の予定</string>
+    <string name="widget_today_description">今日と明日の予定を時刻付きで一覧表示します。</string>
+
     <!-- Onboarding -->
     <string name="onboarding_title">端末のカレンダーを、そのまま</string>
     <string name="onboarding_body">こよみは、GoogleカレンダーやExchangeなど端末に登録済みのカレンダーをそのまま読み書きします。予定の表示と作成のために、カレンダーへのアクセスを許可してください。</string>

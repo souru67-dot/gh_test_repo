@@ -63,6 +63,7 @@ class CalendarRepository(private val context: Context) {
     suspend fun loadEventsByDay(
         rangeStart: LocalDate,
         rangeEndExclusive: LocalDate,
+        hiddenCalendarIds: Set<Long> = emptySet(),
     ): Map<LocalDate, List<EventInstance>> = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext emptyMap()
 
@@ -94,6 +95,7 @@ class CalendarRepository(private val context: Context) {
             "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { cursor ->
             while (cursor.moveToNext()) {
+                if (cursor.getLong(6) in hiddenCalendarIds) continue
                 val allDay = cursor.getInt(4) != 0
                 val begin = cursor.getLong(2)
                 val end = cursor.getLong(3)
@@ -235,6 +237,34 @@ class CalendarRepository(private val context: Context) {
             draft.reminderMinutes?.let { minutes -> insertReminder(id, minutes) }
         }
         updated
+    }
+
+    /**
+     * Shifts an event by whole days (month-view drag & drop). Recurring events
+     * move the entire series; DURATION-based events only need DTSTART shifted.
+     */
+    suspend fun moveEventByDays(eventId: Long, days: Long): Boolean = withContext(Dispatchers.IO) {
+        if (days == 0L) return@withContext true
+        if (!hasWritePermission()) return@withContext false
+        val details = loadEventDetails(eventId) ?: return@withContext false
+
+        val values = ContentValues()
+        if (details.allDay) {
+            // All-day times are UTC midnights; plain day arithmetic keeps them aligned.
+            values.put(CalendarContract.Events.DTSTART, details.dtStart + days * 86_400_000L)
+            details.dtEnd?.let {
+                values.put(CalendarContract.Events.DTEND, it + days * 86_400_000L)
+            }
+        } else {
+            val zone = runCatching { ZoneId.of(details.timeZone) }
+                .getOrDefault(ZoneId.systemDefault())
+            fun shift(millis: Long): Long = Instant.ofEpochMilli(millis).atZone(zone)
+                .plusDays(days).toInstant().toEpochMilli()
+            values.put(CalendarContract.Events.DTSTART, shift(details.dtStart))
+            details.dtEnd?.let { values.put(CalendarContract.Events.DTEND, shift(it)) }
+        }
+        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
+        resolver.update(uri, values, null, null) > 0
     }
 
     suspend fun deleteEvent(eventId: Long): Boolean = withContext(Dispatchers.IO) {

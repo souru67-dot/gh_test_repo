@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.souru.koyomi.data.CalendarRepository
 import com.souru.koyomi.data.SettingsRepository
+import com.souru.koyomi.widget.WidgetUpdateWorker
 
 /** Plain manual DI — the app is small enough not to need a framework. */
 class AppContainer(context: Context) {
@@ -18,5 +19,7 @@ class KoyomiApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Keep widgets fresh across date rollover and calendar changes.
+        WidgetUpdateWorker.schedule(this)
     }
 }

@@ -38,7 +38,9 @@ class MonthViewModel(
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
-    private val visibleMonth = MutableStateFlow(YearMonth.now())
+    private val _visibleMonth = MutableStateFlow(YearMonth.now())
+    val visibleMonth: StateFlow<YearMonth> = _visibleMonth.asStateFlow()
+
     private val permissionTick = MutableStateFlow(0)
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -47,20 +49,28 @@ class MonthViewModel(
     val weekStart: StateFlow<DayOfWeek> = settingsRepository.weekStart
         .stateIn(viewModelScope, SharingStarted.Eagerly, DayOfWeek.SUNDAY)
 
+    val verticalScroll: StateFlow<Boolean> = settingsRepository.verticalMonthScroll
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
     private val calendarChanges = permissionTick.flatMapLatest { calendarRepository.changes }
 
     val uiState: StateFlow<MonthUiState> =
-        combine(visibleMonth, weekStart, calendarChanges) { month, weekStart, _ ->
-            month to weekStart
-        }.mapLatest { (month, weekStart) ->
+        combine(
+            _visibleMonth,
+            weekStart,
+            settingsRepository.hiddenCalendarIds,
+            calendarChanges,
+        ) { month, weekStart, hidden, _ ->
+            Triple(month, weekStart, hidden)
+        }.mapLatest { (month, weekStart, hidden) ->
             // Load the visible month plus one on each side so paging feels instant.
             val gridStart = monthGridDays(month.minusMonths(1), weekStart).first()
             val gridEnd = monthGridDays(month.plusMonths(1), weekStart).last().plusDays(1)
             MonthUiState(
                 hasPermission = calendarRepository.hasReadPermission(),
-                eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd),
+                eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),
                 calendars = calendarRepository.loadCalendars(),
             )
         }.stateIn(
@@ -70,7 +80,7 @@ class MonthViewModel(
         )
 
     fun setVisibleMonth(month: YearMonth) {
-        visibleMonth.value = month
+        _visibleMonth.value = month
     }
 
     fun select(date: LocalDate) {
@@ -91,6 +101,12 @@ class MonthViewModel(
 
     fun duplicateEvent(eventId: Long) {
         viewModelScope.launch { calendarRepository.duplicateEvent(eventId) }
+    }
+
+    /** Month-view drag & drop: shift an event by whole days. */
+    fun moveEvent(eventId: Long, days: Long) {
+        if (days == 0L) return
+        viewModelScope.launch { calendarRepository.moveEventByDays(eventId, days) }
     }
 
     companion object {

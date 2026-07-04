@@ -25,7 +25,7 @@ val LocalCalendarColors = staticCompositionLocalOf {
     CalendarColors(sunday = Color(0xFFC4574E), saturday = Color(0xFF4A6FA5))
 }
 
-private val LightColors = lightColorScheme(
+internal val KoyomiLightColors = lightColorScheme(
     primary = Color(0xFF3D4A3D),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFDDE5DB),
@@ -39,7 +39,7 @@ private val LightColors = lightColorScheme(
     outlineVariant = Color(0xFFE0DDD6),
 )
 
-private val DarkColors = darkColorScheme(
+internal val KoyomiDarkColors = darkColorScheme(
     primary = Color(0xFFB6C4B3),
     onPrimary = Color(0xFF232B22),
     primaryContainer = Color(0xFF394639),
@@ -64,8 +64,8 @@ fun KoyomiTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColors
-        else -> LightColors
+        darkTheme -> KoyomiDarkColors
+        else -> KoyomiLightColors
     }
     val calendarColors = if (darkTheme) {
         CalendarColors(sunday = Color(0xFFE2867E), saturday = Color(0xFF8FAEDC))

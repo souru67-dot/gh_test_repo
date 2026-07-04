@@ -14,23 +14,33 @@ import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.ui.event.EventEditScreen
 import com.souru.koyomi.ui.month.MonthScreen
 import com.souru.koyomi.ui.onboarding.OnboardingScreen
+import com.souru.koyomi.ui.settings.SettingsScreen
+import com.souru.koyomi.ui.timeline.TimelineScreen
 import java.time.LocalDate
 
 object Routes {
     const val ONBOARDING = "onboarding"
     const val MONTH = "month"
+    const val SETTINGS = "settings"
     const val EDITOR =
         "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}&dateEpochDay={dateEpochDay}"
+    const val TIMELINE = "timeline/{mode}?epochDay={epochDay}"
 
     fun editorForNew(date: LocalDate): String =
         "editor?dateEpochDay=${date.toEpochDay()}"
 
     fun editorForEdit(eventId: Long, beginMs: Long, endMs: Long): String =
         "editor?eventId=$eventId&beginMs=$beginMs&endMs=$endMs"
+
+    fun timeline(mode: String, date: LocalDate): String =
+        "timeline/$mode?epochDay=${date.toEpochDay()}"
 }
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    deepLinkEpochDay: Long?,
+    onDeepLinkConsumed: () -> Unit,
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as KoyomiApplication }
@@ -67,7 +77,31 @@ fun AppNavHost() {
                 onEditEvent = { eventId, beginMs, endMs ->
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
                 },
+                onOpenTimeline = { mode, date ->
+                    navController.navigate(Routes.timeline(mode, date))
+                },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                deepLinkEpochDay = deepLinkEpochDay,
+                onDeepLinkConsumed = onDeepLinkConsumed,
             )
+        }
+        composable(
+            route = Routes.TIMELINE,
+            arguments = listOf(
+                navArgument("mode") { type = NavType.StringType },
+                navArgument("epochDay") { type = NavType.LongType; defaultValue = -1L },
+            ),
+        ) { backStackEntry ->
+            TimelineScreen(
+                mode = backStackEntry.arguments?.getString("mode") ?: "week",
+                onBack = { navController.popBackStack() },
+                onEditEvent = { eventId, beginMs, endMs ->
+                    navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
+                },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.EDITOR,

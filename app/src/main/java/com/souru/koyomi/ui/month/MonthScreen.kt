@@ -13,13 +13,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarViewMonth
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,10 +56,12 @@ import com.souru.koyomi.R
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.util.MonthPages
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlinx.coroutines.launch
 
 private val SheetPeekHeight = 280.dp
@@ -61,11 +71,17 @@ private val SheetPeekHeight = 280.dp
 fun MonthScreen(
     onCreateEvent: (LocalDate) -> Unit,
     onEditEvent: (eventId: Long, beginMs: Long, endMs: Long) -> Unit,
+    onOpenTimeline: (mode: String, date: LocalDate) -> Unit,
+    onOpenSettings: () -> Unit,
+    deepLinkEpochDay: Long?,
+    onDeepLinkConsumed: () -> Unit,
 ) {
     val viewModel: MonthViewModel = viewModel(factory = MonthViewModel.Factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val weekStart by viewModel.weekStart.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    val visibleMonth by viewModel.visibleMonth.collectAsStateWithLifecycle()
+    val verticalScroll by viewModel.verticalScroll.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -82,17 +98,54 @@ fun MonthScreen(
         initialPage = MonthPages.pageOf(YearMonth.now()),
         pageCount = { MonthPages.COUNT },
     )
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect { page ->
-            viewModel.setVisibleMonth(MonthPages.monthAt(page))
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = MonthPages.pageOf(YearMonth.now()),
+    )
+    LaunchedEffect(pagerState, verticalScroll) {
+        if (!verticalScroll) {
+            snapshotFlow { pagerState.currentPage }.collect { page ->
+                viewModel.setVisibleMonth(MonthPages.monthAt(page))
+            }
         }
+    }
+    LaunchedEffect(listState, verticalScroll) {
+        if (verticalScroll) {
+            snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
+                viewModel.setVisibleMonth(MonthPages.monthAt(index))
+            }
+        }
+    }
+
+    suspend fun scrollToMonth(month: YearMonth) {
+        val page = MonthPages.pageOf(month)
+        if (verticalScroll) {
+            if (abs(listState.firstVisibleItemIndex - page) <= 3) {
+                listState.animateScrollToItem(page)
+            } else {
+                listState.scrollToItem(page)
+            }
+        } else {
+            if (abs(pagerState.currentPage - page) <= 3) {
+                pagerState.animateScrollToPage(page)
+            } else {
+                pagerState.scrollToPage(page)
+            }
+        }
+    }
+
+    // Widget taps arrive as an epoch-day extra: select the day and show its month.
+    LaunchedEffect(deepLinkEpochDay) {
+        val epochDay = deepLinkEpochDay ?: return@LaunchedEffect
+        val date = LocalDate.ofEpochDay(epochDay)
+        viewModel.select(date)
+        scrollToMonth(YearMonth.from(date))
+        onDeepLinkConsumed()
     }
 
     val monthPattern = stringResource(R.string.month_title_pattern)
     val monthFormatter = remember(monthPattern) {
         DateTimeFormatter.ofPattern(monthPattern, Locale.getDefault())
     }
-    val currentMonth = MonthPages.monthAt(pagerState.currentPage)
 
     fun closeDetail() {
         detailInstance = null
@@ -104,13 +157,13 @@ fun MonthScreen(
         sheetPeekHeight = SheetPeekHeight,
         topBar = {
             MonthTopBar(
-                title = currentMonth.format(monthFormatter),
+                title = visibleMonth.format(monthFormatter),
                 onTodayClick = {
                     viewModel.select(LocalDate.now())
-                    scope.launch {
-                        pagerState.animateScrollToPage(MonthPages.pageOf(YearMonth.now()))
-                    }
+                    scope.launch { scrollToMonth(YearMonth.now()) }
                 },
+                onOpenTimeline = { mode -> onOpenTimeline(mode, selectedDate) },
+                onOpenSettings = onOpenSettings,
             )
         },
         sheetContent = {
@@ -163,29 +216,44 @@ fun MonthScreen(
                 weekStart = weekStart,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
-            HorizontalPager(
-                state = pagerState,
-                beyondViewportPageCount = 1,
-                key = { it },
-                modifier = Modifier.fillMaxSize(),
-            ) { page ->
-                MonthGrid(
-                    month = MonthPages.monthAt(page),
+            if (verticalScroll) {
+                VerticalMonthList(
+                    listState = listState,
                     weekStart = weekStart,
-                    eventsByDay = state.eventsByDay,
+                    state = state,
                     selectedDate = selectedDate,
-                    onSelect = { date ->
-                        viewModel.select(date)
-                        closeDetail()
-                    },
-                    onLongPress = { date ->
-                        viewModel.select(date)
-                        onCreateEvent(date)
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 4.dp),
+                    viewModel = viewModel,
+                    onCreateEvent = onCreateEvent,
+                    onCloseDetail = ::closeDetail,
                 )
+            } else {
+                HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = 1,
+                    key = { it },
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    MonthGrid(
+                        month = MonthPages.monthAt(page),
+                        weekStart = weekStart,
+                        eventsByDay = state.eventsByDay,
+                        selectedDate = selectedDate,
+                        onSelect = { date ->
+                            viewModel.select(date)
+                            closeDetail()
+                        },
+                        onLongPress = { date ->
+                            viewModel.select(date)
+                            onCreateEvent(date)
+                        },
+                        onMoveEvent = { event, days ->
+                            viewModel.moveEvent(event.eventId, days)
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 4.dp),
+                    )
+                }
             }
         }
     }
@@ -225,14 +293,59 @@ fun MonthScreen(
     }
 }
 
+/** Seamless vertically scrolling months (settings option). */
 @Composable
-private fun MonthTopBar(title: String, onTodayClick: () -> Unit) {
+private fun VerticalMonthList(
+    listState: LazyListState,
+    weekStart: DayOfWeek,
+    state: MonthUiState,
+    selectedDate: LocalDate,
+    viewModel: MonthViewModel,
+    onCreateEvent: (LocalDate) -> Unit,
+    onCloseDetail: () -> Unit,
+) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        items(count = MonthPages.COUNT, key = { it }) { page ->
+            val month = MonthPages.monthAt(page)
+            MonthGrid(
+                month = month,
+                weekStart = weekStart,
+                eventsByDay = state.eventsByDay,
+                selectedDate = selectedDate,
+                onSelect = { date ->
+                    viewModel.select(date)
+                    onCloseDetail()
+                },
+                onLongPress = { date ->
+                    viewModel.select(date)
+                    onCreateEvent(date)
+                },
+                onMoveEvent = { event, days ->
+                    viewModel.moveEvent(event.eventId, days)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(288.dp)
+                    .padding(horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MonthTopBar(
+    title: String,
+    onTodayClick: () -> Unit,
+    onOpenTimeline: (mode: String) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    var viewMenuOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
             .height(56.dp)
-            .padding(start = 20.dp, end = 8.dp),
+            .padding(start = 20.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = title, style = MaterialTheme.typography.titleLarge)
@@ -241,6 +354,34 @@ private fun MonthTopBar(title: String, onTodayClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Today,
                 contentDescription = stringResource(R.string.back_to_today),
+            )
+        }
+        IconButton(onClick = { viewMenuOpen = true }) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarViewMonth,
+                contentDescription = stringResource(R.string.switch_view),
+            )
+            DropdownMenu(expanded = viewMenuOpen, onDismissRequest = { viewMenuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.view_week)) },
+                    onClick = {
+                        viewMenuOpen = false
+                        onOpenTimeline("week")
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.view_day)) },
+                    onClick = {
+                        viewMenuOpen = false
+                        onOpenTimeline("day")
+                    },
+                )
+            }
+        }
+        IconButton(onClick = onOpenSettings) {
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = stringResource(R.string.settings),
             )
         }
     }

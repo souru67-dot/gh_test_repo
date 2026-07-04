@@ -51,6 +51,28 @@
     <string name="repeat_yearly">Every year</string>
     <string name="repeat_custom">Custom</string>
 
+    <!-- Views & settings -->
+    <string name="switch_view">Switch view</string>
+    <string name="view_week">Week</string>
+    <string name="view_day">Day</string>
+    <string name="settings">Settings</string>
+    <string name="settings_week_start">Week starts on</string>
+    <string name="week_start_sunday">Sunday</string>
+    <string name="week_start_monday">Monday</string>
+    <string name="settings_month_scroll">Month view scrolling</string>
+    <string name="settings_vertical_scroll">Continuous vertical scroll</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_calendars">Calendars to show</string>
+
+    <!-- Widgets -->
+    <string name="widget_month_label">Month calendar</string>
+    <string name="widget_month_description">This month at a glance, with dots on busy days.</string>
+    <string name="widget_today_label">Today\'s events</string>
+    <string name="widget_today_description">Today\'s and tomorrow\'s events with times.</string>
+
     <!-- Onboarding -->
     <string name="onboarding_title">Your calendars, at a glance</string>
     <string name="onboarding_body">Koyomi reads and writes the calendars already on this device — Google Calendar, Exchange and others — so everything stays in sync. To show and create events, allow access to your calendar.</string>
