@@ -1,0 +1,60 @@
+package com.souru.lumina.data.model
+
+import android.net.Uri
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+
+enum class MediaKind { IMAGE, VIDEO }
+
+/** MediaStore 上の1ファイル。 */
+data class MediaItem(
+    val id: Long,
+    val uri: Uri,
+    val displayName: String,
+    val mimeType: String,
+    val dateTakenMs: Long,
+    val sizeBytes: Long,
+    val width: Int,
+    val height: Int,
+    val durationMs: Long,
+    val kind: MediaKind,
+) {
+    val isRaw: Boolean
+        get() = mimeType.equals("image/x-adobe-dng", ignoreCase = true) ||
+            displayName.endsWith(".dng", ignoreCase = true)
+
+    val baseName: String
+        get() = displayName.substringBeforeLast('.')
+
+    val localDate: LocalDate
+        get() = Instant.ofEpochMilli(dateTakenMs).atZone(ZoneId.systemDefault()).toLocalDate()
+}
+
+/** RAW+JPEG の表示フィルタ。 */
+enum class RawFilterMode { JPEG, RAW, ALL }
+
+/**
+ * グリッドに表示する1エントリ。ペアリング済みの場合は [counterpart] に
+ * もう一方(JPEG表示中ならRAW、RAW表示中ならJPEG)が入る。
+ */
+data class GalleryEntry(
+    val item: MediaItem,
+    val counterpart: MediaItem? = null,
+) {
+    val id: Long get() = item.id
+    val isPaired: Boolean get() = counterpart != null
+}
+
+/** グリッドのスロット(日付ヘッダー or セル)。 */
+sealed interface GridSlot {
+    val key: Any
+
+    data class Header(val date: LocalDate, val label: String) : GridSlot {
+        override val key: Any get() = "header-$date"
+    }
+
+    data class Cell(val entry: GalleryEntry, val entryIndex: Int) : GridSlot {
+        override val key: Any get() = entry.id
+    }
+}
