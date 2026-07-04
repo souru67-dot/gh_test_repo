@@ -12,6 +12,7 @@ import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
+import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.data.pairing.PairCandidate
 import com.souru.lumina.data.pairing.RawJpegPairer
@@ -34,6 +35,7 @@ data class GalleryUiState(
     val entries: List<GalleryEntry> = emptyList(),
     val slotIndexOfEntry: Map<Long, Int> = emptyMap(),
     val filter: RawFilterMode = RawFilterMode.JPEG,
+    val typeFilter: MediaTypeFilter = MediaTypeFilter.ALL,
     val columns: Int = SettingsRepository.DEFAULT_COLUMNS,
 )
 
@@ -67,9 +69,10 @@ class GalleryViewModel(
         combine(
             pairedMedia,
             settingsRepository.rawFilter,
+            settingsRepository.mediaTypeFilter,
             settingsRepository.gridColumns,
-        ) { paired, filter, columns ->
-            buildState(paired, filter, columns)
+        ) { paired, filter, typeFilter, columns ->
+            buildState(paired, filter, typeFilter, columns)
         }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState())
@@ -77,15 +80,30 @@ class GalleryViewModel(
     private fun buildState(
         paired: PairedMedia,
         filter: RawFilterMode,
+        typeFilter: MediaTypeFilter,
         columns: Int,
     ): GalleryUiState {
         val byId = paired.media.associateBy { it.id }
 
-        // 動画はペアリング対象外なので全モードで表示する
-        val visible = when (filter) {
-            RawFilterMode.ALL -> paired.media
-            RawFilterMode.JPEG -> paired.media.filter { it.kind == MediaKind.VIDEO || !it.isRaw }
-            RawFilterMode.RAW -> paired.media.filter { it.kind == MediaKind.VIDEO || it.isRaw }
+        val visible = paired.media.filter { item ->
+            // 1軸目: メディア種別(MEDIA_TYPEベース)
+            val typeOk = when (typeFilter) {
+                MediaTypeFilter.ALL -> true
+                MediaTypeFilter.PHOTO -> item.kind == MediaKind.IMAGE
+                MediaTypeFilter.VIDEO -> item.kind == MediaKind.VIDEO
+            }
+            if (!typeOk) return@filter false
+
+            // 2軸目: 写真の形式(MIMEベース)。動画には適用せず、
+            // JPEG/RAW選択時は動画をフィルタ結果に混ぜない
+            when {
+                item.kind == MediaKind.VIDEO -> filter == RawFilterMode.ALL
+                else -> when (filter) {
+                    RawFilterMode.ALL -> true
+                    RawFilterMode.JPEG -> item.isJpeg
+                    RawFilterMode.RAW -> item.isRaw
+                }
+            }
         }
         val entries = visible.map { GalleryEntry(it, paired.pairs[it.id]?.let(byId::get)) }
 
@@ -110,6 +128,7 @@ class GalleryViewModel(
             entries = entries,
             slotIndexOfEntry = slotIndexOfEntry,
             filter = filter,
+            typeFilter = typeFilter,
             columns = columns,
         )
     }
@@ -120,6 +139,10 @@ class GalleryViewModel(
 
     fun setFilter(mode: RawFilterMode) {
         viewModelScope.launch { settingsRepository.setRawFilter(mode) }
+    }
+
+    fun setTypeFilter(filter: MediaTypeFilter) {
+        viewModelScope.launch { settingsRepository.setMediaTypeFilter(filter) }
     }
 
     fun toggleSelection(id: Long) {

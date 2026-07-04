@@ -24,6 +24,11 @@ data class MediaItem(
         get() = mimeType.equals("image/x-adobe-dng", ignoreCase = true) ||
             displayName.endsWith(".dng", ignoreCase = true)
 
+    /** MIMEタイプでの厳密なJPEG判定。 */
+    val isJpeg: Boolean
+        get() = mimeType.equals("image/jpeg", ignoreCase = true) ||
+            mimeType.equals("image/jpg", ignoreCase = true)
+
     val baseName: String
         get() = displayName.substringBeforeLast('.')
 
@@ -31,7 +36,10 @@ data class MediaItem(
         get() = Instant.ofEpochMilli(dateTakenMs).atZone(ZoneId.systemDefault()).toLocalDate()
 }
 
-/** RAW+JPEG の表示フィルタ。 */
+/** メディア種別の表示フィルタ(すべて / 写真のみ / 動画のみ)。 */
+enum class MediaTypeFilter { ALL, PHOTO, VIDEO }
+
+/** 写真の形式フィルタ(すべて / JPEG / RAW)。動画には適用しない。 */
 enum class RawFilterMode { JPEG, RAW, ALL }
 
 /**

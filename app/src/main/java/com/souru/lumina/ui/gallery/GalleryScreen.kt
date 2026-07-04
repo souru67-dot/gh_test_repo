@@ -80,6 +80,7 @@ import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
 import com.souru.lumina.data.model.MediaKind
+import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.ui.viewer.ViewerScreen
 import com.souru.lumina.util.Lightroom
@@ -300,6 +301,7 @@ private fun GalleryGridScreen(
             selection = selection,
             onClearSelection = viewModel::clearSelection,
             onSelectFilter = viewModel::setFilter,
+            onSelectTypeFilter = viewModel::setTypeFilter,
             onSendSelectionToLightroom = onSendSelectionToLightroom,
             modifier = Modifier.align(Alignment.TopCenter),
         )
@@ -323,6 +325,7 @@ private fun GalleryTopBar(
     selection: Set<Long>,
     onClearSelection: () -> Unit,
     onSelectFilter: (RawFilterMode) -> Unit,
+    onSelectTypeFilter: (MediaTypeFilter) -> Unit,
     onSendSelectionToLightroom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -374,50 +377,67 @@ private fun GalleryTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 12.dp),
             ) {
-                Text(
-                    text = "Lumina",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                // メディア種別(すべて/写真/動画)
+                FilterPillRow(
+                    options = listOf(
+                        MediaTypeFilter.ALL to "すべて",
+                        MediaTypeFilter.PHOTO to "写真",
+                        MediaTypeFilter.VIDEO to "動画",
+                    ),
+                    selected = state.typeFilter,
+                    onSelect = onSelectTypeFilter,
                 )
                 Spacer(Modifier.weight(1f))
-                RawFilterSwitcher(filter = state.filter, onSelect = onSelectFilter)
+                // 写真の形式(すべて/JPEG/RAW)。動画のみ表示中は無効化
+                FilterPillRow(
+                    options = listOf(
+                        RawFilterMode.ALL to "すべて",
+                        RawFilterMode.JPEG to "JPEG",
+                        RawFilterMode.RAW to "RAW",
+                    ),
+                    selected = state.filter,
+                    enabled = state.typeFilter != MediaTypeFilter.VIDEO,
+                    onSelect = onSelectFilter,
+                )
             }
         }
     }
 }
 
-/** JPEG / RAW / すべて の表示モード切替(グリッド上部に常設)。 */
+/** ピル型の排他フィルタ切替。enabled=false時はグレーアウトして操作を無視する。 */
 @Composable
-private fun RawFilterSwitcher(
-    filter: RawFilterMode,
-    onSelect: (RawFilterMode) -> Unit,
+private fun <T> FilterPillRow(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    enabled: Boolean = true,
 ) {
-    val options = listOf(
-        RawFilterMode.JPEG to "JPEG",
-        RawFilterMode.RAW to "RAW",
-        RawFilterMode.ALL to "すべて",
-    )
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.08f)),
+            .background(Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)),
     ) {
         options.forEach { (mode, label) ->
-            val selected = filter == mode
+            val isSelected = selected == mode
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent)
-                    .clickable { onSelect(mode) },
+                    .background(
+                        if (isSelected && enabled) Color.White.copy(alpha = 0.16f) else Color.Transparent,
+                    )
+                    .clickable(enabled = enabled) { onSelect(mode) },
             ) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    color = when {
+                        !enabled -> Color.White.copy(alpha = 0.25f)
+                        isSelected -> Color.White
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                 )
             }
         }

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,7 @@ class SettingsRepository(private val context: Context) {
 
     private val gridColumnsKey = intPreferencesKey("grid_columns")
     private val rawFilterKey = stringPreferencesKey("raw_filter")
+    private val mediaTypeFilterKey = stringPreferencesKey("media_type_filter")
 
     val gridColumns: Flow<Int> = context.dataStore.data
         .map { (it[gridColumnsKey] ?: DEFAULT_COLUMNS).coerceIn(MIN_COLUMNS, MAX_COLUMNS) }
@@ -25,6 +27,17 @@ class SettingsRepository(private val context: Context) {
                 RawFilterMode.entries.firstOrNull { it.name == value }
             } ?: RawFilterMode.JPEG
         }
+
+    val mediaTypeFilter: Flow<MediaTypeFilter> = context.dataStore.data
+        .map { prefs ->
+            prefs[mediaTypeFilterKey]?.let { value ->
+                MediaTypeFilter.entries.firstOrNull { it.name == value }
+            } ?: MediaTypeFilter.ALL
+        }
+
+    suspend fun setMediaTypeFilter(filter: MediaTypeFilter) {
+        context.dataStore.edit { it[mediaTypeFilterKey] = filter.name }
+    }
 
     suspend fun setGridColumns(columns: Int) {
         context.dataStore.edit { it[gridColumnsKey] = columns.coerceIn(MIN_COLUMNS, MAX_COLUMNS) }
