@@ -7,6 +7,9 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.souru.lumina.data.MediaRepository
 import com.souru.lumina.data.SettingsRepository
+import com.souru.lumina.data.coil.DngPreview
+import com.souru.lumina.data.coil.DngPreviewFetcher
+import com.souru.lumina.data.coil.DngPreviewKeyer
 import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.coil.MediaThumbFetcher
 import com.souru.lumina.data.coil.MediaThumbKeyer
@@ -31,6 +34,8 @@ class LuminaApplication : Application(), SingletonImageLoader.Factory {
             .components {
                 add(MediaThumbKeyer(), MediaThumb::class)
                 add(MediaThumbFetcher.Factory(this@LuminaApplication), MediaThumb::class)
+                add(DngPreviewKeyer(), DngPreview::class)
+                add(DngPreviewFetcher.Factory(this@LuminaApplication), DngPreview::class)
             }
             .build()
 }

@@ -11,16 +11,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.souru.lumina.ui.gallery.GalleryRoute
 import com.souru.lumina.ui.onboarding.OnboardingScreen
+import com.souru.lumina.ui.photoedit.PhotoEditScreen
 import com.souru.lumina.util.hasMediaAccess
 
 object Routes {
     const val Onboarding = "onboarding"
     const val Gallery = "gallery"
+    const val PhotoEdit = "photoEdit/{mediaId}"
+
+    fun photoEdit(mediaId: Long) = "photoEdit/$mediaId"
 }
 
 @Composable
@@ -46,7 +52,21 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             )
         }
         composable(Routes.Gallery) {
-            GalleryRoute()
+            GalleryRoute(
+                onOpenPhotoEditor = { mediaId ->
+                    navController.navigate(Routes.photoEdit(mediaId))
+                },
+            )
+        }
+        composable(
+            route = Routes.PhotoEdit,
+            arguments = listOf(navArgument("mediaId") { type = NavType.LongType }),
+        ) { backStackEntry ->
+            val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: return@composable
+            PhotoEditScreen(
+                mediaId = mediaId,
+                onClose = { navController.popBackStack() },
+            )
         }
     }
 }

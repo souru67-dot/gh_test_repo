@@ -11,7 +11,10 @@ import com.souru.lumina.data.SettingsRepository
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
 import com.souru.lumina.data.model.MediaItem
+import com.souru.lumina.data.model.MediaKind
 import com.souru.lumina.data.model.RawFilterMode
+import com.souru.lumina.data.pairing.PairCandidate
+import com.souru.lumina.data.pairing.RawJpegPairer
 import com.souru.lumina.util.formatDateHeader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -57,8 +60,19 @@ class GalleryViewModel(
         columns: Int,
         selected: Set<Long>,
     ): GalleryUiState {
-        // フェーズ2でRAW+JPEGペアリングとフィルタを適用する。現状は全件表示。
-        val entries = media.map { GalleryEntry(it) }
+        val pairs = RawJpegPairer.pair(
+            media.filter { it.kind == MediaKind.IMAGE }
+                .map { PairCandidate(it.id, it.baseName, it.dateTakenMs, it.isRaw) },
+        )
+        val byId = media.associateBy { it.id }
+
+        // 動画はペアリング対象外なので全モードで表示する
+        val visible = when (filter) {
+            RawFilterMode.ALL -> media
+            RawFilterMode.JPEG -> media.filter { it.kind == MediaKind.VIDEO || !it.isRaw }
+            RawFilterMode.RAW -> media.filter { it.kind == MediaKind.VIDEO || it.isRaw }
+        }
+        val entries = visible.map { GalleryEntry(it, pairs[it.id]?.let(byId::get)) }
 
         val slots = ArrayList<GridSlot>(entries.size + 32)
         val slotIndexOfEntry = HashMap<Long, Int>(entries.size * 2)

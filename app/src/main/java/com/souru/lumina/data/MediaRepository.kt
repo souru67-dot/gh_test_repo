@@ -44,7 +44,11 @@ class MediaRepository(private val context: Context) {
             .mapLatest { queryAll() }
             .flowOn(Dispatchers.IO)
 
-    fun queryAll(): List<MediaItem> {
+    suspend fun getItem(id: Long): MediaItem? = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        queryAll(selectionExtra = "${MediaStore.Files.FileColumns._ID} = $id").firstOrNull()
+    }
+
+    fun queryAll(selectionExtra: String? = null): List<MediaItem> {
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
@@ -58,7 +62,8 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
         )
-        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
+        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)" +
+            (selectionExtra?.let { " AND ($it)" } ?: "")
         val selectionArgs = arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
             MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString(),

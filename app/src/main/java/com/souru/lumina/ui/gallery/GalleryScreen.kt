@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,17 +36,20 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,16 +77,33 @@ import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
 import com.souru.lumina.data.model.MediaKind
+import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.ui.viewer.ViewerScreen
+import com.souru.lumina.util.Lightroom
 import com.souru.lumina.util.formatDuration
 
 @Composable
-fun GalleryRoute(viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)) {
+fun GalleryRoute(
+    onOpenPhotoEditor: (Long) -> Unit,
+    viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var showLightroomDialog by remember { mutableStateOf(false) }
 
     BackHandler(enabled = state.selectionMode && viewerIndex == null) {
         viewModel.clearSelection()
+    }
+
+    fun sendToLightroom(entries: List<GalleryEntry>) {
+        val items = entries
+            .map { Lightroom.rawSideOf(it) }
+            .filter { it.kind == MediaKind.IMAGE }
+        if (items.isEmpty()) return
+        if (!Lightroom.openMultiple(context, items)) {
+            showLightroomDialog = true
+        }
     }
 
     Box(
@@ -108,14 +129,42 @@ fun GalleryRoute(viewModel: GalleryViewModel = viewModel(factory = GalleryViewMo
                     state = state,
                     viewModel = viewModel,
                     onOpenViewer = { entryIndex -> viewerIndex = entryIndex },
+                    onSendSelectionToLightroom = {
+                        sendToLightroom(state.entries.filter { it.id in state.selection })
+                    },
                 )
             } else {
                 ViewerScreen(
                     entries = state.entries,
                     initialIndex = index,
                     onClose = { viewerIndex = null },
+                    onEditPhoto = { item -> onOpenPhotoEditor(item.id) },
+                    onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
                 )
             }
+        }
+
+        if (showLightroomDialog) {
+            AlertDialog(
+                onDismissRequest = { showLightroomDialog = false },
+                title = { Text("Lightroom Mobile が見つかりません") },
+                text = {
+                    Text("RAW現像には Adobe Lightroom Mobile(無料)が必要です。Playストアからインストールしてください。")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showLightroomDialog = false
+                        Lightroom.openPlayStore(context)
+                    }) {
+                        Text("Playストアを開く")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLightroomDialog = false }) {
+                        Text("キャンセル")
+                    }
+                },
+            )
         }
     }
 }
@@ -125,6 +174,7 @@ private fun GalleryGridScreen(
     state: GalleryUiState,
     viewModel: GalleryViewModel,
     onOpenViewer: (Int) -> Unit,
+    onSendSelectionToLightroom: () -> Unit,
 ) {
     val gridState = rememberLazyGridState()
     val columnsProvider = rememberColumnsProvider(state.columns)
@@ -196,6 +246,8 @@ private fun GalleryGridScreen(
         GalleryTopBar(
             state = state,
             onClearSelection = viewModel::clearSelection,
+            onSelectFilter = viewModel::setFilter,
+            onSendSelectionToLightroom = onSendSelectionToLightroom,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -216,6 +268,8 @@ private fun GalleryGridScreen(
 private fun GalleryTopBar(
     state: GalleryUiState,
     onClearSelection: () -> Unit,
+    onSelectFilter: (RawFilterMode) -> Unit,
+    onSendSelectionToLightroom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
@@ -251,6 +305,14 @@ private fun GalleryTopBar(
                     color = Color.White,
                 )
                 Spacer(Modifier.weight(1f))
+                // 選択した写真(ペアはRAW側)をまとめてLightroomへ
+                TextButton(onClick = onSendSelectionToLightroom) {
+                    Text(
+                        text = "Lrで現像",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         } else {
             Row(
@@ -267,10 +329,41 @@ private fun GalleryTopBar(
                     color = Color.White,
                 )
                 Spacer(Modifier.weight(1f))
+                RawFilterSwitcher(filter = state.filter, onSelect = onSelectFilter)
+            }
+        }
+    }
+}
+
+/** JPEG / RAW / すべて の表示モード切替(グリッド上部に常設)。 */
+@Composable
+private fun RawFilterSwitcher(
+    filter: RawFilterMode,
+    onSelect: (RawFilterMode) -> Unit,
+) {
+    val options = listOf(
+        RawFilterMode.JPEG to "JPEG",
+        RawFilterMode.RAW to "RAW",
+        RawFilterMode.ALL to "すべて",
+    )
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.08f)),
+    ) {
+        options.forEach { (mode, label) ->
+            val selected = filter == mode
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent)
+                    .clickable { onSelect(mode) },
+            ) {
                 Text(
-                    text = "${state.entries.size}",
+                    text = label,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                 )
             }
         }
@@ -307,7 +400,7 @@ private fun LazyGridItemScope.MediaCell(
             Modifier
                 .fillMaxSize()
                 .padding(8.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
         } else {
             Modifier.fillMaxSize()
         }
@@ -320,6 +413,24 @@ private fun LazyGridItemScope.MediaCell(
             contentScale = ContentScale.Crop,
             modifier = imageModifier.background(MaterialTheme.colorScheme.surfaceContainer),
         )
+
+        val badge = when {
+            entry.isPaired -> "RAW+J"
+            entry.item.isRaw -> "RAW"
+            else -> null
+        }
+        if (badge != null) {
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(5.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
+            )
+        }
 
         if (entry.item.kind == MediaKind.VIDEO) {
             Row(

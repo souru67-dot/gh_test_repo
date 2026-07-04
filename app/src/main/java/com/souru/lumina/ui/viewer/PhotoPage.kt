@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.souru.lumina.data.model.GalleryEntry
+import com.souru.lumina.data.coil.DngPreview
+import com.souru.lumina.data.model.MediaItem
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -36,10 +37,12 @@ private const val DOUBLE_TAP_SCALE = 2.5f
 
 /**
  * 写真1枚のページ。ピンチ/ダブルタップでズーム、等倍時の縦ドラッグで閉じる。
+ * RAW(DNG)は埋め込みプレビュー優先の [DngPreview] 経由で高速表示する。
+ * RAW⇔JPEG切替時もズーム状態を保持し、同一構図のまま比較できる。
  */
 @Composable
 fun PhotoPage(
-    entry: GalleryEntry,
+    item: MediaItem,
     onToggleChrome: () -> Unit,
     onDismiss: () -> Unit,
     onDismissProgress: (Float) -> Unit,
@@ -63,7 +66,7 @@ fun PhotoPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(entry.id) {
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onToggleChrome() },
                     onDoubleTap = { tapOffset ->
@@ -94,7 +97,7 @@ fun PhotoPage(
                     },
                 )
             }
-            .pointerInput(entry.id) {
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     var dismissMode = false
                     var totalDrag = Offset.Zero
@@ -161,10 +164,10 @@ fun PhotoPage(
     ) {
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data(entry.item.uri)
+                .data(if (item.isRaw) DngPreview(item.uri, item.id) else item.uri)
                 .crossfade(true)
                 .build(),
-            contentDescription = entry.item.displayName,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxSize()
