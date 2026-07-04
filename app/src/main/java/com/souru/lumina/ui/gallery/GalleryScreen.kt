@@ -54,10 +54,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -85,7 +85,6 @@ import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.ui.viewer.ViewerScreen
 import com.souru.lumina.util.Lightroom
 import com.souru.lumina.util.formatDuration
-import kotlinx.coroutines.launch
 
 fun sharedMediaKey(id: Long): String = "media-$id"
 
@@ -99,11 +98,12 @@ fun GalleryRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selection by viewModel.selectionFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     // ビューアで現在表示中のエントリID(共有要素の対応付けと戻りスクロールに使う)
     var focusedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    // ビューアを閉じた後、グリッド側で消化する戻り先スクロール要求
+    var pendingScrollSlot by remember { mutableStateOf<Int?>(null) }
     var showLightroomDialog by remember { mutableStateOf(false) }
 
     // グリッドのスクロール位置はビューア表示をまたいで保持する
@@ -124,16 +124,11 @@ fun GalleryRoute(
     }
 
     fun closeViewer() {
-        // 共有要素の戻り先セルが画面内に来るようスクロールしてから閉じる
-        val slotIndex = focusedId?.let { state.slotIndexOfEntry[it] }
-        scope.launch {
-            if (slotIndex != null &&
-                gridState.layoutInfo.visibleItemsInfo.none { it.index == slotIndex }
-            ) {
-                gridState.scrollToItem(slotIndex)
-            }
-            viewerIndex = null
-        }
+        // ここでは閉じるだけにする。未アタッチのLazyGridStateへ
+        // scrollToItemすると永久にサスペンドし、戻る操作が失われるため、
+        // スクロールはグリッドが構成された後にpendingScrollSlotで消化する
+        pendingScrollSlot = focusedId?.let { state.slotIndexOfEntry[it] }
+        viewerIndex = null
     }
 
     Box(
@@ -161,6 +156,8 @@ fun GalleryRoute(
                         selection = selection,
                         gridState = gridState,
                         focusedId = focusedId,
+                        pendingScrollSlot = pendingScrollSlot,
+                        onPendingScrollHandled = { pendingScrollSlot = null },
                         sharedScope = this@SharedTransitionLayout,
                         animatedScope = this@AnimatedContent,
                         viewModel = viewModel,
@@ -220,6 +217,8 @@ private fun GalleryGridScreen(
     selection: Set<Long>,
     gridState: LazyGridState,
     focusedId: Long?,
+    pendingScrollSlot: Int?,
+    onPendingScrollHandled: () -> Unit,
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
     viewModel: GalleryViewModel,
@@ -230,6 +229,17 @@ private fun GalleryGridScreen(
     val layoutDirection = LocalLayoutDirection.current
     val systemBarPadding = WindowInsets.systemBars.asPaddingValues()
     val selectionMode = selection.isNotEmpty()
+
+    // ビューアから戻ったとき、表示していたセルが画面外なら追従スクロールする
+    LaunchedEffect(pendingScrollSlot) {
+        val slot = pendingScrollSlot ?: return@LaunchedEffect
+        if (slot in state.slots.indices &&
+            gridState.layoutInfo.visibleItemsInfo.none { it.index == slot }
+        ) {
+            runCatching { gridState.scrollToItem(slot) }
+        }
+        onPendingScrollHandled()
+    }
 
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(

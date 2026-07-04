@@ -72,10 +72,14 @@ class VideoEditViewModel(
 
     private val colorParams = MutableStateFlow(ColorParams(null, 1f, Adjustments(), false))
 
-    /** プレビュー用エフェクト。A/B比較中は空リスト(=元の映像)。 */
+    /**
+     * プレビュー用エフェクト。A/B比較中は空リスト(=元の映像)。
+     * プレビュー側は変更のたびに再prepareが必要なので、スライダー操作中の
+     * 過剰な再構築を避けるためdebounceする。
+     */
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val videoEffects: StateFlow<List<Effect>> = colorParams
-        .debounce(80)
+        .debounce(100)
         .mapLatest { params -> buildEffects(params) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

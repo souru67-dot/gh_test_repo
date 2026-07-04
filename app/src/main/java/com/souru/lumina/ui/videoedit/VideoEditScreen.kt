@@ -40,6 +40,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,8 +108,39 @@ fun VideoEditScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val effects by viewModel.videoEffects.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
 
-    BackHandler(onBack = onClose)
+    // 未保存の編集(LUT/調整/トリム)があり、まだ書き出していないときだけ
+    // 戻る操作を確認ダイアログに差し替える。それ以外はBackHandlerを
+    // 登録せず、システムの戻る(NavHostのpop)をそのまま通す
+    val duration = state.item?.durationMs ?: 0L
+    val trimmed = state.trimStartMs > 0 ||
+        (duration > 0 && state.trimEndMs in 1 until duration)
+    val hasUnsavedEdits = state.item != null && !state.exportEnqueued &&
+        (state.selectedLut != null || !state.adjustments.isIdentity || trimmed)
+
+    BackHandler(enabled = hasUnsavedEdits) { showDiscardDialog = true }
+
+    fun requestClose() {
+        if (hasUnsavedEdits) showDiscardDialog = true else onClose()
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("編集を破棄しますか?") },
+            text = { Text("LUT・調整・トリムの変更は保存されません。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    onClose()
+                }) { Text("破棄") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) { Text("キャンセル") }
+            },
+        )
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -136,7 +170,7 @@ fun VideoEditScreen(
                 state = state,
                 effects = effects,
                 viewModel = viewModel,
-                onClose = onClose,
+                onClose = { requestClose() },
             )
         }
     }
@@ -154,20 +188,30 @@ private fun VideoEditContent(
     val context = LocalContext.current
     var showExportDialog by rememberSaveable { mutableStateOf(false) }
     var selectedParam by rememberSaveable { mutableStateOf(VideoAdjustParam.EXPOSURE.name) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     val player = remember(item.id) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(Media3Item.fromUri(item.uri))
             repeatMode = Player.REPEAT_MODE_ALL
-            prepare()
-            playWhenReady = true
         }
     }
     DisposableEffect(player) {
         onDispose { player.release() }
     }
+    // setVideoEffects は prepare 前の設定しか確実に反映されないため、
+    // エフェクト変更(LUT/強度/調整/A-B比較)のたびに再生位置と再生状態を
+    // 保持したままパイプラインを再構築する。変更はViewModel側で
+    // debounce済みなのでスライダー操作中も過剰には走らない
     LaunchedEffect(effects) {
+        val position = player.currentPosition.coerceAtLeast(0)
+        val resumePlaying =
+            if (player.playbackState == Player.STATE_IDLE) true else player.playWhenReady
+        player.stop()
         player.setVideoEffects(effects)
+        player.prepare()
+        player.seekTo(position)
+        player.playWhenReady = resumePlaying
     }
 
     val lutImportLauncher = rememberLauncherForActivityResult(
@@ -246,39 +290,66 @@ private fun VideoEditContent(
             )
         }
 
-        // 下部パネル
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
-        ) {
+        // 下部パネル: 再生コントロールは共通、編集操作はタブで分離。
+        // 編集状態はViewModelが一元管理するためタブ切替でも保持される
+        Column(Modifier.fillMaxWidth()) {
             TransportBar(player = player, durationMs = item.durationMs)
-            TrimBar(
-                durationMs = item.durationMs,
-                trimStartMs = state.trimStartMs,
-                trimEndMs = state.trimEndMs,
-                onTrimChange = viewModel::setTrim,
-                onSeek = { player.seekTo(it) },
-            )
-            LutRow(
-                state = state,
-                onSelect = viewModel::selectLut,
-                onDelete = viewModel::deleteLut,
-                onImport = { lutImportLauncher.launch(arrayOf("*/*")) },
-            )
-            if (state.selectedLut != null) {
-                StrengthSlider(
-                    strength = state.strength,
-                    onStrengthChange = viewModel::setStrength,
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("トリム") },
+                    selectedContentColor = Color.White,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("カラー") },
+                    selectedContentColor = Color.White,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            VideoAdjustPanel(
-                adjustments = state.adjustments,
-                selectedParamName = selectedParam,
-                onSelectParam = { selectedParam = it },
-                onAdjustmentsChange = viewModel::setAdjustments,
-                onReset = viewModel::resetAdjustments,
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 8.dp),
+            ) {
+                if (selectedTab == 0) {
+                    TrimBar(
+                        durationMs = item.durationMs,
+                        trimStartMs = state.trimStartMs,
+                        trimEndMs = state.trimEndMs,
+                        onTrimChange = viewModel::setTrim,
+                        onSeek = { player.seekTo(it) },
+                    )
+                } else {
+                    LutRow(
+                        state = state,
+                        onSelect = viewModel::selectLut,
+                        onDelete = viewModel::deleteLut,
+                        onImport = { lutImportLauncher.launch(arrayOf("*/*")) },
+                    )
+                    if (state.selectedLut != null) {
+                        StrengthSlider(
+                            strength = state.strength,
+                            onStrengthChange = viewModel::setStrength,
+                        )
+                    }
+                    VideoAdjustPanel(
+                        adjustments = state.adjustments,
+                        selectedParamName = selectedParam,
+                        onSelectParam = { selectedParam = it },
+                        onAdjustmentsChange = viewModel::setAdjustments,
+                        onReset = viewModel::resetAdjustments,
+                    )
+                }
+            }
         }
     }
 
