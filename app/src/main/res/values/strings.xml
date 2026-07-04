@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">Koyomi</string>
+
+    <!-- Month screen -->
+    <string name="month_title_pattern">MMMM yyyy</string>
+    <string name="sheet_date_pattern">EEE, MMM d</string>
+    <string name="back_to_today">Today</string>
+    <string name="no_events">No events</string>
+    <string name="all_day">All-day</string>
+    <string name="more_events">+%1$d</string>
+    <string name="add_event">Add event</string>
+    <string name="permission_banner">Calendar access is not granted. Events cannot be shown.</string>
+    <string name="open_settings">Open settings</string>
+
+    <!-- Event detail -->
+    <string name="edit">Edit</string>
+    <string name="duplicate">Duplicate</string>
+    <string name="delete">Delete</string>
+    <string name="close">Close</string>
+    <string name="delete_confirm_title">Delete this event?</string>
+    <string name="delete_confirm_message">"%1$s" will be removed from your calendar. Recurring events are deleted with all occurrences.</string>
+    <string name="cancel">Cancel</string>
+    <string name="untitled">(No title)</string>
+
+    <!-- Editor -->
+    <string name="new_event">New event</string>
+    <string name="edit_event">Edit event</string>
+    <string name="save">Save</string>
+    <string name="title_hint">Title</string>
+    <string name="starts">Starts</string>
+    <string name="ends">Ends</string>
+    <string name="calendar">Calendar</string>
+    <string name="location">Location</string>
+    <string name="notification">Notification</string>
+    <string name="repeat">Repeat</string>
+    <string name="memo">Memo</string>
+    <string name="ok">OK</string>
+    <string name="select_time">Select time</string>
+    <string name="no_writable_calendar">No writable calendar was found. Add a calendar account to the device first.</string>
+
+    <string name="reminder_none">None</string>
+    <string name="reminder_at_time">At time of event</string>
+    <string name="reminder_minutes">%1$d minutes before</string>
+    <string name="reminder_hours">%1$d hours before</string>
+    <string name="reminder_days">%1$d days before</string>
+
+    <string name="repeat_none">Does not repeat</string>
+    <string name="repeat_daily">Every day</string>
+    <string name="repeat_weekly">Every week</string>
+    <string name="repeat_monthly">Every month</string>
+    <string name="repeat_yearly">Every year</string>
+    <string name="repeat_custom">Custom</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Your calendars, at a glance</string>
+    <string name="onboarding_body">Koyomi reads and writes the calendars already on this device — Google Calendar, Exchange and others — so everything stays in sync. To show and create events, allow access to your calendar.</string>
+    <string name="onboarding_grant">Allow access</string>
+    <string name="onboarding_skip">Not now</string>
+</resources>
