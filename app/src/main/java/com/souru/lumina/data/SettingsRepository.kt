@@ -1,16 +1,26 @@
 package com.souru.lumina.data
 
 import android.content.Context
+import android.util.Log
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.souru.lumina.data.model.GalleryFilter
 import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore by preferencesDataStore(name = "settings")
+// ファイル破損時は空のPreferencesで置き換える(起動不能ループの防止)
+private val Context.dataStore by preferencesDataStore(
+    name = "settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 class SettingsRepository(private val context: Context) {
 
@@ -18,33 +28,57 @@ class SettingsRepository(private val context: Context) {
     private val rawFilterKey = stringPreferencesKey("raw_filter")
     private val mediaTypeFilterKey = stringPreferencesKey("media_type_filter")
 
-    val gridColumns: Flow<Int> = context.dataStore.data
+    /**
+     * 読み込みの防御層。破損・I/O例外など復元に失敗した場合は
+     * デフォルト(空)にフォールバックし、起動時クラッシュを構造的に防ぐ。
+     */
+    private val safeData: Flow<Preferences> = context.dataStore.data
+        .catch { t ->
+            Log.w("SettingsRepository", "設定の読み込みに失敗。デフォルトへフォールバック", t)
+            emit(emptyPreferences())
+        }
+
+    val gridColumns: Flow<Int> = safeData
         .map { (it[gridColumnsKey] ?: DEFAULT_COLUMNS).coerceIn(MIN_COLUMNS, MAX_COLUMNS) }
 
-    val rawFilter: Flow<RawFilterMode> = context.dataStore.data
+    /** フィルタ状態。復元時に不正値のフォールバックと矛盾組み合わせの正規化を行う。 */
+    val galleryFilter: Flow<GalleryFilter> = safeData
         .map { prefs ->
-            prefs[rawFilterKey]?.let { value ->
-                RawFilterMode.entries.firstOrNull { it.name == value }
-            } ?: RawFilterMode.JPEG
+            GalleryFilter.fromStored(
+                typeValue = prefs[mediaTypeFilterKey],
+                formatValue = prefs[rawFilterKey],
+            )
         }
-
-    val mediaTypeFilter: Flow<MediaTypeFilter> = context.dataStore.data
-        .map { prefs ->
-            prefs[mediaTypeFilterKey]?.let { value ->
-                MediaTypeFilter.entries.firstOrNull { it.name == value }
-            } ?: MediaTypeFilter.ALL
-        }
-
-    suspend fun setMediaTypeFilter(filter: MediaTypeFilter) {
-        context.dataStore.edit { it[mediaTypeFilterKey] = filter.name }
-    }
 
     suspend fun setGridColumns(columns: Int) {
-        context.dataStore.edit { it[gridColumnsKey] = columns.coerceIn(MIN_COLUMNS, MAX_COLUMNS) }
+        safeEdit { it[gridColumnsKey] = columns.coerceIn(MIN_COLUMNS, MAX_COLUMNS) }
     }
 
     suspend fun setRawFilter(mode: RawFilterMode) {
-        context.dataStore.edit { it[rawFilterKey] = mode.name }
+        safeEdit { prefs ->
+            val normalized = GalleryFilter.fromStored(prefs[mediaTypeFilterKey], mode.name)
+            prefs[rawFilterKey] = normalized.format.name
+            prefs[mediaTypeFilterKey] = normalized.type.name
+        }
+    }
+
+    suspend fun setMediaTypeFilter(filter: MediaTypeFilter) {
+        safeEdit { prefs ->
+            val normalized = GalleryFilter.fromStored(filter.name, prefs[rawFilterKey])
+            prefs[mediaTypeFilterKey] = normalized.type.name
+            prefs[rawFilterKey] = normalized.format.name
+        }
+    }
+
+    /** 書き込み失敗でアプリを落とさない(次回起動時はデフォルトで復元される)。 */
+    private suspend fun safeEdit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        try {
+            context.dataStore.edit { block(it) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (t: Exception) {
+            Log.w("SettingsRepository", "設定の保存に失敗", t)
+        }
     }
 
     companion object {

@@ -396,7 +396,7 @@ private fun GalleryTopBar(
                         MediaTypeFilter.PHOTO to "写真",
                         MediaTypeFilter.VIDEO to "動画",
                     ),
-                    selected = state.typeFilter,
+                    selected = state.filter.type,
                     onSelect = onSelectTypeFilter,
                 )
                 Spacer(Modifier.weight(1f))
@@ -407,8 +407,8 @@ private fun GalleryTopBar(
                         RawFilterMode.JPEG to "JPEG",
                         RawFilterMode.RAW to "RAW",
                     ),
-                    selected = state.filter,
-                    enabled = state.typeFilter != MediaTypeFilter.VIDEO,
+                    selected = state.filter.format,
+                    enabled = state.filter.type != MediaTypeFilter.VIDEO,
                     onSelect = onSelectFilter,
                 )
             }
