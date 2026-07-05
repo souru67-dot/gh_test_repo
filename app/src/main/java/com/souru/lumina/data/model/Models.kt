@@ -19,6 +19,8 @@ data class MediaItem(
     val height: Int,
     val durationMs: Long,
     val kind: MediaKind,
+    /** ゴミ箱アイテムの自動削除予定時刻(エポック秒)。通常アイテムは0。 */
+    val dateExpiresSec: Long = 0,
 ) {
     val isRaw: Boolean
         get() = mimeType.equals("image/x-adobe-dng", ignoreCase = true) ||

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
@@ -83,6 +84,7 @@ fun ViewerScreen(
     onEditPhoto: (MediaItem) -> Unit = {},
     onEditVideo: (MediaItem) -> Unit = {},
     onSendToLightroom: (GalleryEntry) -> Unit = {},
+    onDelete: (GalleryEntry) -> Unit = {},
 ) {
     if (entries.isEmpty()) {
         onClose()
@@ -202,6 +204,11 @@ fun ViewerScreen(
                 } else {
                     null
                 },
+                onDeleteVideo = if (displayItemOf(current).kind == MediaKind.VIDEO) {
+                    { onDelete(current) }
+                } else {
+                    null
+                },
             )
         }
 
@@ -218,6 +225,7 @@ fun ViewerScreen(
                 displayItem = displayItemOf(currentEntry),
                 onEditPhoto = onEditPhoto,
                 onSendToLightroom = { onSendToLightroom(currentEntry) },
+                onDelete = { onDelete(currentEntry) },
             )
         }
     }
@@ -233,6 +241,7 @@ private fun ViewerBottomBar(
     displayItem: MediaItem,
     onEditPhoto: (MediaItem) -> Unit,
     onSendToLightroom: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
     Box(
@@ -269,6 +278,11 @@ private fun ViewerBottomBar(
                     onClick = { onEditPhoto(displayItem) },
                 )
             }
+            ViewerAction(
+                icon = Icons.Outlined.DeleteOutline,
+                label = "削除",
+                onClick = onDelete,
+            )
         }
     }
 }
@@ -309,6 +323,7 @@ private fun ViewerTopBar(
     onClose: () -> Unit,
     onSwapRawJpeg: () -> Unit,
     onEditVideo: (() -> Unit)? = null,
+    onDeleteVideo: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -352,6 +367,15 @@ private fun ViewerTopBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onDeleteVideo != null) {
+                IconButton(onClick = onDeleteVideo) {
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        contentDescription = "削除",
+                        tint = Color.White,
+                    )
+                }
+            }
             if (onEditVideo != null) {
                 // LUT適用・トリム・書き出しへ
                 TextButton(onClick = onEditVideo) {

@@ -1,6 +1,9 @@
 package com.souru.lumina.ui.gallery
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -18,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,11 +50,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,12 +87,19 @@ import com.souru.lumina.data.SettingsRepository
 import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
+import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
 import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.ui.viewer.ViewerScreen
 import com.souru.lumina.util.Lightroom
+import com.souru.lumina.util.PairDeleteChoice
+import com.souru.lumina.util.Trash
 import com.souru.lumina.util.formatDuration
+import com.souru.lumina.util.resolveDeletionItems
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 fun sharedMediaKey(id: Long): String = "media-$id"
 
@@ -93,11 +108,14 @@ fun sharedMediaKey(id: Long): String = "media-$id"
 fun GalleryRoute(
     onOpenPhotoEditor: (Long) -> Unit,
     onOpenVideoEditor: (Long) -> Unit,
+    onOpenTrash: () -> Unit,
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selection by viewModel.selectionFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var viewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     // ビューアで現在表示中のエントリID(共有要素の対応付けと戻りスクロールに使う)
@@ -105,6 +123,38 @@ fun GalleryRoute(
     // ビューアを閉じた後、グリッド側で消化する戻り先スクロール要求
     var pendingScrollSlot by remember { mutableStateOf<Int?>(null) }
     var showLightroomDialog by remember { mutableStateOf(false) }
+    // RAW+JPEGペアを含む削除の対象選択待ち
+    var pendingDeleteEntries by remember { mutableStateOf<List<GalleryEntry>?>(null) }
+
+    val trashLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.clearSelection()
+            scope.launch { snackbarHostState.showSnackbar("ゴミ箱に移動しました") }
+        }
+    }
+
+    fun requestTrash(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        scope.launch {
+            // 大量選択でもUIスレッドを塞がないようURIリスト構築はバックグラウンド
+            val request = withContext(Dispatchers.Default) {
+                Trash.trashRequest(context, items.map { it.uri })
+            }
+            trashLauncher.launch(request)
+        }
+    }
+
+    fun onDeleteRequest(entries: List<GalleryEntry>) {
+        if (entries.isEmpty()) return
+        if (entries.any { it.isPaired }) {
+            // 誤ってRAWだけ残る/消える事故を防ぐため対象を選ばせる
+            pendingDeleteEntries = entries
+        } else {
+            requestTrash(entries.map { it.item })
+        }
+    }
 
     // グリッドのスクロール位置はビューア表示をまたいで保持する
     val gridState = rememberLazyGridState()
@@ -168,6 +218,10 @@ fun GalleryRoute(
                         onSendSelectionToLightroom = {
                             sendToLightroom(state.entries.filter { it.id in selection })
                         },
+                        onDeleteSelection = {
+                            onDeleteRequest(state.entries.filter { it.id in selection })
+                        },
+                        onOpenTrash = onOpenTrash,
                     )
                 } else {
                     ViewerScreen(
@@ -180,9 +234,45 @@ fun GalleryRoute(
                         onEditPhoto = { item -> onOpenPhotoEditor(item.id) },
                         onEditVideo = { item -> onOpenVideoEditor(item.id) },
                         onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
+                        onDelete = { entry -> onDeleteRequest(listOf(entry)) },
                     )
                 }
             }
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+
+        pendingDeleteEntries?.let { entries ->
+            val pairCount = entries.count { it.isPaired }
+            AlertDialog(
+                onDismissRequest = { pendingDeleteEntries = null },
+                title = { Text("RAW+JPEGペアの削除") },
+                text = {
+                    Text("選択にRAW+JPEGペアが${pairCount}件含まれています。ペアのどちらを削除するか選んでください(ペア以外の項目はそのまま削除されます)。")
+                },
+                confirmButton = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = {
+                            pendingDeleteEntries = null
+                            requestTrash(resolveDeletionItems(entries, PairDeleteChoice.JPEG_ONLY))
+                        }) { Text("JPEGのみ削除") }
+                        TextButton(onClick = {
+                            pendingDeleteEntries = null
+                            requestTrash(resolveDeletionItems(entries, PairDeleteChoice.RAW_ONLY))
+                        }) { Text("RAWのみ削除") }
+                        TextButton(onClick = {
+                            pendingDeleteEntries = null
+                            requestTrash(resolveDeletionItems(entries, PairDeleteChoice.BOTH))
+                        }) { Text("両方削除", color = MaterialTheme.colorScheme.error) }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingDeleteEntries = null }) { Text("キャンセル") }
+                },
+            )
         }
 
         if (showLightroomDialog) {
@@ -224,6 +314,8 @@ private fun GalleryGridScreen(
     viewModel: GalleryViewModel,
     onOpenViewer: (GridSlot.Cell) -> Unit,
     onSendSelectionToLightroom: () -> Unit,
+    onDeleteSelection: () -> Unit,
+    onOpenTrash: () -> Unit,
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val layoutDirection = LocalLayoutDirection.current
@@ -313,6 +405,8 @@ private fun GalleryGridScreen(
             onSelectFilter = viewModel::setFilter,
             onSelectTypeFilter = viewModel::setTypeFilter,
             onSendSelectionToLightroom = onSendSelectionToLightroom,
+            onDeleteSelection = onDeleteSelection,
+            onOpenTrash = onOpenTrash,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -337,6 +431,8 @@ private fun GalleryTopBar(
     onSelectFilter: (RawFilterMode) -> Unit,
     onSelectTypeFilter: (MediaTypeFilter) -> Unit,
     onSendSelectionToLightroom: () -> Unit,
+    onDeleteSelection: () -> Unit,
+    onOpenTrash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
@@ -372,6 +468,14 @@ private fun GalleryTopBar(
                     color = Color.White,
                 )
                 Spacer(Modifier.weight(1f))
+                // 選択項目をゴミ箱へ(ペアは対象選択ダイアログを挟む)
+                IconButton(onClick = onDeleteSelection) {
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        contentDescription = "削除",
+                        tint = Color.White,
+                    )
+                }
                 // 選択した写真(ペアはRAW側)をまとめてLightroomへ
                 TextButton(onClick = onSendSelectionToLightroom) {
                     Text(
@@ -411,6 +515,13 @@ private fun GalleryTopBar(
                     enabled = state.filter.type != MediaTypeFilter.VIDEO,
                     onSelect = onSelectFilter,
                 )
+                IconButton(onClick = onOpenTrash) {
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        contentDescription = "ゴミ箱",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

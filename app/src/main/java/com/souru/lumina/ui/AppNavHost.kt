@@ -16,12 +16,14 @@ import androidx.navigation.navArgument
 import com.souru.lumina.ui.gallery.GalleryRoute
 import com.souru.lumina.ui.onboarding.OnboardingScreen
 import com.souru.lumina.ui.photoedit.PhotoEditScreen
+import com.souru.lumina.ui.trash.TrashScreen
 import com.souru.lumina.ui.videoedit.VideoEditScreen
 import com.souru.lumina.util.hasMediaAccess
 
 object Routes {
     const val Onboarding = "onboarding"
     const val Gallery = "gallery"
+    const val Trash = "trash"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
 
@@ -58,12 +60,18 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         composable(Routes.Gallery) {
             GalleryRoute(
                 onOpenPhotoEditor = { mediaId ->
-                    navController.navigate(Routes.photoEdit(mediaId))
+                    navController.navigate(Routes.photoEdit(mediaId)) { launchSingleTop = true }
                 },
                 onOpenVideoEditor = { mediaId ->
-                    navController.navigate(Routes.videoEdit(mediaId))
+                    navController.navigate(Routes.videoEdit(mediaId)) { launchSingleTop = true }
+                },
+                onOpenTrash = {
+                    navController.navigate(Routes.Trash) { launchSingleTop = true }
                 },
             )
+        }
+        composable(Routes.Trash) {
+            TrashScreen(onClose = { navController.popBackStack() })
         }
         composable(
             route = Routes.PhotoEdit,

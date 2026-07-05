@@ -1,9 +1,11 @@
 package com.souru.lumina.data
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -44,6 +46,91 @@ class MediaRepository(private val context: Context) {
             // クエリ失敗(権限の遷移タイミング等)でアプリを落とさず空リストへ
             .mapLatest { runCatching { queryAll() }.getOrElse { emptyList() } }
             .flowOn(Dispatchers.IO)
+
+    /** ゴミ箱(IS_TRASHED=1)のアイテムを監視する。 */
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    fun observeTrashed(): Flow<List<MediaItem>> =
+        changes
+            .debounce(300)
+            .onStart { emit(Unit) }
+            .mapLatest { runCatching { queryTrashed() }.getOrElse { emptyList() } }
+            .flowOn(Dispatchers.IO)
+
+    /** MediaStoreのゴミ箱アイテムを取得する(QUERY_ARG_MATCH_TRASHED)。 */
+    fun queryTrashed(): List<MediaItem> {
+        val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DATE_TAKEN,
+            MediaStore.Files.FileColumns.DATE_ADDED,
+            MediaStore.Files.FileColumns.SIZE,
+            MediaStore.Files.FileColumns.WIDTH,
+            MediaStore.Files.FileColumns.HEIGHT,
+            MediaStore.Files.FileColumns.DURATION,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.MediaColumns.DATE_EXPIRES,
+        )
+        val queryArgs = Bundle().apply {
+            putString(
+                ContentResolver.QUERY_ARG_SQL_SELECTION,
+                "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)",
+            )
+            putStringArray(
+                ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                arrayOf(
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString(),
+                ),
+            )
+            putString(
+                ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+                "${MediaStore.MediaColumns.DATE_EXPIRES} ASC",
+            )
+            putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+        }
+
+        val items = ArrayList<MediaItem>(64)
+        context.contentResolver.query(collection, projection, queryArgs, null)?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+            val takenCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
+            val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+            val widthCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
+            val heightCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
+            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
+            val typeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val expiresCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_EXPIRES)
+
+            while (cursor.moveToNext()) {
+                val kind = when (cursor.getInt(typeCol)) {
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaKind.IMAGE
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaKind.VIDEO
+                    else -> continue
+                }
+                val id = cursor.getLong(idCol)
+                val taken = cursor.getLong(takenCol)
+                val added = cursor.getLong(addedCol)
+                items += MediaItem(
+                    id = id,
+                    uri = contentUriFor(kind, id),
+                    displayName = cursor.getString(nameCol) ?: continue,
+                    mimeType = cursor.getString(mimeCol) ?: "application/octet-stream",
+                    dateTakenMs = if (taken > 0) taken else added * 1000L,
+                    sizeBytes = cursor.getLong(sizeCol),
+                    width = cursor.getInt(widthCol),
+                    height = cursor.getInt(heightCol),
+                    durationMs = cursor.getLong(durationCol),
+                    kind = kind,
+                    dateExpiresSec = cursor.getLong(expiresCol),
+                )
+            }
+        }
+        return items
+    }
 
     suspend fun getItem(id: Long): MediaItem? = kotlinx.coroutines.withContext(Dispatchers.IO) {
         queryAll(selectionExtra = "${MediaStore.Files.FileColumns._ID} = $id").firstOrNull()
