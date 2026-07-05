@@ -216,6 +216,33 @@ object LutBaker {
         return (0xFF shl 24) or (ri shl 16) or (gi shl 8) or bi
     }
 
+    /**
+     * 検証用: ベイク済みキューブが恒等変換(=見た目が変わらない)かを
+     * 格子点サンプリングで判定する。切り分けログ(テスト3)に使う。
+     */
+    fun isIdentity(cube: Array<Array<IntArray>>, tolerance: Int = 2): Boolean {
+        val n = cube.size
+        if (n < 2) return true
+        val step = maxOf(1, (n - 1) / 4)
+        for (r in 0 until n step step) {
+            for (g in 0 until n step step) {
+                for (b in 0 until n step step) {
+                    val c = cube[r][g][b]
+                    val er = (r * 255f / (n - 1)).roundToInt()
+                    val eg = (g * 255f / (n - 1)).roundToInt()
+                    val eb = (b * 255f / (n - 1)).roundToInt()
+                    if (kotlin.math.abs(((c shr 16) and 0xFF) - er) > tolerance ||
+                        kotlin.math.abs(((c shr 8) and 0xFF) - eg) > tolerance ||
+                        kotlin.math.abs((c and 0xFF) - eb) > tolerance
+                    ) {
+                        return false
+                    }
+                }
+            }
+        }
+        return true
+    }
+
     private fun luma(r: Float, g: Float, b: Float): Float =
         0.2126f * r + 0.7152f * g + 0.0722f * b
 
