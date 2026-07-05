@@ -41,7 +41,8 @@ class MediaRepository(private val context: Context) {
         changes
             .debounce(300)
             .onStart { emit(Unit) }
-            .mapLatest { queryAll() }
+            // クエリ失敗(権限の遷移タイミング等)でアプリを落とさず空リストへ
+            .mapLatest { runCatching { queryAll() }.getOrElse { emptyList() } }
             .flowOn(Dispatchers.IO)
 
     suspend fun getItem(id: Long): MediaItem? = kotlinx.coroutines.withContext(Dispatchers.IO) {

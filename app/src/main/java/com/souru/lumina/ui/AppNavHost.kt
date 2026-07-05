@@ -3,10 +3,7 @@ package com.souru.lumina.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -35,11 +32,16 @@ object Routes {
 @Composable
 fun AppNavHost(navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
-    var permitted by remember { mutableStateOf(hasMediaAccess(context)) }
+    // startDestinationは初回コンポジションで一度だけ決める。
+    // 権限付与後に動的に変えるとNavHostのグラフ差し替えとpopUpTo(inclusive)が
+    // 衝突してクラッシュするため、遷移はnavigateのみで行う
+    val startDestination = remember {
+        if (hasMediaAccess(context)) Routes.Gallery else Routes.Onboarding
+    }
 
     NavHost(
         navController = navController,
-        startDestination = if (permitted) Routes.Gallery else Routes.Onboarding,
+        startDestination = startDestination,
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
@@ -47,7 +49,6 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onGranted = {
-                    permitted = true
                     navController.navigate(Routes.Gallery) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
