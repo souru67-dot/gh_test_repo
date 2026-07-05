@@ -68,15 +68,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.RgbFilter
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import com.souru.lumina.BuildConfig
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.util.formatDuration
-import com.souru.lumina.util.lutLog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -193,30 +190,16 @@ private fun VideoEditContent(
     var selectedParam by rememberSaveable { mutableStateOf(VideoAdjustParam.EXPOSURE.name) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
-    // テスト1(切り分け・デバッグビルド限定): LUTの代わりにグレースケールを適用し、
-    // エフェクトパイプライン自体が機能しているかを一目で確認する
-    var debugGrayscale by remember { mutableStateOf(false) }
-    val effectsForPlayer: List<androidx.media3.common.Effect> =
-        if (BuildConfig.DEBUG && debugGrayscale) {
-            remember { listOf(RgbFilter.createGrayscaleFilter()) }
-        } else {
-            effects
-        }
-
     // 再生位置・再生状態はプレイヤー再生成をまたいで保持する
     val playbackKeeper = remember(item.id) { PlaybackKeeper() }
 
-    // レイヤー1の修正: MediaCodecVideoRendererのエフェクトパイプライン(videoSink)は
+    // MediaCodecVideoRendererのエフェクトパイプライン(videoSink)は
     // レンダラー初回有効化時にしか生成されない(hasSetVideoSinkでラッチ)ため、
     // stop→setVideoEffects→prepareの後差しは端末により反映されない。
     // 唯一契約が保証される「新規プレイヤーに prepare 前に適用」を毎回行う。
-    val player = remember(item.id, effectsForPlayer) {
-        lutLog {
-            "プレイヤー再生成: effects=${effectsForPlayer.size}件 " +
-                "pos=${playbackKeeper.positionMs}ms play=${playbackKeeper.playWhenReady}"
-        }
+    val player = remember(item.id, effects) {
         ExoPlayer.Builder(context).build().apply {
-            setVideoEffects(effectsForPlayer) // 必ず prepare より前
+            setVideoEffects(effects) // 必ず prepare より前
             setMediaItem(Media3Item.fromUri(item.uri))
             repeatMode = Player.REPEAT_MODE_ALL
             prepare()
@@ -260,22 +243,6 @@ private fun VideoEditContent(
             }
             Text("動画編集", style = MaterialTheme.typography.titleSmall, color = Color.White)
             Spacer(Modifier.weight(1f))
-            if (BuildConfig.DEBUG) {
-                // テスト1の検証チップ(デバッグビルドのみ表示)
-                Text(
-                    text = if (debugGrayscale) "白黒:ON" else "白黒",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (debugGrayscale) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(if (debugGrayscale) Color.White else Color.White.copy(alpha = 0.08f))
-                        .clickable {
-                            debugGrayscale = !debugGrayscale
-                            lutLog { "テスト1: グレースケール検証=$debugGrayscale" }
-                        }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-            }
             TextButton(onClick = {
                 notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }) {

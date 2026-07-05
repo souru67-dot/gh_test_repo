@@ -18,7 +18,6 @@ import com.souru.lumina.data.luts.LutBaker
 import com.souru.lumina.data.luts.LutInfo
 import com.souru.lumina.data.luts.LutRepository
 import com.souru.lumina.data.model.MediaItem
-import com.souru.lumina.util.lutLog
 import com.souru.lumina.work.VideoExportWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -105,62 +104,23 @@ class VideoEditViewModel(
     }
 
     private suspend fun buildEffects(params: ColorParams): List<Effect> {
-        // テスト4: UI操作→エフェクト再構築のバインディング確認ログ
-        lutLog {
-            "buildEffects: lut=${params.lut?.name ?: "なし"} strength=${params.strength} " +
-                "comparing=${params.comparing} adjustmentsIdentity=${params.adjustments.isIdentity}"
-        }
-        if (params.comparing) {
-            lutLog { "buildEffects → A/B比較中のため空リスト(元映像)" }
-            return emptyList()
-        }
+        if (params.comparing) return emptyList()
         val hasLut = params.lut != null && params.strength > 0f
-        if (!hasLut && params.adjustments.isIdentity) {
-            lutLog { "buildEffects → 効果なしのため空リスト" }
-            return emptyList()
-        }
+        if (!hasLut && params.adjustments.isIdentity) return emptyList()
         val cube = withContext(Dispatchers.Default) {
             val lut = params.lut?.let { info ->
                 runCatching { lutRepository.load(info) }
-                    .onFailure { t ->
+                    .onFailure {
                         // 静かに恒等LUTへフォールバックすると「反映されない」と
                         // 区別できないため、必ずユーザーにも通知する
-                        lutLog { "LUT読み込み失敗: ${info.name}: $t" }
                         _uiState.update {
                             it.copy(message = "LUT「${info.name}」を読み込めませんでした")
                         }
                     }
                     .getOrNull()
             }
-            if (lut != null) {
-                // テスト2: パース結果の検証(サイズ・端点・中間値、恒等でないか)
-                val black = FloatArray(3)
-                val white = FloatArray(3)
-                val mid = FloatArray(3)
-                lut.sample(0f, 0f, 0f, black)
-                lut.sample(1f, 1f, 1f, white)
-                lut.sample(0.5f, 0.5f, 0.5f, mid)
-                lutLog {
-                    "LUTパース結果: title=${lut.title} size=${lut.size}^3 " +
-                        "f(0,0,0)=${black.joinToString { "%.3f".format(it) }} " +
-                        "f(1,1,1)=${white.joinToString { "%.3f".format(it) }} " +
-                        "f(0.5)=${mid.joinToString { "%.3f".format(it) }}"
-                }
-            }
-            val baked = LutBaker.bake(lut, params.strength, params.adjustments)
-            // テスト3: GPUへ渡すキューブの検証(恒等=見た目が変わらない、を検出)
-            val n = baked.size
-            lutLog {
-                "ベイク結果: size=$n identity=${LutBaker.isIdentity(baked)} " +
-                    "c[0][0][0]=#%08X c[max][max][max]=#%08X c[mid]=#%08X".format(
-                        baked[0][0][0],
-                        baked[n - 1][n - 1][n - 1],
-                        baked[n / 2][n / 2][n / 2],
-                    )
-            }
-            baked
+            LutBaker.bake(lut, params.strength, params.adjustments)
         }
-        lutLog { "buildEffects → SingleColorLut 1件を生成" }
         return listOf(SingleColorLut.createFromCube(cube))
     }
 
