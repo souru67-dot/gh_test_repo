@@ -89,7 +89,10 @@ object AdjustmentShader {
                 c = c + (c - blur) * (uSharpen * 1.2);
             }
             c = adjust(c);
-            return half4(half3(c), src.a);
+            // 画像ピクセル外(透明: a=0)にはシャドウ持ち上げ等の効果を
+            // かけない。premultiplied alpha前提のためRGBにαを乗算し、
+            // 範囲外は純黒透明のまま維持する(書き出しはα=1なので不変)
+            return half4(half3(c) * src.a, src.a);
         }
     """.trimIndent()
 

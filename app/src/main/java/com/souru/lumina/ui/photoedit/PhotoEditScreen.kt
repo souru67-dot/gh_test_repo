@@ -164,6 +164,9 @@ fun PhotoEditScreen(
                                         AdjustmentShader.CONTENT_SHADER_NAME,
                                     )
                                     .asComposeRenderEffect()
+                                // エフェクトの出力を画像レイヤーの境界内に限定し、
+                                // 余白(レターボックス)へ効果が漏れないようにする
+                                clip = true
                             },
                     )
                     if (state.mode == EditMode.CROP) {
