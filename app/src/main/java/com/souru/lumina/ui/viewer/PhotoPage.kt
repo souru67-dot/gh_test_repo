@@ -165,7 +165,13 @@ fun PhotoPage(
     ) {
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data(if (item.isRaw) DngPreview(item.uri, item.id) else item.uri)
+                .data(
+                    if (item.isRaw) {
+                        DngPreview(item.uri, item.id, item.orientationDeg)
+                    } else {
+                        item.uri
+                    },
+                )
                 .crossfade(true)
                 .build(),
             contentDescription = item.displayName,

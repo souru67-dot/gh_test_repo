@@ -32,6 +32,8 @@ data class MediaItem(
     val kind: MediaKind,
     /** ゴミ箱アイテムの自動削除予定時刻(エポック秒)。通常アイテムは0。 */
     val dateExpiresSec: Long = 0,
+    /** MediaStoreのORIENTATION(0/90/180/270)。DNGの向き補正に使う。 */
+    val orientationDeg: Int = 0,
 ) {
     val isRaw: Boolean
         get() = MediaMime.isRaw(mimeType, displayName)

@@ -713,7 +713,14 @@ private fun LazyGridItemScope.MediaCell(
         }
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data(MediaThumb(entry.item.uri, entry.item.id))
+                .data(
+                    MediaThumb(
+                        uri = entry.item.uri,
+                        id = entry.item.id,
+                        // DNGはloadThumbnailが向きを適用しないことがあるため補正する
+                        rotationDeg = if (entry.item.isRaw) entry.item.orientationDeg else 0,
+                    ),
+                )
                 .crossfade(true)
                 .build(),
             contentDescription = entry.item.displayName,

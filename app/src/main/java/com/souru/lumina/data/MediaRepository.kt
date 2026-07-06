@@ -100,6 +100,7 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.MediaColumns.DATE_EXPIRES,
+            MediaStore.MediaColumns.ORIENTATION,
         )
         val queryArgs = Bundle().apply {
             putString(
@@ -143,6 +144,7 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.HEIGHT,
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.MediaColumns.ORIENTATION,
         )
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)" +
             (selectionExtra?.let { " AND ($it)" } ?: "")
@@ -176,6 +178,7 @@ class MediaRepository(private val context: Context) {
         val durationCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DURATION)
         val typeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE)
         val expiresCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
+        val orientationCol = cursor.getColumnIndex(MediaStore.MediaColumns.ORIENTATION)
         if (idCol < 0) return
 
         while (cursor.moveToNext()) {
@@ -201,6 +204,7 @@ class MediaRepository(private val context: Context) {
                     durationMs = cursor.safeLong(durationCol),
                     kind = kind,
                     dateExpiresSec = cursor.safeLong(expiresCol),
+                    orientationDeg = cursor.safeInt(orientationCol),
                 )
             }
             // 失敗したアイテムはスキップするだけ(全体をクラッシュさせない)

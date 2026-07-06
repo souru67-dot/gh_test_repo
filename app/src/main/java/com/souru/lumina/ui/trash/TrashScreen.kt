@@ -304,7 +304,13 @@ private fun TrashCell(
     ) {
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data(MediaThumb(item.uri, item.id))
+                .data(
+                    MediaThumb(
+                        uri = item.uri,
+                        id = item.id,
+                        rotationDeg = if (item.isRaw) item.orientationDeg else 0,
+                    ),
+                )
                 .crossfade(true)
                 .build(),
             contentDescription = item.displayName,

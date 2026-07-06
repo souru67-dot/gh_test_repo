@@ -23,11 +23,18 @@ import kotlin.math.max
  * デモザイク)ため、DNGコンテナ内の埋め込みプレビューJPEGを
  * ExifInterface経由で優先的に取り出す。埋め込みが無い場合のみ
  * ImageDecoderでフォールバックデコードする。
+ *
+ * 抽出した生のプレビューJPEGにはEXIF Orientationが含まれないため、
+ * DNG本体の向き(MediaStoreのORIENTATION → DNGのEXIFの順)を
+ * ここで一律に適用する(グリッド・ビューア・切替すべてで向きが揃う)。
+ *
+ * @param orientationDeg MediaStoreのORIENTATION(0なら本体EXIFへフォールバック)
  */
-data class DngPreview(val uri: Uri, val id: Long)
+data class DngPreview(val uri: Uri, val id: Long, val orientationDeg: Int = 0)
 
 class DngPreviewKeyer : Keyer<DngPreview> {
-    override fun key(data: DngPreview, options: Options): String = "dng-preview:${data.id}"
+    override fun key(data: DngPreview, options: Options): String =
+        "dng-preview:${data.id}:${data.orientationDeg}"
 }
 
 class DngPreviewFetcher(
@@ -37,25 +44,41 @@ class DngPreviewFetcher(
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult {
-        embeddedPreviewBytes()?.let { bytes ->
-            return SourceFetchResult(
-                source = ImageSource(
-                    source = Buffer().apply { write(bytes) },
-                    fileSystem = options.fileSystem,
-                ),
-                mimeType = "image/jpeg",
-                dataSource = DataSource.DISK,
-            )
+        var exifRotation = 0
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(data.uri)?.use { input ->
+                val exif = ExifInterface(input)
+                // 同じストリームから向きも読む(追加I/Oなし)
+                exifRotation = exif.rotationDegrees
+                if (exif.hasThumbnail()) exif.thumbnailBytes else null
+            }
+        }.getOrNull()
+
+        val rotation = if (data.orientationDeg != 0) data.orientationDeg else exifRotation
+
+        if (bytes != null) {
+            if (rotation == 0) {
+                // 高速パス: 回転不要ならデコードせずソースのまま渡す
+                return SourceFetchResult(
+                    source = ImageSource(
+                        source = Buffer().apply { write(bytes) },
+                        fileSystem = options.fileSystem,
+                    ),
+                    mimeType = "image/jpeg",
+                    dataSource = DataSource.DISK,
+                )
+            }
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { bitmap ->
+                return ImageFetchResult(
+                    image = bitmap.rotatedBy(rotation).asImage(),
+                    isSampled = true,
+                    dataSource = DataSource.DISK,
+                )
+            }
         }
+        // フォールバック: ImageDecoderはEXIFの向きを自身で適用するため追加回転しない
         return fullDecode()
     }
-
-    private fun embeddedPreviewBytes(): ByteArray? = runCatching {
-        context.contentResolver.openInputStream(data.uri)?.use { input ->
-            val exif = ExifInterface(input)
-            if (exif.hasThumbnail()) exif.thumbnailBytes else null
-        }
-    }.getOrNull()
 
     private fun fullDecode(): FetchResult {
         val targetWidth = options.size.width.pxOrElse { 2048 }
