@@ -50,7 +50,8 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
     ) {
         composable(Routes.Onboarding) {
             OnboardingScreen(
-                onGranted = {
+                onContinue = {
+                    // 許可の結果にかかわらず一覧へ(権限チェックは一覧側で行う)
                     navController.navigate(Routes.Gallery) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }

@@ -1,8 +1,5 @@
 package com.souru.lumina.ui.onboarding
 
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -23,28 +20,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.souru.lumina.util.hasMediaAccess
 import com.souru.lumina.util.mediaPermissions
 
+/**
+ * 権限のオンボーディング。結果にかかわらず必ず一覧画面へ進める
+ * (権限がない場合の案内・再許可は一覧側の空状態UIが担当する)。
+ */
 @Composable
-fun OnboardingScreen(onGranted: () -> Unit) {
-    val context = LocalContext.current
-    var denied by remember { mutableStateOf(false) }
-
+fun OnboardingScreen(onContinue: () -> Unit) {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) {
-        if (hasMediaAccess(context)) onGranted() else denied = true
+        // 「すべて許可」「一部許可」「許可しない」のどれでも先へ進む
+        onContinue()
     }
 
     Column(
@@ -84,24 +77,11 @@ fun OnboardingScreen(onGranted: () -> Unit) {
         ) {
             Text("写真と動画へのアクセスを許可")
         }
-        if (denied) {
-            Spacer(Modifier.height(16.dp))
+        TextButton(onClick = onContinue) {
             Text(
-                text = "アクセスが許可されていません。設定アプリから許可できます。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
+                text = "許可せずに続ける",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = {
-                context.startActivity(
-                    Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null),
-                    ),
-                )
-            }) {
-                Text("設定を開く")
-            }
         }
     }
 }

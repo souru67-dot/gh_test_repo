@@ -91,11 +91,17 @@ import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
 import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.souru.lumina.ui.viewer.ViewerScreen
 import com.souru.lumina.util.Lightroom
+import com.souru.lumina.util.MediaAccess
 import com.souru.lumina.util.PairDeleteChoice
 import com.souru.lumina.util.Trash
+import com.souru.lumina.util.canRequestMediaPermissionAgain
 import com.souru.lumina.util.formatDuration
+import com.souru.lumina.util.mediaAccessState
+import com.souru.lumina.util.mediaPermissions
+import com.souru.lumina.util.openAppSettings
 import com.souru.lumina.util.resolveDeletionItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -125,6 +131,29 @@ fun GalleryRoute(
     var showLightroomDialog by remember { mutableStateOf(false) }
     // RAW+JPEGペアを含む削除の対象選択待ち
     var pendingDeleteEntries by remember { mutableStateOf<List<GalleryEntry>?>(null) }
+
+    // 権限状態は一覧側で管理し、復帰(設定変更・追加選択)のたびに再評価する
+    var access by remember { mutableStateOf(mediaAccessState(context)) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        access = mediaAccessState(context)
+        viewModel.retryLoad()
+    }
+    LifecycleResumeEffect(Unit) {
+        access = mediaAccessState(context)
+        viewModel.retryLoad()
+        onPauseOrDispose { }
+    }
+
+    fun requestPermission() {
+        if (canRequestMediaPermissionAgain(context)) {
+            permissionLauncher.launch(mediaPermissions)
+        } else {
+            // 完全拒否: システムダイアログを出せないためアプリ設定へ誘導
+            openAppSettings(context)
+        }
+    }
 
     val trashLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -206,8 +235,11 @@ fun GalleryRoute(
                         selection = selection,
                         gridState = gridState,
                         focusedId = focusedId,
+                        access = access,
                         pendingScrollSlot = pendingScrollSlot,
                         onPendingScrollHandled = { pendingScrollSlot = null },
+                        onRequestPermission = ::requestPermission,
+                        onManagePartial = { permissionLauncher.launch(mediaPermissions) },
                         sharedScope = this@SharedTransitionLayout,
                         animatedScope = this@AnimatedContent,
                         viewModel = viewModel,
@@ -307,8 +339,11 @@ private fun GalleryGridScreen(
     selection: Set<Long>,
     gridState: LazyGridState,
     focusedId: Long?,
+    access: MediaAccess,
     pendingScrollSlot: Int?,
     onPendingScrollHandled: () -> Unit,
+    onRequestPermission: () -> Unit,
+    onManagePartial: () -> Unit,
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
     viewModel: GalleryViewModel,
@@ -390,12 +425,80 @@ private fun GalleryGridScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else if (state.slots.isEmpty()) {
-            Text(
-                text = "写真・動画が見つかりません",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center),
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+            ) {
+                when {
+                    access == MediaAccess.Denied -> {
+                        Text(
+                            text = "写真と動画へのアクセスを許可すると表示されます",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        TextButton(onClick = onRequestPermission) {
+                            Text("許可する", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    state.loadError -> {
+                        Text(
+                            text = "読み込みに失敗しました",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        TextButton(onClick = viewModel::retryLoad) {
+                            Text("再試行", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    access == MediaAccess.Partial -> {
+                        Text(
+                            text = "選択されたメディアがありません",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        TextButton(onClick = onManagePartial) {
+                            Text("メディアを選択", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    else -> Text(
+                        text = "写真・動画が見つかりません",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // 一部許可のときは常設の案内バナー(さらに選択できる導線)
+        if (access == MediaAccess.Partial && state.slots.isNotEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = systemBarPadding.calculateTopPadding() + 52.dp)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(start = 16.dp, end = 4.dp),
+            ) {
+                Text(
+                    text = "一部のメディアのみアクセス許可中",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onManagePartial) {
+                    Text("さらに選択", color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
 
         GalleryTopBar(

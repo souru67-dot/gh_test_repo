@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
+import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -16,10 +17,15 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 
 class MediaRepository(private val context: Context) {
@@ -38,13 +44,36 @@ class MediaRepository(private val context: Context) {
         awaitClose { context.contentResolver.unregisterContentObserver(observer) }
     }
 
+    private val manualRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    private val _loadError = MutableStateFlow(false)
+
+    /** 直近の読み込みが失敗したか(UIのエラー表示+再試行に使う)。 */
+    val loadError: StateFlow<Boolean> = _loadError.asStateFlow()
+
+    /** 権限付与後・エラー後などの手動再読み込み。 */
+    fun refresh() {
+        manualRefresh.tryEmit(Unit)
+    }
+
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observeMedia(): Flow<List<MediaItem>> =
-        changes
+        merge(changes, manualRefresh)
             .debounce(300)
             .onStart { emit(Unit) }
             // クエリ失敗(権限の遷移タイミング等)でアプリを落とさず空リストへ
-            .mapLatest { runCatching { queryAll() }.getOrElse { emptyList() } }
+            .mapLatest {
+                runCatching { queryAll() }.fold(
+                    onSuccess = { items ->
+                        _loadError.value = false
+                        items
+                    },
+                    onFailure = {
+                        _loadError.value = true
+                        emptyList()
+                    },
+                )
+            }
             .flowOn(Dispatchers.IO)
 
     /** ゴミ箱(IS_TRASHED=1)のアイテムを監視する。 */
@@ -92,43 +121,8 @@ class MediaRepository(private val context: Context) {
         }
 
         val items = ArrayList<MediaItem>(64)
-        context.contentResolver.query(collection, projection, queryArgs, null)?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-            val takenCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
-            val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-            val widthCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
-            val heightCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
-            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-            val typeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
-            val expiresCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_EXPIRES)
-
-            while (cursor.moveToNext()) {
-                val kind = when (cursor.getInt(typeCol)) {
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaKind.IMAGE
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaKind.VIDEO
-                    else -> continue
-                }
-                val id = cursor.getLong(idCol)
-                val taken = cursor.getLong(takenCol)
-                val added = cursor.getLong(addedCol)
-                items += MediaItem(
-                    id = id,
-                    uri = contentUriFor(kind, id),
-                    displayName = cursor.getString(nameCol) ?: continue,
-                    mimeType = cursor.getString(mimeCol) ?: "application/octet-stream",
-                    dateTakenMs = if (taken > 0) taken else added * 1000L,
-                    sizeBytes = cursor.getLong(sizeCol),
-                    width = cursor.getInt(widthCol),
-                    height = cursor.getInt(heightCol),
-                    durationMs = cursor.getLong(durationCol),
-                    kind = kind,
-                    dateExpiresSec = cursor.getLong(expiresCol),
-                )
-            }
-        }
+        context.contentResolver.query(collection, projection, queryArgs, null)
+            ?.use { cursor -> readItems(cursor, items) }
         return items
     }
 
@@ -161,44 +155,66 @@ class MediaRepository(private val context: Context) {
 
         val items = ArrayList<MediaItem>(1024)
         context.contentResolver.query(collection, projection, selection, selectionArgs, sortOrder)
-            ?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-                val takenCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
-                val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-                val widthCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
-                val heightCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
-                val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-                val typeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
-
-                while (cursor.moveToNext()) {
-                    val mediaType = cursor.getInt(typeCol)
-                    val kind = when (mediaType) {
-                        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaKind.IMAGE
-                        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaKind.VIDEO
-                        else -> continue
-                    }
-                    val id = cursor.getLong(idCol)
-                    val taken = cursor.getLong(takenCol)
-                    val added = cursor.getLong(addedCol)
-                    items += MediaItem(
-                        id = id,
-                        uri = contentUriFor(kind, id),
-                        displayName = cursor.getString(nameCol) ?: continue,
-                        mimeType = cursor.getString(mimeCol) ?: "application/octet-stream",
-                        dateTakenMs = if (taken > 0) taken else added * 1000L,
-                        sizeBytes = cursor.getLong(sizeCol),
-                        width = cursor.getInt(widthCol),
-                        height = cursor.getInt(heightCol),
-                        durationMs = cursor.getLong(durationCol),
-                        kind = kind,
-                    )
-                }
-            }
+            ?.use { cursor -> readItems(cursor, items) }
         return items
     }
+
+    /**
+     * カーソル読み取りの防御層。カラム欠落(index=-1)やnull値は既定値へ
+     * フォールバックし、1アイテムの読み取り失敗はそのアイテムのスキップに
+     * 留めて全体へ波及させない。
+     */
+    private fun readItems(cursor: Cursor, out: MutableList<MediaItem>) {
+        val idCol = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
+        val nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        val mimeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+        val takenCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_TAKEN)
+        val addedCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_ADDED)
+        val sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+        val widthCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.WIDTH)
+        val heightCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.HEIGHT)
+        val durationCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DURATION)
+        val typeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE)
+        val expiresCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
+        if (idCol < 0) return
+
+        while (cursor.moveToNext()) {
+            runCatching {
+                val kind = when (cursor.safeInt(typeCol)) {
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaKind.IMAGE
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaKind.VIDEO
+                    else -> return@runCatching
+                }
+                val id = cursor.safeLong(idCol)
+                if (id <= 0) return@runCatching
+                val taken = cursor.safeLong(takenCol)
+                val added = cursor.safeLong(addedCol)
+                out += MediaItem(
+                    id = id,
+                    uri = contentUriFor(kind, id),
+                    displayName = cursor.safeString(nameCol) ?: "unknown_$id",
+                    mimeType = cursor.safeString(mimeCol) ?: "application/octet-stream",
+                    dateTakenMs = if (taken > 0) taken else added * 1000L,
+                    sizeBytes = cursor.safeLong(sizeCol),
+                    width = cursor.safeInt(widthCol),
+                    height = cursor.safeInt(heightCol),
+                    durationMs = cursor.safeLong(durationCol),
+                    kind = kind,
+                    dateExpiresSec = cursor.safeLong(expiresCol),
+                )
+            }
+            // 失敗したアイテムはスキップするだけ(全体をクラッシュさせない)
+        }
+    }
+
+    private fun Cursor.safeLong(index: Int): Long =
+        if (index >= 0 && !isNull(index)) getLong(index) else 0L
+
+    private fun Cursor.safeInt(index: Int): Int =
+        if (index >= 0 && !isNull(index)) getInt(index) else 0
+
+    private fun Cursor.safeString(index: Int): String? =
+        if (index >= 0 && !isNull(index)) getString(index) else null
 
     private fun contentUriFor(kind: MediaKind, id: Long): Uri = when (kind) {
         MediaKind.IMAGE -> ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)

@@ -28,7 +28,26 @@ class LuminaApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        installCrashLogger()
         container = AppContainer(this)
+    }
+
+    /**
+     * クラッシュ時のスタックトレースを filesDir/crash.txt に書き出してから
+     * 既定ハンドラへ渡す。実機での原因特定用:
+     * adb shell run-as com.souru.lumina cat files/crash.txt
+     */
+    private fun installCrashLogger() {
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                java.io.File(filesDir, "crash.txt").writeText(
+                    "${java.util.Date()}\nthread=${thread.name}\n" +
+                        android.util.Log.getStackTraceString(throwable),
+                )
+            }
+            previousHandler?.uncaughtException(thread, throwable)
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

@@ -7,6 +7,17 @@ import java.time.ZoneId
 
 enum class MediaKind { IMAGE, VIDEO }
 
+/** MIME判定の純ロジック(null・未知のMIMEでも落ちない)。 */
+object MediaMime {
+    fun isRaw(mimeType: String?, displayName: String?): Boolean =
+        mimeType.equals("image/x-adobe-dng", ignoreCase = true) ||
+            displayName?.endsWith(".dng", ignoreCase = true) == true
+
+    fun isJpeg(mimeType: String?): Boolean =
+        mimeType.equals("image/jpeg", ignoreCase = true) ||
+            mimeType.equals("image/jpg", ignoreCase = true)
+}
+
 /** MediaStore 上の1ファイル。 */
 data class MediaItem(
     val id: Long,
@@ -23,13 +34,11 @@ data class MediaItem(
     val dateExpiresSec: Long = 0,
 ) {
     val isRaw: Boolean
-        get() = mimeType.equals("image/x-adobe-dng", ignoreCase = true) ||
-            displayName.endsWith(".dng", ignoreCase = true)
+        get() = MediaMime.isRaw(mimeType, displayName)
 
     /** MIMEタイプでの厳密なJPEG判定。 */
     val isJpeg: Boolean
-        get() = mimeType.equals("image/jpeg", ignoreCase = true) ||
-            mimeType.equals("image/jpg", ignoreCase = true)
+        get() = MediaMime.isJpeg(mimeType)
 
     val baseName: String
         get() = displayName.substringBeforeLast('.')

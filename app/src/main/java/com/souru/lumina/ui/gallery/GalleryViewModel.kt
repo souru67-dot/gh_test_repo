@@ -17,6 +17,7 @@ import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import com.souru.lumina.data.pairing.PairCandidate
 import com.souru.lumina.data.pairing.RawJpegPairer
+import com.souru.lumina.util.MediaGrouping
 import com.souru.lumina.util.formatDateHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +38,7 @@ data class GalleryUiState(
     val slotIndexOfEntry: Map<Long, Int> = emptyMap(),
     val filter: GalleryFilter = GalleryFilter.DEFAULT,
     val columns: Int = SettingsRepository.DEFAULT_COLUMNS,
+    val loadError: Boolean = false,
 )
 
 /** メディア一覧とペアリング結果。ペアリングはメディア変更時のみ再計算する。 */
@@ -57,10 +59,13 @@ class GalleryViewModel(
 
     private val pairedMedia: Flow<PairedMedia> = mediaRepository.observeMedia()
         .map { media ->
-            val pairs = RawJpegPairer.pair(
-                media.filter { it.kind == MediaKind.IMAGE }
-                    .map { PairCandidate(it.id, it.baseName, it.dateTakenMs, it.isRaw) },
-            )
+            // ペアリング失敗が一覧全体を巻き込まないよう防御する
+            val pairs = runCatching {
+                RawJpegPairer.pair(
+                    media.filter { it.kind == MediaKind.IMAGE }
+                        .map { PairCandidate(it.id, it.baseName, it.dateTakenMs, it.isRaw) },
+                )
+            }.getOrElse { emptyMap() }
             PairedMedia(media, pairs)
         }
         .flowOn(Dispatchers.Default)
@@ -70,8 +75,11 @@ class GalleryViewModel(
             pairedMedia,
             settingsRepository.galleryFilter,
             settingsRepository.gridColumns,
-        ) { paired, filter, columns ->
-            buildState(paired, filter, columns)
+            mediaRepository.loadError,
+        ) { paired, filter, columns, loadError ->
+            // 状態構築のどんな失敗も「起動できない」に波及させない
+            runCatching { buildState(paired, filter, columns, loadError) }
+                .getOrElse { GalleryUiState(loading = false, loadError = true) }
         }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState())
@@ -80,6 +88,7 @@ class GalleryViewModel(
         paired: PairedMedia,
         filter: GalleryFilter,
         columns: Int,
+        loadError: Boolean,
     ): GalleryUiState {
         val byId = paired.media.associateBy { it.id }
 
@@ -91,21 +100,27 @@ class GalleryViewModel(
                 isJpeg = item.isJpeg,
             )
         }
-        val entries = visible.map { GalleryEntry(it, paired.pairs[it.id]?.let(byId::get)) }
 
-        val slots = ArrayList<GridSlot>(entries.size + 32)
-        val slotIndexOfEntry = HashMap<Long, Int>(entries.size * 2)
-        var entryIndex = 0
-        var lastDate: java.time.LocalDate? = null
-        for (entry in entries) {
-            val date = entry.item.localDate
-            if (date != lastDate) {
-                slots += GridSlot.Header(date, formatDateHeader(date))
-                lastDate = date
+        // SQLのソート(生DATE_TAKEN)と表示日付(DATE_ADDEDフォールバック)は
+        // 一致しないことがある(動画はDATE_TAKENがnullのことが多い)。
+        // 並び順に依存せず日付ごとに必ず1セクションになるようgroupByで構築し、
+        // LazyGridのキー重複(クラッシュ)を構造的に防ぐ
+        val sections = MediaGrouping.byDateDescending(
+            items = visible.map { GalleryEntry(it, paired.pairs[it.id]?.let(byId::get)) },
+            timeOf = { it.item.dateTakenMs },
+            dateOf = { it.item.localDate },
+        )
+
+        val entries = ArrayList<GalleryEntry>(visible.size)
+        val slots = ArrayList<GridSlot>(visible.size + 32)
+        val slotIndexOfEntry = HashMap<Long, Int>(visible.size * 2)
+        for ((date, sectionEntries) in sections) {
+            slots += GridSlot.Header(date, formatDateHeader(date))
+            for (entry in sectionEntries) {
+                slotIndexOfEntry[entry.id] = slots.size
+                slots += GridSlot.Cell(entry, entries.size)
+                entries += entry
             }
-            slotIndexOfEntry[entry.id] = slots.size
-            slots += GridSlot.Cell(entry, entryIndex)
-            entryIndex++
         }
 
         return GalleryUiState(
@@ -115,7 +130,13 @@ class GalleryViewModel(
             slotIndexOfEntry = slotIndexOfEntry,
             filter = filter,
             columns = columns,
+            loadError = loadError,
         )
+    }
+
+    /** 権限付与後・エラー後の手動再読み込み。 */
+    fun retryLoad() {
+        mediaRepository.refresh()
     }
 
     fun setColumns(columns: Int) {
