@@ -15,6 +15,7 @@ import coil3.fetch.SourceFetchResult
 import coil3.key.Keyer
 import coil3.request.Options
 import coil3.size.pxOrElse
+import com.souru.lumina.util.MediaOrientation
 import okio.Buffer
 import kotlin.math.max
 
@@ -44,17 +45,15 @@ class DngPreviewFetcher(
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult {
-        var exifRotation = 0
+        // 向き解決は共通ロジックに一元化(MediaStore ORIENTATION → EXIF)
+        val rotation = MediaOrientation.resolve(context, data.uri, data.orientationDeg)
+
         val bytes = runCatching {
             context.contentResolver.openInputStream(data.uri)?.use { input ->
                 val exif = ExifInterface(input)
-                // 同じストリームから向きも読む(追加I/Oなし)
-                exifRotation = exif.rotationDegrees
                 if (exif.hasThumbnail()) exif.thumbnailBytes else null
             }
         }.getOrNull()
-
-        val rotation = if (data.orientationDeg != 0) data.orientationDeg else exifRotation
 
         if (bytes != null) {
             if (rotation == 0) {
@@ -76,11 +75,14 @@ class DngPreviewFetcher(
                 )
             }
         }
-        // フォールバック: ImageDecoderはEXIFの向きを自身で適用するため追加回転しない
-        return fullDecode()
+        return fullDecode(rotation)
     }
 
-    private fun fullDecode(): FetchResult {
+    /**
+     * フォールバックのフルデコード。ImageDecoderはJPEGと違い
+     * DNG(TIFF)のOrientationを適用しないため、ここでも回転を適用する。
+     */
+    private fun fullDecode(rotation: Int): FetchResult {
         val targetWidth = options.size.width.pxOrElse { 2048 }
         val source = ImageDecoder.createSource(context.contentResolver, data.uri)
         val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
@@ -89,7 +91,7 @@ class DngPreviewFetcher(
             if (sample > 1) decoder.setTargetSampleSize(sample)
         }
         return ImageFetchResult(
-            image = bitmap.asImage(),
+            image = bitmap.rotatedBy(rotation).asImage(),
             isSampled = true,
             dataSource = DataSource.DISK,
         )
