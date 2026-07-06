@@ -143,7 +143,9 @@ private fun ActiveVideoPlayer(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+// このファイルはmedia3用にandroidx.annotation.OptInをimportしているため、
+// Kotlinコンパイラ向けのopt-inは完全修飾で指定する
+@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VideoControls(player: Player) {
     var playing by remember { mutableStateOf(player.isPlaying) }
