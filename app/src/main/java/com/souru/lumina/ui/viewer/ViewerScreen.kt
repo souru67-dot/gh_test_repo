@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,10 +23,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -97,15 +98,34 @@ fun ViewerScreen(
     var chromeVisible by remember { mutableStateOf(true) }
     var dismissProgress by remember { mutableFloatStateOf(0f) }
 
-    BackHandler(onBack = onClose)
+    // UI非表示時はシステムバーも隠して完全没入にする。
+    // 制御はWindowInsetsControllerCompatに一本化し、edge-to-edgeや
+    // レイアウト構造には触れない(バーのhide/showのみ)
+    val view = LocalView.current
+
+    fun showSystemBars() {
+        view.context.findActivity()?.window?.let { window ->
+            WindowCompat.getInsetsController(window, view)
+                .show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    // 閉じるすべての経路(戻る・下スワイプ・←ボタン)で、閉じる前に
+    // バー表示を復帰させる。onDisposeでの復帰はトランジション完了後に
+    // なるため、グリッドがinset=0でレイアウトされて位置がずれたまま
+    // 残る(LazyGridはスクロール基準をアイテムに固定する)のを防ぐ
+    fun closeWithBarsRestored() {
+        showSystemBars()
+        onClose()
+    }
+
+    BackHandler { closeWithBarsRestored() }
 
     // ページ切替を親に伝え、共有要素の戻り先セルを追従させる
     LaunchedEffect(pagerState.currentPage) {
         entries.getOrNull(pagerState.currentPage)?.let { onFocusedIdChange(it.id) }
     }
 
-    // UI非表示時はシステムバーも隠して完全没入にする
-    val view = LocalView.current
     DisposableEffect(chromeVisible) {
         val window = view.context.findActivity()?.window
         if (window != null) {
@@ -120,13 +140,9 @@ fun ViewerScreen(
         }
         onDispose { }
     }
+    // 想定外の破棄経路(編集画面への遷移など)向けの保険
     DisposableEffect(Unit) {
-        onDispose {
-            view.context.findActivity()?.window?.let { window ->
-                WindowCompat.getInsetsController(window, view)
-                    .show(WindowInsetsCompat.Type.systemBars())
-            }
-        }
+        onDispose { showSystemBars() }
     }
 
     val backgroundAlpha = (1f - dismissProgress * 1.2f).coerceIn(0f, 1f)
@@ -167,7 +183,7 @@ fun ViewerScreen(
                     item = displayItem,
                     imageModifier = sharedModifier,
                     onToggleChrome = { chromeVisible = !chromeVisible },
-                    onDismiss = onClose,
+                    onDismiss = { closeWithBarsRestored() },
                     onDismissProgress = { progress ->
                         if (page == pagerState.currentPage) dismissProgress = progress
                     },
@@ -193,7 +209,7 @@ fun ViewerScreen(
             ViewerTopBar(
                 displayItem = displayItemOf(current),
                 isPaired = current.isPaired,
-                onClose = onClose,
+                onClose = { closeWithBarsRestored() },
                 onSwapRawJpeg = {
                     swappedIds = swappedIds.let {
                         if (current.id in it) it - current.id else it + current.id
@@ -235,6 +251,7 @@ fun ViewerScreen(
  * 写真表示中のアクションバー。RAWは簡易編集対象外のため
  * 「Lrで現像」のみを出し、JPEGには「編集」も出す。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ViewerBottomBar(
     entry: GalleryEntry,
@@ -253,7 +270,7 @@ private fun ViewerBottomBar(
                     1f to Color.Black.copy(alpha = 0.65f),
                 ),
             )
-            .padding(WindowInsets.navigationBars.asPaddingValues()),
+            .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()),
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -316,6 +333,7 @@ private fun ViewerAction(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ViewerTopBar(
     displayItem: MediaItem,
@@ -334,7 +352,9 @@ private fun ViewerTopBar(
                     1f to Color.Transparent,
                 ),
             )
-            .padding(WindowInsets.statusBars.asPaddingValues()),
+            // バーの表示状態に依存しないInsetsを使い、全画面⇔UI表示の
+            // 切替でクロームの位置がずれないようにする
+            .padding(WindowInsets.statusBarsIgnoringVisibility.asPaddingValues()),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

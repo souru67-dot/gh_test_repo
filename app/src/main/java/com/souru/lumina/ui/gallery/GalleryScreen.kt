@@ -22,6 +22,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,8 +36,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
@@ -332,7 +333,7 @@ fun GalleryRoute(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun GalleryGridScreen(
     state: GalleryUiState,
@@ -354,7 +355,9 @@ private fun GalleryGridScreen(
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val layoutDirection = LocalLayoutDirection.current
-    val systemBarPadding = WindowInsets.systemBars.asPaddingValues()
+    // ビューアの全画面切替(バーhide/show)の遷移中でも一覧のレイアウトが
+    // 動かないよう、バーの表示状態に依存しないInsetsを使う
+    val systemBarPadding = WindowInsets.systemBarsIgnoringVisibility.asPaddingValues()
     val selectionMode = selection.isNotEmpty()
 
     // ビューアから戻ったとき、表示していたセルが画面外なら追従スクロールする
@@ -526,6 +529,7 @@ private fun GalleryGridScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GalleryTopBar(
     state: GalleryUiState,
@@ -538,7 +542,7 @@ private fun GalleryTopBar(
     onOpenTrash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
+    val statusBarPadding = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues()
     Box(
         modifier = modifier
             .fillMaxWidth()
