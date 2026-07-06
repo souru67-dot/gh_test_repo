@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun LibraryScreen(
+    onOpenFavorites: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenLutManager: () -> Unit,
     bottomContentPadding: Dp = 0.dp,
@@ -47,6 +49,12 @@ fun LibraryScreen(
             style = MaterialTheme.typography.titleLarge,
             color = Color.White,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+        )
+        LibraryRow(
+            icon = Icons.Outlined.FavoriteBorder,
+            title = "お気に入り",
+            subtitle = "お気に入りに追加した写真と動画",
+            onClick = onOpenFavorites,
         )
         LibraryRow(
             icon = Icons.Outlined.DeleteOutline,

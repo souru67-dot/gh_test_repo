@@ -33,9 +33,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
@@ -48,6 +51,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,6 +67,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.souru.lumina.ui.gallery.sharedMediaKey
+import com.souru.lumina.data.MediaInfo
+import com.souru.lumina.data.MediaInfoLoader
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
@@ -86,6 +92,7 @@ fun ViewerScreen(
     onEditVideo: (MediaItem) -> Unit = {},
     onSendToLightroom: (GalleryEntry) -> Unit = {},
     onDelete: (GalleryEntry) -> Unit = {},
+    onToggleFavorite: ((GalleryEntry) -> Unit)? = null,
 ) {
     if (entries.isEmpty()) {
         onClose()
@@ -97,6 +104,18 @@ fun ViewerScreen(
 
     var chromeVisible by remember { mutableStateOf(true) }
     var dismissProgress by remember { mutableFloatStateOf(0f) }
+    var showInfo by remember { mutableStateOf(false) }
+
+    // 情報シート用メタデータのプリフェッチ(表示前にIOで読んでおく)
+    val context = LocalContext.current
+    val infoCache = remember { mutableStateMapOf<Long, MediaInfo>() }
+    LaunchedEffect(pagerState.currentPage, entries) {
+        val entry = entries.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
+        if (!infoCache.containsKey(entry.id)) {
+            runCatching { MediaInfoLoader.load(context, entry) }
+                .onSuccess { infoCache[entry.id] = it }
+        }
+    }
 
     // UI非表示時はシステムバーも隠して完全没入にする。
     // 制御はWindowInsetsControllerCompatに一本化し、edge-to-edgeや
@@ -187,6 +206,7 @@ fun ViewerScreen(
                     onDismissProgress = { progress ->
                         if (page == pagerState.currentPage) dismissProgress = progress
                     },
+                    onShowInfo = { showInfo = true },
                 )
 
                 MediaKind.VIDEO -> VideoPage(
@@ -209,6 +229,8 @@ fun ViewerScreen(
             ViewerTopBar(
                 displayItem = displayItemOf(current),
                 isPaired = current.isPaired,
+                isFavorite = current.item.isFavorite ||
+                    current.counterpart?.isFavorite == true,
                 onClose = { closeWithBarsRestored() },
                 onSwapRawJpeg = {
                     swappedIds = swappedIds.let {
@@ -225,6 +247,16 @@ fun ViewerScreen(
                 } else {
                     null
                 },
+                onToggleFavorite = onToggleFavorite?.let { toggle -> { toggle(current) } },
+                onShowInfo = { showInfo = true },
+            )
+        }
+
+        if (showInfo) {
+            val current = entries[pagerState.currentPage.coerceIn(entries.indices)]
+            MediaInfoSheet(
+                info = infoCache[current.id],
+                onDismiss = { showInfo = false },
             )
         }
 
@@ -338,10 +370,13 @@ private fun ViewerAction(
 private fun ViewerTopBar(
     displayItem: MediaItem,
     isPaired: Boolean,
+    isFavorite: Boolean,
     onClose: () -> Unit,
     onSwapRawJpeg: () -> Unit,
     onEditVideo: (() -> Unit)? = null,
     onDeleteVideo: (() -> Unit)? = null,
+    onToggleFavorite: (() -> Unit)? = null,
+    onShowInfo: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -387,6 +422,26 @@ private fun ViewerTopBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onToggleFavorite != null) {
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (isFavorite) {
+                            Icons.Filled.Favorite
+                        } else {
+                            Icons.Outlined.FavoriteBorder
+                        },
+                        contentDescription = if (isFavorite) "お気に入り解除" else "お気に入りに追加",
+                        tint = if (isFavorite) Color(0xFFEF7B87) else Color.White,
+                    )
+                }
+            }
+            IconButton(onClick = onShowInfo) {
+                Icon(
+                    Icons.Outlined.Info,
+                    contentDescription = "情報",
+                    tint = Color.White,
+                )
+            }
             if (onDeleteVideo != null) {
                 IconButton(onClick = onDeleteVideo) {
                     Icon(

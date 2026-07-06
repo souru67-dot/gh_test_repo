@@ -46,6 +46,7 @@ fun PhotoPage(
     onToggleChrome: () -> Unit,
     onDismiss: () -> Unit,
     onDismissProgress: (Float) -> Unit,
+    onShowInfo: () -> Unit = {},
     imageModifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -59,6 +60,7 @@ fun PhotoPage(
 
     val currentOnDismiss by rememberUpdatedState(onDismiss)
     val currentOnDismissProgress by rememberUpdatedState(onDismissProgress)
+    val currentOnShowInfo by rememberUpdatedState(onShowInfo)
     val dismissThresholdPx = with(density) { 120.dp.toPx() }
 
     fun maxOffsetX(containerWidth: Float) = (containerWidth * (scale.value - 1f)) / 2f
@@ -133,7 +135,9 @@ fun PhotoPage(
                                 dismissMode = true
                             }
                             if (dismissMode) {
-                                val newY = (dismissY.value + panChange.y).coerceAtLeast(-dismissThresholdPx / 2f)
+                                // 下方向は閉じる、上方向は情報シート(いずれもしきい値で判定)
+                                val newY = (dismissY.value + panChange.y)
+                                    .coerceAtLeast(-dismissThresholdPx)
                                 scope.launch { dismissY.snapTo(newY) }
                                 currentOnDismissProgress(
                                     (newY / (dismissThresholdPx * 2f)).coerceIn(0f, 1f),
@@ -147,6 +151,10 @@ fun PhotoPage(
                         if (dismissY.value > dismissThresholdPx) {
                             currentOnDismiss()
                         } else {
+                            if (dismissY.value < -dismissThresholdPx * 0.5f) {
+                                // 上スワイプ: EXIF情報シートを開く
+                                currentOnShowInfo()
+                            }
                             scope.launch {
                                 dismissY.animateTo(0f, spring())
                                 currentOnDismissProgress(0f)

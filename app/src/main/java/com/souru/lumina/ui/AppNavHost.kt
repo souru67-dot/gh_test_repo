@@ -39,6 +39,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.souru.lumina.ui.albums.AlbumsScreen
+import com.souru.lumina.ui.favorites.FavoritesScreen
 import com.souru.lumina.ui.gallery.GalleryRoute
 import com.souru.lumina.ui.library.LibraryScreen
 import com.souru.lumina.ui.library.LutManagerScreen
@@ -54,6 +55,7 @@ object Routes {
     const val Albums = "albums"
     const val Library = "library"
     const val Trash = "trash"
+    const val Favorites = "favorites"
     const val LutManager = "lutManager"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
@@ -135,6 +137,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             }
             composable(Routes.Library) {
                 LibraryScreen(
+                    onOpenFavorites = {
+                        navController.navigate(Routes.Favorites) { launchSingleTop = true }
+                    },
                     onOpenTrash = {
                         navController.navigate(Routes.Trash) { launchSingleTop = true }
                     },
@@ -146,6 +151,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             }
             composable(Routes.Trash) {
                 TrashScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Routes.Favorites) {
+                FavoritesScreen(onClose = { navController.popBackStack() })
             }
             composable(Routes.LutManager) {
                 LutManagerScreen(onClose = { navController.popBackStack() })

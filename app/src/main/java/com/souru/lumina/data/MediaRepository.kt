@@ -85,8 +85,33 @@ class MediaRepository(private val context: Context) {
             .mapLatest { runCatching { queryTrashed() }.getOrElse { emptyList() } }
             .flowOn(Dispatchers.IO)
 
+    /** お気に入り(IS_FAVORITE=1)のアイテムを監視する。 */
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    fun observeFavorites(): Flow<List<MediaItem>> =
+        merge(changes, manualRefresh)
+            .debounce(300)
+            .onStart { emit(Unit) }
+            .mapLatest { runCatching { queryFavorites() }.getOrElse { emptyList() } }
+            .flowOn(Dispatchers.IO)
+
     /** MediaStoreのゴミ箱アイテムを取得する(QUERY_ARG_MATCH_TRASHED)。 */
-    fun queryTrashed(): List<MediaItem> {
+    fun queryTrashed(): List<MediaItem> = queryMatched(
+        matchTrashed = true,
+        sortOrder = "${MediaStore.MediaColumns.DATE_EXPIRES} ASC",
+    )
+
+    /** お気に入りアイテムを取得する(QUERY_ARG_MATCH_FAVORITE)。 */
+    fun queryFavorites(): List<MediaItem> = queryMatched(
+        matchFavorite = true,
+        sortOrder = "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC, " +
+            "${MediaStore.Files.FileColumns.DATE_ADDED} DESC",
+    )
+
+    private fun queryMatched(
+        matchTrashed: Boolean = false,
+        matchFavorite: Boolean = false,
+        sortOrder: String,
+    ): List<MediaItem> {
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
@@ -101,6 +126,7 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.MediaColumns.DATE_EXPIRES,
             MediaStore.MediaColumns.ORIENTATION,
+            MediaStore.MediaColumns.IS_FAVORITE,
         )
         val queryArgs = Bundle().apply {
             putString(
@@ -114,11 +140,9 @@ class MediaRepository(private val context: Context) {
                     MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString(),
                 ),
             )
-            putString(
-                ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
-                "${MediaStore.MediaColumns.DATE_EXPIRES} ASC",
-            )
-            putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+            if (matchTrashed) putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+            if (matchFavorite) putInt(MediaStore.QUERY_ARG_MATCH_FAVORITE, MediaStore.MATCH_ONLY)
         }
 
         val items = ArrayList<MediaItem>(64)
@@ -145,6 +169,7 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.MediaColumns.ORIENTATION,
+            MediaStore.MediaColumns.IS_FAVORITE,
         )
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)" +
             (selectionExtra?.let { " AND ($it)" } ?: "")
@@ -179,6 +204,7 @@ class MediaRepository(private val context: Context) {
         val typeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE)
         val expiresCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
         val orientationCol = cursor.getColumnIndex(MediaStore.MediaColumns.ORIENTATION)
+        val favoriteCol = cursor.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
         if (idCol < 0) return
 
         while (cursor.moveToNext()) {
@@ -205,6 +231,7 @@ class MediaRepository(private val context: Context) {
                     kind = kind,
                     dateExpiresSec = cursor.safeLong(expiresCol),
                     orientationDeg = cursor.safeInt(orientationCol),
+                    isFavorite = cursor.safeInt(favoriteCol) == 1,
                 )
             }
             // 失敗したアイテムはスキップするだけ(全体をクラッシュさせない)

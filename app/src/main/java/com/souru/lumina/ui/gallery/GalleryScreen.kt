@@ -50,8 +50,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Share
@@ -171,6 +173,29 @@ fun GalleryRoute(
         }
     }
 
+    val favoriteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.clearSelection()
+            viewModel.retryLoad()
+        }
+    }
+
+    // ペアはRAW/JPEG両方のファイルに適用する(MediaStore標準のIS_FAVORITE)
+    fun requestFavorite(entries: List<GalleryEntry>, favorite: Boolean) {
+        if (entries.isEmpty()) return
+        scope.launch {
+            val uris = withContext(Dispatchers.Default) {
+                entries.flatMap { listOfNotNull(it.item.uri, it.counterpart?.uri) }.distinct()
+            }
+            favoriteLauncher.launch(Trash.favoriteRequest(context, uris, favorite))
+        }
+    }
+
+    fun isEntryFavorite(entry: GalleryEntry): Boolean =
+        entry.item.isFavorite || entry.counterpart?.isFavorite == true
+
     fun requestTrash(items: List<MediaItem>) {
         if (items.isEmpty()) return
         scope.launch {
@@ -274,6 +299,9 @@ fun GalleryRoute(
                         onEditVideo = { item -> onOpenVideoEditor(item.id) },
                         onSendToLightroom = { entry -> sendToLightroom(listOf(entry)) },
                         onDelete = { entry -> onDeleteRequest(listOf(entry)) },
+                        onToggleFavorite = { entry ->
+                            requestFavorite(listOf(entry), !isEntryFavorite(entry))
+                        },
                     )
                 }
             }
@@ -281,19 +309,15 @@ fun GalleryRoute(
 
         // 複数選択中のコンテキストアクション(ボトムアプリバー)
         if (selection.isNotEmpty() && viewerIndex == null) {
+            val selectedEntries = state.entries.filter { it.id in selection }
+            val allFavorite = selectedEntries.isNotEmpty() &&
+                selectedEntries.all { isEntryFavorite(it) }
             SelectionActionBar(
-                onShare = {
-                    shareMediaItems(
-                        context,
-                        state.entries.filter { it.id in selection }.map { it.item },
-                    )
-                },
-                onSendToLightroom = {
-                    sendToLightroom(state.entries.filter { it.id in selection })
-                },
-                onDelete = {
-                    onDeleteRequest(state.entries.filter { it.id in selection })
-                },
+                allFavorite = allFavorite,
+                onShare = { shareMediaItems(context, selectedEntries.map { it.item }) },
+                onToggleFavorite = { requestFavorite(selectedEntries, !allFavorite) },
+                onSendToLightroom = { sendToLightroom(selectedEntries) },
+                onDelete = { onDeleteRequest(selectedEntries) },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -628,10 +652,12 @@ private fun GalleryTopBar(
     }
 }
 
-/** 複数選択中のコンテキストアクションバー(共有・Lr・削除)。 */
+/** 複数選択中のコンテキストアクションバー(共有・お気に入り・Lr・削除)。 */
 @Composable
 private fun SelectionActionBar(
+    allFavorite: Boolean,
     onShare: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onSendToLightroom: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -645,6 +671,11 @@ private fun SelectionActionBar(
             .padding(vertical = 6.dp),
     ) {
         SelectionAction(Icons.Outlined.Share, "共有", onShare)
+        SelectionAction(
+            icon = if (allFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            label = if (allFavorite) "お気に入り解除" else "お気に入り",
+            onClick = onToggleFavorite,
+        )
         SelectionAction(Icons.Outlined.AutoFixHigh, "Lrで現像", onSendToLightroom)
         SelectionAction(Icons.Outlined.DeleteOutline, "削除", onDelete)
     }

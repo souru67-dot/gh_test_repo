@@ -34,6 +34,8 @@ data class MediaItem(
     val dateExpiresSec: Long = 0,
     /** MediaStoreのORIENTATION(0/90/180/270)。DNGの向き補正に使う。 */
     val orientationDeg: Int = 0,
+    /** MediaStore標準のIS_FAVORITE(他アプリとお気に入り状態が共通)。 */
+    val isFavorite: Boolean = false,
 ) {
     val isRaw: Boolean
         get() = MediaMime.isRaw(mimeType, displayName)

@@ -32,6 +32,12 @@ object Trash {
             MediaStore.createDeleteRequest(context.contentResolver, uris).intentSender,
         ).build()
 
+    /** お気に入りの設定/解除(MediaStore標準のIS_FAVORITE)。 */
+    fun favoriteRequest(context: Context, uris: List<Uri>, favorite: Boolean): IntentSenderRequest =
+        IntentSenderRequest.Builder(
+            MediaStore.createFavoriteRequest(context.contentResolver, uris, favorite).intentSender,
+        ).build()
+
     /** DATE_EXPIRES(エポック秒)から自動削除までの残り日数を計算する。 */
     fun remainingDays(dateExpiresSec: Long, nowMs: Long = System.currentTimeMillis()): Int {
         if (dateExpiresSec <= 0) return 30 // 期限不明時はMediaStore既定の約30日
