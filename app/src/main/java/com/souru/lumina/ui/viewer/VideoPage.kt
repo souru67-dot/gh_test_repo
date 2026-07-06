@@ -37,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -94,6 +93,7 @@ fun VideoPage(
 }
 
 @OptIn(UnstableApi::class)
+@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActiveVideoPlayer(
     entry: GalleryEntry,
@@ -138,16 +138,22 @@ private fun ActiveVideoPlayer(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            VideoControls(player = player)
+            // 下部アクションバー(写真と共通)と干渉しないよう、
+            // シークバーはアクションバーの高さぶん持ち上げて配置する
+            VideoControls(
+                player = player,
+                modifier = Modifier
+                    .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
+                    .padding(bottom = 58.dp),
+            )
         }
     }
 }
 
 // このファイルはmedia3用にandroidx.annotation.OptInをimportしているため、
 // Kotlinコンパイラ向けのopt-inは完全修飾で指定する
-@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun VideoControls(player: Player) {
+private fun VideoControls(player: Player, modifier: Modifier = Modifier) {
     var playing by remember { mutableStateOf(player.isPlaying) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
@@ -162,18 +168,7 @@ private fun VideoControls(player: Player) {
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.65f),
-                ),
-            )
-            // バーの表示状態に依存しないInsetsでコントロールの位置を固定する
-            .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()),
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

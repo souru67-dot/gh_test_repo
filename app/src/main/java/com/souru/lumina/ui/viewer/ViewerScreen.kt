@@ -237,16 +237,6 @@ fun ViewerScreen(
                         if (current.id in it) it - current.id else it + current.id
                     }
                 },
-                onEditVideo = if (displayItemOf(current).kind == MediaKind.VIDEO) {
-                    { onEditVideo(displayItemOf(current)) }
-                } else {
-                    null
-                },
-                onDeleteVideo = if (displayItemOf(current).kind == MediaKind.VIDEO) {
-                    { onDelete(current) }
-                } else {
-                    null
-                },
                 onToggleFavorite = onToggleFavorite?.let { toggle -> { toggle(current) } },
                 onShowInfo = { showInfo = true },
             )
@@ -262,8 +252,7 @@ fun ViewerScreen(
 
         val currentEntry = entries[pagerState.currentPage.coerceIn(entries.indices)]
         AnimatedVisibility(
-            visible = chromeVisible && dismissProgress == 0f &&
-                displayItemOf(currentEntry).kind == MediaKind.IMAGE,
+            visible = chromeVisible && dismissProgress == 0f,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -272,6 +261,7 @@ fun ViewerScreen(
                 entry = currentEntry,
                 displayItem = displayItemOf(currentEntry),
                 onEditPhoto = onEditPhoto,
+                onEditVideo = onEditVideo,
                 onSendToLightroom = { onSendToLightroom(currentEntry) },
                 onDelete = { onDelete(currentEntry) },
             )
@@ -280,8 +270,10 @@ fun ViewerScreen(
 }
 
 /**
- * 写真表示中のアクションバー。RAWは簡易編集対象外のため
- * 「Lrで現像」のみを出し、JPEGには「編集」も出す。
+ * ビューアの下部アクションバー(写真・動画共通の配置)。
+ * 写真: 共有 / Lrで現像 / 編集(JPEGのみ) / 削除。
+ * 動画: 共有 / 編集(LUT・カラー) / 削除 — 「Lrで現像」の位置に「編集」を置き
+ * 写真と操作感を揃える。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -289,6 +281,7 @@ private fun ViewerBottomBar(
     entry: GalleryEntry,
     displayItem: MediaItem,
     onEditPhoto: (MediaItem) -> Unit,
+    onEditVideo: (MediaItem) -> Unit,
     onSendToLightroom: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -315,17 +308,25 @@ private fun ViewerBottomBar(
                 label = "共有",
                 onClick = { shareMediaItem(context, displayItem) },
             )
-            ViewerAction(
-                icon = Icons.Outlined.AutoFixHigh,
-                label = "Lrで現像",
-                onClick = onSendToLightroom,
-            )
-            if (!displayItem.isRaw) {
+            if (displayItem.kind == MediaKind.VIDEO) {
                 ViewerAction(
                     icon = Icons.Outlined.Tune,
                     label = "編集",
-                    onClick = { onEditPhoto(displayItem) },
+                    onClick = { onEditVideo(displayItem) },
                 )
+            } else {
+                ViewerAction(
+                    icon = Icons.Outlined.AutoFixHigh,
+                    label = "Lrで現像",
+                    onClick = onSendToLightroom,
+                )
+                if (!displayItem.isRaw) {
+                    ViewerAction(
+                        icon = Icons.Outlined.Tune,
+                        label = "編集",
+                        onClick = { onEditPhoto(displayItem) },
+                    )
+                }
             }
             ViewerAction(
                 icon = Icons.Outlined.DeleteOutline,
@@ -373,8 +374,6 @@ private fun ViewerTopBar(
     isFavorite: Boolean,
     onClose: () -> Unit,
     onSwapRawJpeg: () -> Unit,
-    onEditVideo: (() -> Unit)? = null,
-    onDeleteVideo: (() -> Unit)? = null,
     onToggleFavorite: (() -> Unit)? = null,
     onShowInfo: () -> Unit = {},
 ) {
@@ -441,32 +440,6 @@ private fun ViewerTopBar(
                     contentDescription = "情報",
                     tint = Color.White,
                 )
-            }
-            if (onDeleteVideo != null) {
-                IconButton(onClick = onDeleteVideo) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = "削除",
-                        tint = Color.White,
-                    )
-                }
-            }
-            if (onEditVideo != null) {
-                // LUT適用・トリム・書き出しへ
-                TextButton(onClick = onEditVideo) {
-                    Icon(
-                        Icons.Outlined.Tune,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "編集",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White,
-                    )
-                }
             }
             if (isPaired) {
                 // 同一構図のままRAW⇔JPEGを切り替える
