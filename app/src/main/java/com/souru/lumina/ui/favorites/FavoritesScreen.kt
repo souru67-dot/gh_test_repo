@@ -3,6 +3,7 @@ package com.souru.lumina.ui.favorites
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import com.souru.lumina.util.Trash
 import com.souru.lumina.util.formatDuration
 
 /** お気に入り(IS_FAVORITE=1)のみを表示するビュー。 */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FavoritesScreen(
     onClose: () -> Unit,

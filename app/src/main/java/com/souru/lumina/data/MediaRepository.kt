@@ -170,6 +170,8 @@ class MediaRepository(private val context: Context) {
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.MediaColumns.ORIENTATION,
             MediaStore.MediaColumns.IS_FAVORITE,
+            MediaStore.MediaColumns.BUCKET_ID,
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
         )
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)" +
             (selectionExtra?.let { " AND ($it)" } ?: "")
@@ -205,6 +207,8 @@ class MediaRepository(private val context: Context) {
         val expiresCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
         val orientationCol = cursor.getColumnIndex(MediaStore.MediaColumns.ORIENTATION)
         val favoriteCol = cursor.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
+        val bucketIdCol = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
+        val bucketNameCol = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
         if (idCol < 0) return
 
         while (cursor.moveToNext()) {
@@ -232,6 +236,8 @@ class MediaRepository(private val context: Context) {
                     dateExpiresSec = cursor.safeLong(expiresCol),
                     orientationDeg = cursor.safeInt(orientationCol),
                     isFavorite = cursor.safeInt(favoriteCol) == 1,
+                    bucketId = cursor.safeLong(bucketIdCol),
+                    bucketName = cursor.safeString(bucketNameCol),
                 )
             }
             // 失敗したアイテムはスキップするだけ(全体をクラッシュさせない)

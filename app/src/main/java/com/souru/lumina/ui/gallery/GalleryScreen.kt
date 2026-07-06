@@ -48,6 +48,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -124,7 +125,14 @@ fun GalleryRoute(
     onOpenVideoEditor: (Long) -> Unit,
     onBottomBarVisibleChange: (Boolean) -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
-    viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
+    // アルバム(フォルダ)スコープ表示。nullなら全メディア
+    bucketId: Long? = null,
+    albumName: String? = null,
+    onClose: (() -> Unit)? = null,
+    viewModel: GalleryViewModel = viewModel(
+        key = bucketId?.let { "gallery-$it" },
+        factory = GalleryViewModel.factory(bucketId),
+    ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selection by viewModel.selectionFlow.collectAsStateWithLifecycle()
@@ -286,6 +294,8 @@ fun GalleryRoute(
                             viewerIndex = entry.entryIndex
                         },
                         bottomContentPadding = bottomContentPadding,
+                        albumName = albumName,
+                        onClose = onClose,
                     )
                 } else {
                     ViewerScreen(
@@ -399,6 +409,8 @@ private fun GalleryGridScreen(
     viewModel: GalleryViewModel,
     onOpenViewer: (GridSlot.Cell) -> Unit,
     bottomContentPadding: Dp = 0.dp,
+    albumName: String? = null,
+    onClose: (() -> Unit)? = null,
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val layoutDirection = LocalLayoutDirection.current
@@ -406,6 +418,8 @@ private fun GalleryGridScreen(
     // 動かないよう、バーの表示状態に依存しないInsetsを使う
     val systemBarPadding = WindowInsets.systemBarsIgnoringVisibility.asPaddingValues()
     val selectionMode = selection.isNotEmpty()
+    // アルバムモードは「戻る+アルバム名」の行が増えるぶんトップバーが高い
+    val topBarHeight = if (albumName != null) 104.dp else 52.dp
 
     // ビューアから戻ったとき、表示していたセルが画面外なら追従スクロールする
     LaunchedEffect(pendingScrollSlot) {
@@ -427,7 +441,7 @@ private fun GalleryGridScreen(
             contentPadding = PaddingValues(
                 start = systemBarPadding.calculateStartPadding(layoutDirection),
                 end = systemBarPadding.calculateEndPadding(layoutDirection),
-                top = systemBarPadding.calculateTopPadding() + 52.dp,
+                top = systemBarPadding.calculateTopPadding() + topBarHeight,
                 bottom = systemBarPadding.calculateBottomPadding() + 16.dp + bottomContentPadding,
             ),
             modifier = Modifier
@@ -534,7 +548,7 @@ private fun GalleryGridScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = systemBarPadding.calculateTopPadding() + 52.dp)
+                    .padding(top = systemBarPadding.calculateTopPadding() + topBarHeight)
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(start = 16.dp, end = 4.dp),
@@ -557,6 +571,8 @@ private fun GalleryGridScreen(
             onClearSelection = viewModel::clearSelection,
             onSelectFilter = viewModel::setFilter,
             onSelectTypeFilter = viewModel::setTypeFilter,
+            albumName = albumName,
+            onClose = onClose,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -566,7 +582,7 @@ private fun GalleryGridScreen(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(
-                    top = systemBarPadding.calculateTopPadding() + 56.dp,
+                    top = systemBarPadding.calculateTopPadding() + topBarHeight + 4.dp,
                     bottom = systemBarPadding.calculateBottomPadding() + 16.dp + bottomContentPadding,
                 ),
         )
@@ -581,10 +597,12 @@ private fun GalleryTopBar(
     onClearSelection: () -> Unit,
     onSelectFilter: (RawFilterMode) -> Unit,
     onSelectTypeFilter: (MediaTypeFilter) -> Unit,
+    albumName: String? = null,
+    onClose: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val statusBarPadding = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues()
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .background(
@@ -595,6 +613,30 @@ private fun GalleryTopBar(
             )
             .padding(statusBarPadding),
     ) {
+        if (albumName != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .padding(horizontal = 4.dp),
+            ) {
+                IconButton(onClick = { onClose?.invoke() }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "戻る",
+                        tint = Color.White,
+                    )
+                }
+                Text(
+                    text = albumName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
+        }
         if (selection.isNotEmpty()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

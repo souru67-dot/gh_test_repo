@@ -1,5 +1,6 @@
 package com.souru.lumina.ui
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,9 +58,11 @@ object Routes {
     const val Trash = "trash"
     const val Favorites = "favorites"
     const val LutManager = "lutManager"
+    const val Album = "album/{bucketId}?name={name}"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
 
+    fun album(bucketId: Long, name: String) = "album/$bucketId?name=${Uri.encode(name)}"
     fun photoEdit(mediaId: Long) = "photoEdit/$mediaId"
     fun videoEdit(mediaId: Long) = "videoEdit/$mediaId"
 }
@@ -133,7 +136,38 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 )
             }
             composable(Routes.Albums) {
-                AlbumsScreen(bottomContentPadding = BottomNavContentPadding)
+                AlbumsScreen(
+                    onOpenAlbum = { album ->
+                        navController.navigate(Routes.album(album.id, album.name)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    bottomContentPadding = BottomNavContentPadding,
+                )
+            }
+            composable(
+                route = Routes.Album,
+                arguments = listOf(
+                    navArgument("bucketId") { type = NavType.LongType },
+                    navArgument("name") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val bucketId = entry.arguments?.getLong("bucketId") ?: return@composable
+                val name = entry.arguments?.getString("name").orEmpty()
+                GalleryRoute(
+                    onOpenPhotoEditor = { mediaId ->
+                        navController.navigate(Routes.photoEdit(mediaId)) { launchSingleTop = true }
+                    },
+                    onOpenVideoEditor = { mediaId ->
+                        navController.navigate(Routes.videoEdit(mediaId)) { launchSingleTop = true }
+                    },
+                    bucketId = bucketId,
+                    albumName = name.ifEmpty { "アルバム" },
+                    onClose = { navController.popBackStack() },
+                )
             }
             composable(Routes.Library) {
                 LibraryScreen(

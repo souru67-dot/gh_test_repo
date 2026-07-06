@@ -50,6 +50,8 @@ private data class PairedMedia(
 class GalleryViewModel(
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
+    /** nullなら全メディア、指定時はそのフォルダ(BUCKET)内のみを表示する。 */
+    private val bucketId: Long? = null,
 ) : ViewModel() {
 
     private val selection = MutableStateFlow<Set<Long>>(emptySet())
@@ -58,7 +60,10 @@ class GalleryViewModel(
     val selectionFlow: StateFlow<Set<Long>> = selection.asStateFlow()
 
     private val pairedMedia: Flow<PairedMedia> = mediaRepository.observeMedia()
-        .map { media ->
+        .map { all ->
+            // アルバム(フォルダ)スコープはここで絞る。ペアリングもスコープ内で
+            // 完結させる(フォルダをまたぐRAW+JPEGペアは通常存在しない)
+            val media = if (bucketId == null) all else all.filter { it.bucketId == bucketId }
             // ペアリング失敗が一覧全体を巻き込まないよう防御する
             val pairs = runCatching {
                 RawJpegPairer.pair(
@@ -169,12 +174,15 @@ class GalleryViewModel(
     }
 
     companion object {
-        val Factory = viewModelFactory {
+        val Factory = factory(bucketId = null)
+
+        fun factory(bucketId: Long?) = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as LuminaApplication
                 GalleryViewModel(
                     mediaRepository = app.container.mediaRepository,
                     settingsRepository = app.container.settingsRepository,
+                    bucketId = bucketId,
                 )
             }
         }

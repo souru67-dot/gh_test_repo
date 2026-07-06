@@ -36,6 +36,9 @@ data class MediaItem(
     val orientationDeg: Int = 0,
     /** MediaStore標準のIS_FAVORITE(他アプリとお気に入り状態が共通)。 */
     val isFavorite: Boolean = false,
+    /** 端末フォルダ(アルバム)のBUCKET_ID / BUCKET_DISPLAY_NAME。 */
+    val bucketId: Long = 0,
+    val bucketName: String? = null,
 ) {
     val isRaw: Boolean
         get() = MediaMime.isRaw(mimeType, displayName)
