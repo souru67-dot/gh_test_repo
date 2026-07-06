@@ -99,6 +99,15 @@ class GalleryViewModel(
                 isRaw = item.isRaw,
                 isJpeg = item.isJpeg,
             )
+        }.let { list ->
+            if (filter.format == RawFilterMode.ALL) {
+                // 「すべて」でもペアは1枚に統合する。JPEG側を代表として残し
+                // (サムネイルはJPEG、RAW+Jバッジ表示)、RAW側は一覧から除外。
+                // counterpart経由でRAW⇔JPEG切替・削除対象選択・Lr連携は従来どおり
+                list.filterNot { it.isRaw && paired.pairs.containsKey(it.id) }
+            } else {
+                list
+            }
         }
 
         // SQLのソート(生DATE_TAKEN)と表示日付(DATE_ADDEDフォールバック)は

@@ -136,3 +136,18 @@ fun shareMediaItem(context: Context, item: MediaItem) {
     }
     context.startActivity(Intent.createChooser(intent, null))
 }
+
+/** 複数アイテムをOSの共有シートで共有する。 */
+fun shareMediaItems(context: Context, items: List<MediaItem>) {
+    if (items.isEmpty()) return
+    if (items.size == 1) {
+        shareMediaItem(context, items.first())
+        return
+    }
+    val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+        type = "*/*"
+        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(items.map { it.uri }))
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, null))
+}

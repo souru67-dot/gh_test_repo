@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
@@ -50,8 +51,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -78,6 +81,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -104,6 +108,7 @@ import com.souru.lumina.util.mediaAccessState
 import com.souru.lumina.util.mediaPermissions
 import com.souru.lumina.util.openAppSettings
 import com.souru.lumina.util.resolveDeletionItems
+import com.souru.lumina.util.shareMediaItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,7 +120,8 @@ fun sharedMediaKey(id: Long): String = "media-$id"
 fun GalleryRoute(
     onOpenPhotoEditor: (Long) -> Unit,
     onOpenVideoEditor: (Long) -> Unit,
-    onOpenTrash: () -> Unit,
+    onBottomBarVisibleChange: (Boolean) -> Unit = {},
+    bottomContentPadding: Dp = 0.dp,
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -193,6 +199,12 @@ fun GalleryRoute(
         viewModel.clearSelection()
     }
 
+    // ビューア表示中・複数選択中はボトムナビを隠す(没入系/コンテキストバー優先)
+    val bottomBarVisible = viewerIndex == null && selection.isEmpty()
+    LaunchedEffect(bottomBarVisible) {
+        onBottomBarVisibleChange(bottomBarVisible)
+    }
+
     fun sendToLightroom(entries: List<GalleryEntry>) {
         val items = entries
             .map { Lightroom.rawSideOf(it) }
@@ -248,13 +260,7 @@ fun GalleryRoute(
                             focusedId = entry.entry.id
                             viewerIndex = entry.entryIndex
                         },
-                        onSendSelectionToLightroom = {
-                            sendToLightroom(state.entries.filter { it.id in selection })
-                        },
-                        onDeleteSelection = {
-                            onDeleteRequest(state.entries.filter { it.id in selection })
-                        },
-                        onOpenTrash = onOpenTrash,
+                        bottomContentPadding = bottomContentPadding,
                     )
                 } else {
                     ViewerScreen(
@@ -271,6 +277,25 @@ fun GalleryRoute(
                     )
                 }
             }
+        }
+
+        // 複数選択中のコンテキストアクション(ボトムアプリバー)
+        if (selection.isNotEmpty() && viewerIndex == null) {
+            SelectionActionBar(
+                onShare = {
+                    shareMediaItems(
+                        context,
+                        state.entries.filter { it.id in selection }.map { it.item },
+                    )
+                },
+                onSendToLightroom = {
+                    sendToLightroom(state.entries.filter { it.id in selection })
+                },
+                onDelete = {
+                    onDeleteRequest(state.entries.filter { it.id in selection })
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
 
         SnackbarHost(
@@ -349,9 +374,7 @@ private fun GalleryGridScreen(
     animatedScope: AnimatedVisibilityScope,
     viewModel: GalleryViewModel,
     onOpenViewer: (GridSlot.Cell) -> Unit,
-    onSendSelectionToLightroom: () -> Unit,
-    onDeleteSelection: () -> Unit,
-    onOpenTrash: () -> Unit,
+    bottomContentPadding: Dp = 0.dp,
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val layoutDirection = LocalLayoutDirection.current
@@ -381,7 +404,7 @@ private fun GalleryGridScreen(
                 start = systemBarPadding.calculateStartPadding(layoutDirection),
                 end = systemBarPadding.calculateEndPadding(layoutDirection),
                 top = systemBarPadding.calculateTopPadding() + 52.dp,
-                bottom = systemBarPadding.calculateBottomPadding() + 16.dp,
+                bottom = systemBarPadding.calculateBottomPadding() + 16.dp + bottomContentPadding,
             ),
             modifier = Modifier
                 .fillMaxSize()
@@ -510,9 +533,6 @@ private fun GalleryGridScreen(
             onClearSelection = viewModel::clearSelection,
             onSelectFilter = viewModel::setFilter,
             onSelectTypeFilter = viewModel::setTypeFilter,
-            onSendSelectionToLightroom = onSendSelectionToLightroom,
-            onDeleteSelection = onDeleteSelection,
-            onOpenTrash = onOpenTrash,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -523,7 +543,7 @@ private fun GalleryGridScreen(
                 .align(Alignment.CenterEnd)
                 .padding(
                     top = systemBarPadding.calculateTopPadding() + 56.dp,
-                    bottom = systemBarPadding.calculateBottomPadding() + 16.dp,
+                    bottom = systemBarPadding.calculateBottomPadding() + 16.dp + bottomContentPadding,
                 ),
         )
     }
@@ -537,9 +557,6 @@ private fun GalleryTopBar(
     onClearSelection: () -> Unit,
     onSelectFilter: (RawFilterMode) -> Unit,
     onSelectTypeFilter: (MediaTypeFilter) -> Unit,
-    onSendSelectionToLightroom: () -> Unit,
-    onDeleteSelection: () -> Unit,
-    onOpenTrash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val statusBarPadding = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues()
@@ -575,22 +592,6 @@ private fun GalleryTopBar(
                     color = Color.White,
                 )
                 Spacer(Modifier.weight(1f))
-                // 選択項目をゴミ箱へ(ペアは対象選択ダイアログを挟む)
-                IconButton(onClick = onDeleteSelection) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = "削除",
-                        tint = Color.White,
-                    )
-                }
-                // 選択した写真(ペアはRAW側)をまとめてLightroomへ
-                TextButton(onClick = onSendSelectionToLightroom) {
-                    Text(
-                        text = "Lrで現像",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
         } else {
             Row(
@@ -622,15 +623,53 @@ private fun GalleryTopBar(
                     enabled = state.filter.type != MediaTypeFilter.VIDEO,
                     onSelect = onSelectFilter,
                 )
-                IconButton(onClick = onOpenTrash) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = "ゴミ箱",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
+    }
+}
+
+/** 複数選択中のコンテキストアクションバー(共有・Lr・削除)。 */
+@Composable
+private fun SelectionActionBar(
+    onShare: () -> Unit,
+    onSendToLightroom: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .navigationBarsPadding()
+            .padding(vertical = 6.dp),
+    ) {
+        SelectionAction(Icons.Outlined.Share, "共有", onShare)
+        SelectionAction(Icons.Outlined.AutoFixHigh, "Lrで現像", onSendToLightroom)
+        SelectionAction(Icons.Outlined.DeleteOutline, "削除", onDelete)
+    }
+}
+
+@Composable
+private fun SelectionAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+        )
     }
 }
 
