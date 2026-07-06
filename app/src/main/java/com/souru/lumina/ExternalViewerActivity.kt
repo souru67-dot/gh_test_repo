@@ -46,7 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 外部アプリからの ACTION_VIEW (image/* / video/*) を受けるエントリポイント。
+ * 外部アプリからの ACTION_VIEW (画像・動画MIME) を受けるエントリポイント。
  * 渡されたURIが自ライブラリ(MediaStore)内のアイテムなら通常のビューアに
  * 接続して前後スワイプも有効化し、そうでなければ単体表示にフォールバックする。
  */
