@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -267,34 +268,43 @@ private fun VideoEditContent(
                 update = { it.player = player },
                 modifier = Modifier.fillMaxSize(),
             )
+            // タップで再生/一時停止、プレビューの長押し中だけ編集前(オリジナル)を表示。
+            // A/B中はエフェクト変更でプレイヤーが再生成されるため、進行中の
+            // ジェスチャーが切れないようキーはUnit固定+最新playerを参照する
+            val currentPlayer by rememberUpdatedState(player)
             Box(
                 Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) {
-                        detectTapGestures(onTap = {
-                            if (player.isPlaying) player.pause() else player.play()
-                        })
+                        detectTapGestures(
+                            onTap = {
+                                if (currentPlayer.isPlaying) {
+                                    currentPlayer.pause()
+                                } else {
+                                    currentPlayer.play()
+                                }
+                            },
+                            onLongPress = { viewModel.setComparing(true) },
+                            onPress = {
+                                tryAwaitRelease()
+                                viewModel.setComparing(false)
+                            },
+                        )
                     },
             )
-            // A/B比較(押している間だけ元の映像)
-            Text(
-                text = if (state.comparing) "元の映像" else "A/B",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = if (state.comparing) 0.3f else 0.12f))
-                    .pointerInput(Unit) {
-                        detectTapGestures(onPress = {
-                            viewModel.setComparing(true)
-                            tryAwaitRelease()
-                            viewModel.setComparing(false)
-                        })
-                    }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
+            if (state.comparing) {
+                Text(
+                    text = "編集前",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
         }
 
         // 下部パネル: 再生コントロールは共通、編集操作はタブで分離。

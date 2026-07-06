@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -134,6 +136,10 @@ fun PhotoEditScreen(
         }
 
         // プレビュー
+        // 長押ししている間だけ調整をバイパスして編集前を表示する
+        // (Lightroom方式のA/B比較。キャッシュ済みビットマップの
+        // renderEffectを外すだけなので再デコードは発生しない)
+        var showOriginal by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -156,14 +162,31 @@ fun PhotoEditScreen(
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer {
-                                shader.applyAdjustments(state.adjustments)
-                                renderEffect = RenderEffect
-                                    .createRuntimeShaderEffect(
-                                        shader,
-                                        AdjustmentShader.CONTENT_SHADER_NAME,
+                            // トリミングモードではCropOverlayのドラッグと競合する
+                            // ため、長押しA/Bは調整モードのみで受け付ける
+                            .pointerInput(state.mode) {
+                                if (state.mode == EditMode.ADJUST) {
+                                    detectTapGestures(
+                                        onLongPress = { showOriginal = true },
+                                        onPress = {
+                                            tryAwaitRelease()
+                                            showOriginal = false
+                                        },
                                     )
-                                    .asComposeRenderEffect()
+                                }
+                            }
+                            .graphicsLayer {
+                                if (showOriginal) {
+                                    renderEffect = null
+                                } else {
+                                    shader.applyAdjustments(state.adjustments)
+                                    renderEffect = RenderEffect
+                                        .createRuntimeShaderEffect(
+                                            shader,
+                                            AdjustmentShader.CONTENT_SHADER_NAME,
+                                        )
+                                        .asComposeRenderEffect()
+                                }
                                 // エフェクトの出力を画像レイヤーの境界内に限定し、
                                 // 余白(レターボックス)へ効果が漏れないようにする
                                 clip = true
@@ -188,6 +211,20 @@ fun PhotoEditScreen(
                     text = state.error ?: "読み込めませんでした",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
+                )
+            }
+
+            if (showOriginal) {
+                Text(
+                    text = "編集前",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
         }
