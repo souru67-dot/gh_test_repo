@@ -1,5 +1,7 @@
 package com.souru.lumina.ui.library
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AppSettingsAlt
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
@@ -24,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -67,6 +71,17 @@ fun LibraryScreen(
             title = "LUTライブラリ",
             subtitle = "動画用 .cube LUT の管理",
             onClick = onOpenLutManager,
+        )
+        val context = LocalContext.current
+        LibraryRow(
+            icon = Icons.Outlined.AppSettingsAlt,
+            title = "デフォルトのアプリ設定",
+            subtitle = "画像・動画を開く既定アプリにLuminaを設定",
+            onClick = {
+                runCatching {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                }
+            },
         )
     }
 }

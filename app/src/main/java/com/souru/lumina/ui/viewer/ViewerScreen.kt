@@ -88,10 +88,12 @@ fun ViewerScreen(
     sharedScope: SharedTransitionScope? = null,
     animatedScope: AnimatedVisibilityScope? = null,
     onFocusedIdChange: (Long) -> Unit = {},
-    onEditPhoto: (MediaItem) -> Unit = {},
-    onEditVideo: (MediaItem) -> Unit = {},
-    onSendToLightroom: (GalleryEntry) -> Unit = {},
-    onDelete: (GalleryEntry) -> Unit = {},
+    // nullのアクションは下部バーに表示しない(外部URI表示やお気に入り一覧など、
+    // その操作を提供できないコンテキスト向け)
+    onEditPhoto: ((MediaItem) -> Unit)? = null,
+    onEditVideo: ((MediaItem) -> Unit)? = null,
+    onSendToLightroom: ((GalleryEntry) -> Unit)? = null,
+    onDelete: ((GalleryEntry) -> Unit)? = null,
     onToggleFavorite: ((GalleryEntry) -> Unit)? = null,
 ) {
     if (entries.isEmpty()) {
@@ -262,8 +264,8 @@ fun ViewerScreen(
                 displayItem = displayItemOf(currentEntry),
                 onEditPhoto = onEditPhoto,
                 onEditVideo = onEditVideo,
-                onSendToLightroom = { onSendToLightroom(currentEntry) },
-                onDelete = { onDelete(currentEntry) },
+                onSendToLightroom = onSendToLightroom?.let { send -> { send(currentEntry) } },
+                onDelete = onDelete?.let { delete -> { delete(currentEntry) } },
             )
         }
     }
@@ -280,10 +282,10 @@ fun ViewerScreen(
 private fun ViewerBottomBar(
     entry: GalleryEntry,
     displayItem: MediaItem,
-    onEditPhoto: (MediaItem) -> Unit,
-    onEditVideo: (MediaItem) -> Unit,
-    onSendToLightroom: () -> Unit,
-    onDelete: () -> Unit,
+    onEditPhoto: ((MediaItem) -> Unit)?,
+    onEditVideo: ((MediaItem) -> Unit)?,
+    onSendToLightroom: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     Box(
@@ -309,18 +311,22 @@ private fun ViewerBottomBar(
                 onClick = { shareMediaItem(context, displayItem) },
             )
             if (displayItem.kind == MediaKind.VIDEO) {
-                ViewerAction(
-                    icon = Icons.Outlined.Tune,
-                    label = "編集",
-                    onClick = { onEditVideo(displayItem) },
-                )
+                if (onEditVideo != null) {
+                    ViewerAction(
+                        icon = Icons.Outlined.Tune,
+                        label = "編集",
+                        onClick = { onEditVideo(displayItem) },
+                    )
+                }
             } else {
-                ViewerAction(
-                    icon = Icons.Outlined.AutoFixHigh,
-                    label = "Lrで現像",
-                    onClick = onSendToLightroom,
-                )
-                if (!displayItem.isRaw) {
+                if (onSendToLightroom != null) {
+                    ViewerAction(
+                        icon = Icons.Outlined.AutoFixHigh,
+                        label = "Lrで現像",
+                        onClick = onSendToLightroom,
+                    )
+                }
+                if (!displayItem.isRaw && onEditPhoto != null) {
                     ViewerAction(
                         icon = Icons.Outlined.Tune,
                         label = "編集",
@@ -328,11 +334,13 @@ private fun ViewerBottomBar(
                     )
                 }
             }
-            ViewerAction(
-                icon = Icons.Outlined.DeleteOutline,
-                label = "削除",
-                onClick = onDelete,
-            )
+            if (onDelete != null) {
+                ViewerAction(
+                    icon = Icons.Outlined.DeleteOutline,
+                    label = "削除",
+                    onClick = onDelete,
+                )
+            }
         }
     }
 }
