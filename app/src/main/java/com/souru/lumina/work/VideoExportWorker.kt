@@ -92,6 +92,9 @@ class VideoExportWorker(
             val savedUri = saveToMediaStore(outputFile, baseName)
             notifyFinished("書き出しが完了しました", "Movies/Lumina に保存しました")
             Result.success(workDataOf(KEY_RESULT_URI to savedUri.toString()))
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            // キャンセルはWorkManagerに委ねる(pending行はsaveToMediaStore内で削除済み)
+            throw c
         } catch (t: Throwable) {
             notifyFinished("書き出しに失敗しました", t.message ?: "不明なエラー")
             Result.failure(workDataOf(KEY_ERROR to (t.message ?: "unknown")))
@@ -190,6 +193,8 @@ class VideoExportWorker(
             put(MediaStore.Video.Media.DISPLAY_NAME, "${baseName}_LUMINA_$timestamp.mp4")
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Lumina")
+            // 他ギャラリーの日付順で正しい位置に並ぶよう撮影日時を明示する
+            put(MediaStore.Video.Media.DATE_TAKEN, System.currentTimeMillis())
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
         val resolver = applicationContext.contentResolver

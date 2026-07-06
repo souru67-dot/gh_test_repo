@@ -63,7 +63,6 @@ object PhotoExporter {
         }
         val uri = saveToMediaStore(context, rendered, source)
         rendered.recycle()
-        copyExif(context, source, uri, rotationDeg != 0 || cropRect != null)
         uri
     }
 
@@ -163,6 +162,8 @@ object PhotoExporter {
             put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             put(MediaStore.Images.Media.RELATIVE_PATH, ALBUM_DIR)
+            // 他ギャラリーの日付順で正しい位置に並ぶよう撮影日時を明示する
+            put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val resolver = context.contentResolver
@@ -175,10 +176,15 @@ object PhotoExporter {
                     throw IllegalStateException("JPEGエンコードに失敗しました")
                 }
             } ?: throw IllegalStateException("出力ストリームを開けませんでした")
+            // Exifの書き換え(ファイル全体の書き直し)はIS_PENDING解除前に行う。
+            // 解除後に書き換えるとMediaProviderのスキャン結果(サイズ等)と
+            // 実ファイルが食い違い、他アプリで開けない・見えない原因になる
+            copyExif(context, source, uri)
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
         } catch (t: Throwable) {
+            // 失敗・キャンセル時はpending行を残さない(残すと永久に不可視のゴミになる)
             resolver.delete(uri, null, null)
             throw t
         }
@@ -217,7 +223,7 @@ object PhotoExporter {
         ExifInterface.TAG_GPS_DATESTAMP,
     )
 
-    private fun copyExif(context: Context, source: MediaItem, dest: Uri, geometryChanged: Boolean) {
+    private fun copyExif(context: Context, source: MediaItem, dest: Uri) {
         runCatching {
             val attrs = context.contentResolver.openInputStream(source.uri)?.use { input ->
                 val exif = ExifInterface(input)
@@ -235,8 +241,6 @@ object PhotoExporter {
                 )
                 destExif.saveAttributes()
             }
-            // geometryChangedは将来の拡張用(現状は常に向きNORMALで保存)
-            if (geometryChanged) Unit
         }
     }
 
