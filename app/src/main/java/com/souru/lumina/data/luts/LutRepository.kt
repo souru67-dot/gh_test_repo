@@ -12,19 +12,25 @@ import java.io.File
 
 /** アプリ内LUTライブラリの1エントリ。 */
 data class LutInfo(
-    val id: String,       // ファイル名(一意)
+    val id: String,       // ファイル名(一意。プリセットは "preset:" 接頭辞付き)
     val name: String,     // 表示名(拡張子なし)
     val file: File,
+    val isPreset: Boolean = false,
 )
 
 /**
  * .cube ファイルのインポートとアプリ内LUTライブラリ管理。
- * ファイルは filesDir/luts/ にコピーして保持する。
+ * ユーザーのインポートは filesDir/luts/ に、標準プリセットは
+ * filesDir/luts/presets/ に初回アクセス時にコード生成して保持する。
  */
 class LutRepository(private val context: Context) {
 
     private val dir: File by lazy {
         File(context.filesDir, "luts").apply { mkdirs() }
+    }
+
+    private val presetsDir: File by lazy {
+        File(dir, "presets").apply { mkdirs() }
     }
 
     private val _luts = MutableStateFlow<List<LutInfo>>(emptyList())
@@ -33,10 +39,43 @@ class LutRepository(private val context: Context) {
     private val cache = HashMap<String, CubeLut>()
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
-        _luts.value = dir.listFiles { f -> f.extension.equals("cube", ignoreCase = true) }
+        ensurePresets()
+        val presets = LutPreset.entries.mapNotNull { preset ->
+            val file = File(presetsDir, preset.fileName)
+            if (file.exists()) {
+                LutInfo(
+                    id = "preset:${preset.fileName}",
+                    name = preset.displayName,
+                    file = file,
+                    isPreset = true,
+                )
+            } else {
+                null
+            }
+        }
+        val imported = dir.listFiles { f ->
+            f.isFile && f.extension.equals("cube", ignoreCase = true)
+        }
             ?.sortedBy { it.name.lowercase() }
             ?.map { LutInfo(id = it.name, name = it.nameWithoutExtension, file = it) }
             ?: emptyList()
+        _luts.value = presets + imported
+    }
+
+    /** 標準プリセットの.cubeを生成する(生成済みで版が一致すればスキップ)。 */
+    private fun ensurePresets() {
+        val marker = File(presetsDir, "version")
+        val current = runCatching { marker.readText().trim() }.getOrNull()
+        val expected = LutPresets.VERSION.toString()
+        val complete = LutPreset.entries.all { File(presetsDir, it.fileName).exists() }
+        if (current == expected && complete) return
+        runCatching {
+            LutPreset.entries.forEach { preset ->
+                File(presetsDir, preset.fileName)
+                    .writeText(LutPresets.generateCubeText(preset))
+            }
+            marker.writeText(expected)
+        }
     }
 
     /** SAFで選択された .cube をインポートする。パースに失敗したら例外。 */
@@ -66,6 +105,7 @@ class LutRepository(private val context: Context) {
     }
 
     suspend fun delete(info: LutInfo) = withContext(Dispatchers.IO) {
+        if (info.isPreset) return@withContext // 標準プリセットは削除不可
         info.file.delete()
         cache.remove(info.id)
         refresh()

@@ -526,7 +526,8 @@ private fun LutRow(
                 label = lut.name,
                 selected = state.selectedLut?.id == lut.id,
                 onClick = { onSelect(lut) },
-                onLongClick = { deleteTarget = lut },
+                // 標準プリセットは削除不可(長押しメニューを出さない)
+                onLongClick = if (lut.isPreset) null else ({ deleteTarget = lut }),
             )
         }
         item(key = "import") {
