@@ -16,6 +16,8 @@ data class LutInfo(
     val name: String,     // 表示名(拡張子なし)
     val file: File,
     val isPreset: Boolean = false,
+    /** 標準プリセットの場合のみ。カテゴリ分け表示に使う */
+    val preset: LutPreset? = null,
 )
 
 /**
@@ -48,6 +50,7 @@ class LutRepository(private val context: Context) {
                     name = preset.displayName,
                     file = file,
                     isPreset = true,
+                    preset = preset,
                 )
             } else {
                 null

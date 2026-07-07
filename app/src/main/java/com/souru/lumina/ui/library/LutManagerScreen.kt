@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.souru.lumina.data.luts.LutCategory
 import com.souru.lumina.data.luts.LutInfo
 
 /** LUTライブラリの管理画面(.cubeのインポート・削除)。 */
@@ -97,22 +98,29 @@ fun LutManagerScreen(
             }
         }
 
-        val presets = luts.filter { it.isPreset }
         val imported = luts.filterNot { it.isPreset }
         LazyColumn(Modifier.fillMaxSize()) {
-            if (presets.isNotEmpty()) {
-                item(key = "header-presets") {
-                    SectionHeader(
-                        title = "標準",
-                        note = "Log素材向け(S-Cinetone for Mobile等)。通常のRec.709素材には濃すぎる場合があります",
-                    )
-                }
-                items(presets, key = { it.id }) { lut ->
-                    LutListRow(
-                        lut = lut,
-                        thumbnail = thumbnails[lut.id],
-                        onDelete = null,
-                    )
+            // 標準プリセットはカテゴリごとのセクションで表示する
+            LutCategory.entries.forEach { category ->
+                val inCategory = luts.filter { it.preset?.category == category }
+                if (inCategory.isNotEmpty()) {
+                    item(key = "header-${category.name}") {
+                        SectionHeader(
+                            title = category.label,
+                            note = if (category == LutCategory.entries.first()) {
+                                "標準LUTはLog素材向け(S-Cinetone for Mobile等)。通常のRec.709素材には濃すぎる場合があります"
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                    items(inCategory, key = { it.id }) { lut ->
+                        LutListRow(
+                            lut = lut,
+                            thumbnail = thumbnails[lut.id],
+                            onDelete = null,
+                        )
+                    }
                 }
             }
             item(key = "header-imported") {
