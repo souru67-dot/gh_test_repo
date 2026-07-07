@@ -14,6 +14,7 @@ import com.souru.lumina.data.model.MediaTypeFilter
 import com.souru.lumina.data.model.RawFilterMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // ファイル破損時は空のPreferencesで置き換える(起動不能ループの防止)
@@ -27,6 +28,7 @@ class SettingsRepository(private val context: Context) {
     private val gridColumnsKey = intPreferencesKey("grid_columns")
     private val rawFilterKey = stringPreferencesKey("raw_filter")
     private val mediaTypeFilterKey = stringPreferencesKey("media_type_filter")
+    private val externalTreeUriKey = stringPreferencesKey("external_tree_uri")
 
     /**
      * 読み込みの防御層。破損・I/O例外など復元に失敗した場合は
@@ -49,6 +51,18 @@ class SettingsRepository(private val context: Context) {
                 formatValue = prefs[rawFilterKey],
             )
         }
+
+    /** 最後に選択した外部デバイス(USB/SDカード)のツリーURI。未選択はnull。 */
+    val externalTreeUri: Flow<String?> = safeData.map { it[externalTreeUriKey] }
+
+    /** ツリーURIの一回取得(走査時にFlowを購読せず読むため)。 */
+    suspend fun externalTreeUriOnce(): String? = externalTreeUri.first()
+
+    suspend fun setExternalTreeUri(uri: String?) {
+        safeEdit { prefs ->
+            if (uri == null) prefs.remove(externalTreeUriKey) else prefs[externalTreeUriKey] = uri
+        }
+    }
 
     suspend fun setGridColumns(columns: Int) {
         safeEdit { it[gridColumnsKey] = columns.coerceIn(MIN_COLUMNS, MAX_COLUMNS) }

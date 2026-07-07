@@ -39,6 +39,11 @@ data class MediaItem(
     /** 端末フォルダ(アルバム)のBUCKET_ID / BUCKET_DISPLAY_NAME。 */
     val bucketId: Long = 0,
     val bucketName: String? = null,
+    /**
+     * 外部デバイス(USB/SDカード、SAFのDocument URI)由来か。
+     * trueのときMediaStore前提の機能(お気に入り・ゴミ箱)は非対応。
+     */
+    val isExternal: Boolean = false,
 ) {
     val isRaw: Boolean
         get() = MediaMime.isRaw(mimeType, displayName)

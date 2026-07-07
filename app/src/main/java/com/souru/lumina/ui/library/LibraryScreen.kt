@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Usb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,6 +36,7 @@ fun LibraryScreen(
     onOpenFavorites: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenLutManager: () -> Unit,
+    onOpenExternal: () -> Unit,
     bottomContentPadding: Dp = 0.dp,
 ) {
     Column(
@@ -67,6 +69,12 @@ fun LibraryScreen(
             title = "LUTライブラリ",
             subtitle = "動画用 .cube LUT の管理",
             onClick = onOpenLutManager,
+        )
+        LibraryRow(
+            icon = Icons.Outlined.Usb,
+            title = "外部デバイス",
+            subtitle = "USB/SDカードの写真・動画を閲覧・取り込み",
+            onClick = onOpenExternal,
         )
     }
 }

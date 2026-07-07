@@ -10,6 +10,9 @@ import com.souru.lumina.data.SettingsRepository
 import com.souru.lumina.data.coil.DngPreview
 import com.souru.lumina.data.coil.DngPreviewFetcher
 import com.souru.lumina.data.coil.DngPreviewKeyer
+import com.souru.lumina.data.coil.ExternalThumb
+import com.souru.lumina.data.coil.ExternalThumbFetcher
+import com.souru.lumina.data.coil.ExternalThumbKeyer
 import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.coil.MediaThumbFetcher
 import com.souru.lumina.data.coil.MediaThumbKeyer
@@ -22,6 +25,8 @@ class AppContainer(context: Context) {
     val albumsSource: com.souru.lumina.data.albums.AlbumsSource =
         com.souru.lumina.data.albums.BucketAlbumsSource(mediaRepository)
     val videoEditSession = com.souru.lumina.data.video.VideoEditSession()
+    val externalDeviceRepository =
+        com.souru.lumina.data.external.ExternalDeviceRepository(context, settingsRepository)
 }
 
 class LuminaApplication : Application(), SingletonImageLoader.Factory {
@@ -60,6 +65,8 @@ class LuminaApplication : Application(), SingletonImageLoader.Factory {
                 add(MediaThumbFetcher.Factory(this@LuminaApplication), MediaThumb::class)
                 add(DngPreviewKeyer(), DngPreview::class)
                 add(DngPreviewFetcher.Factory(this@LuminaApplication), DngPreview::class)
+                add(ExternalThumbKeyer(), ExternalThumb::class)
+                add(ExternalThumbFetcher.Factory(this@LuminaApplication), ExternalThumb::class)
             }
             .build()
 }

@@ -40,6 +40,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.souru.lumina.ui.albums.AlbumsScreen
+import com.souru.lumina.ui.external.ExternalBrowseScreen
 import com.souru.lumina.ui.favorites.FavoritesScreen
 import com.souru.lumina.ui.gallery.GalleryRoute
 import com.souru.lumina.ui.library.LibraryScreen
@@ -59,6 +60,7 @@ object Routes {
     const val Trash = "trash"
     const val Favorites = "favorites"
     const val LutManager = "lutManager"
+    const val ExternalDevice = "externalDevice"
     const val Album = "album/{bucketId}?name={name}"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
@@ -189,6 +191,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                     onOpenLutManager = {
                         navController.navigate(Routes.LutManager) { launchSingleTop = true }
                     },
+                    onOpenExternal = {
+                        navController.navigate(Routes.ExternalDevice) { launchSingleTop = true }
+                    },
                     bottomContentPadding = BottomNavContentPadding,
                 )
             }
@@ -200,6 +205,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             }
             composable(Routes.LutManager) {
                 LutManagerScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Routes.ExternalDevice) {
+                ExternalBrowseScreen(onClose = { navController.popBackStack() })
             }
             composable(
                 route = Routes.PhotoEdit,
