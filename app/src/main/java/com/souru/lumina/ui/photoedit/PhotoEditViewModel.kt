@@ -13,15 +13,22 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.souru.lumina.LuminaApplication
 import com.souru.lumina.data.MediaRepository
 import com.souru.lumina.data.edit.Adjustments
+import com.souru.lumina.data.edit.LutStrip
 import com.souru.lumina.data.edit.PhotoExporter
+import com.souru.lumina.data.luts.LutBaker
+import com.souru.lumina.data.luts.LutInfo
+import com.souru.lumina.data.luts.LutRepository
 import com.souru.lumina.data.model.MediaItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class EditMode { ADJUST, CROP }
+enum class EditMode { FILTER, ADJUST, CROP }
 
 /** アスペクト比プリセット。ratio=nullはフリー。 */
 enum class AspectPreset(val label: String, val ratio: Float?) {
@@ -38,6 +45,12 @@ data class PhotoEditUiState(
     val item: MediaItem? = null,
     val previewBitmap: Bitmap? = null,
     val adjustments: Adjustments = Adjustments(),
+    // フィルタ(LUT)。stripはシェーダーに渡す2Dストリップ(強度ベイク済み)
+    val luts: List<LutInfo> = emptyList(),
+    val selectedFilter: LutInfo? = null,
+    val filterStrength: Float = 1f,
+    val filterStrip: Bitmap? = null,
+    val filterThumbs: Map<String, Bitmap> = emptyMap(),
     val mode: EditMode = EditMode.ADJUST,
     val rotationDeg: Int = 0,
     val cropRect: RectF = RectF(0f, 0f, 1f, 1f),
@@ -50,6 +63,7 @@ data class PhotoEditUiState(
 class PhotoEditViewModel(
     private val context: Context,
     private val mediaRepository: MediaRepository,
+    private val lutRepository: LutRepository,
     private val mediaId: Long,
 ) : ViewModel() {
 
@@ -57,6 +71,7 @@ class PhotoEditViewModel(
     val uiState: StateFlow<PhotoEditUiState> = _uiState.asStateFlow()
 
     private var originalPreview: Bitmap? = null
+    private var bakeJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -71,12 +86,90 @@ class PhotoEditViewModel(
                     _uiState.update {
                         it.copy(loading = false, item = item, previewBitmap = bitmap)
                     }
+                    buildFilterThumbs(bitmap)
                 }
                 .onFailure { t ->
                     _uiState.update {
                         it.copy(loading = false, item = item, error = "読み込みに失敗しました: ${t.message}")
                     }
                 }
+        }
+        viewModelScope.launch {
+            lutRepository.refresh()
+            lutRepository.luts.collect { luts ->
+                _uiState.update { it.copy(luts = luts) }
+            }
+        }
+    }
+
+    /** フィルタ選択。nullで解除。 */
+    fun selectFilter(lut: LutInfo?) {
+        _uiState.update { it.copy(selectedFilter = lut) }
+        rebakeFilter()
+    }
+
+    fun setFilterStrength(strength: Float) {
+        _uiState.update { it.copy(filterStrength = strength.coerceIn(0f, 1f)) }
+        rebakeFilter()
+    }
+
+    /** LUT+強度をシェーダー用ストリップにベイクし直す(操作はデバウンス)。 */
+    private fun rebakeFilter() {
+        bakeJob?.cancel()
+        val state = _uiState.value
+        val lut = state.selectedFilter
+        if (lut == null || state.filterStrength <= 0f) {
+            _uiState.update { it.copy(filterStrip = null) }
+            return
+        }
+        bakeJob = viewModelScope.launch(Dispatchers.Default) {
+            delay(80)
+            val strip = runCatching {
+                val parsed = lutRepository.load(lut)
+                LutStrip.fromCube(LutBaker.bake(parsed, state.filterStrength, Adjustments()))
+            }.getOrNull()
+            if (strip != null) {
+                _uiState.update { it.copy(filterStrip = strip) }
+            } else {
+                _uiState.update {
+                    it.copy(filterStrip = null, error = "フィルタ「${lut.name}」を読み込めませんでした")
+                }
+            }
+        }
+    }
+
+    /** この写真の縮小版に各LUTを当てたフィルタ選択用サムネイルを作る。 */
+    private fun buildFilterThumbs(base: Bitmap) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val targetW = 96
+            val targetH = (targetW.toFloat() * base.height / base.width).toInt().coerceAtLeast(1)
+            val small = Bitmap.createScaledBitmap(base, targetW, targetH, true)
+            val srcPixels = IntArray(targetW * targetH)
+            small.getPixels(srcPixels, 0, targetW, 0, 0, targetW, targetH)
+            // 「なし」用に縮小版そのもの
+            _uiState.update { it.copy(filterThumbs = it.filterThumbs + ("none" to small)) }
+
+            lutRepository.refresh()
+            val sampled = FloatArray(3)
+            for (info in lutRepository.luts.value) {
+                val cube = runCatching { lutRepository.load(info) }.getOrNull() ?: continue
+                val out = IntArray(srcPixels.size)
+                for (i in srcPixels.indices) {
+                    val c = srcPixels[i]
+                    cube.sample(
+                        ((c shr 16) and 0xFF) / 255f,
+                        ((c shr 8) and 0xFF) / 255f,
+                        (c and 0xFF) / 255f,
+                        sampled,
+                    )
+                    out[i] = (0xFF shl 24) or
+                        (((sampled[0].coerceIn(0f, 1f) * 255f).toInt()) shl 16) or
+                        (((sampled[1].coerceIn(0f, 1f) * 255f).toInt()) shl 8) or
+                        ((sampled[2].coerceIn(0f, 1f) * 255f).toInt())
+                }
+                val thumb = Bitmap.createBitmap(out, targetW, targetH, Bitmap.Config.ARGB_8888)
+                _uiState.update { it.copy(filterThumbs = it.filterThumbs + (info.id to thumb)) }
+            }
         }
     }
 
@@ -167,6 +260,8 @@ class PhotoEditViewModel(
                     adjustments = state.adjustments,
                     cropRect = state.cropRect.takeIf { it != fullRect },
                     rotationDeg = state.rotationDeg,
+                    // プレビューと同じ強度ベイク済みストリップを共有する
+                    filterStrip = state.filterStrip,
                 )
             }.onSuccess { uri ->
                 _uiState.update { it.copy(saving = false, savedUri = uri) }
@@ -187,6 +282,7 @@ class PhotoEditViewModel(
                 PhotoEditViewModel(
                     context = app,
                     mediaRepository = app.container.mediaRepository,
+                    lutRepository = app.container.lutRepository,
                     mediaId = mediaId,
                 )
             }

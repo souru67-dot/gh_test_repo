@@ -1,6 +1,9 @@
 package com.souru.lumina.data.edit
 
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.RuntimeShader
+import android.graphics.Shader
 
 /**
  * 写真の簡易調整パラメータ。すべて -1..1(露出のみEVで-3..3、シャープは0..1)。
@@ -34,6 +37,9 @@ object AdjustmentShader {
     // language=AGSL
     val SOURCE = """
         uniform shader content;
+        uniform shader lut;
+        uniform float uLutEnabled;
+        uniform float uLutSize;
         uniform float uExposure;
         uniform float uContrast;
         uniform float uHighlights;
@@ -48,6 +54,25 @@ object AdjustmentShader {
 
         float lumaOf(float3 c) {
             return dot(c, float3(0.2126, 0.7152, 0.0722));
+        }
+
+        // 3D LUT(2Dストリップ: x = r + size*bスライス, y = g)のサンプリング。
+        // スライス内のr/gはテクスチャのバイリニア補間、bは2スライスのmixで
+        // トライリニア相当にする
+        float3 applyLut(float3 c) {
+            if (uLutEnabled < 0.5) {
+                return c;
+            }
+            float maxIndex = uLutSize - 1.0;
+            float b = clamp(c.b, 0.0, 1.0) * maxIndex;
+            float b0 = floor(b);
+            float b1 = min(b0 + 1.0, maxIndex);
+            float f = b - b0;
+            float x = clamp(c.r, 0.0, 1.0) * maxIndex + 0.5;
+            float y = clamp(c.g, 0.0, 1.0) * maxIndex + 0.5;
+            float3 s0 = float3(lut.eval(float2(x + b0 * uLutSize, y)).rgb);
+            float3 s1 = float3(lut.eval(float2(x + b1 * uLutSize, y)).rgb);
+            return mix(s0, s1, f);
         }
 
         float3 adjust(float3 c) {
@@ -88,6 +113,8 @@ object AdjustmentShader {
                 blur = blur * 0.25;
                 c = c + (c - blur) * (uSharpen * 1.2);
             }
+            // 適用順は「フィルタ(LUT)→調整」に固定
+            c = applyLut(c);
             c = adjust(c);
             // 画像ピクセル外(透明: a=0)にはシャドウ持ち上げ等の効果を
             // かけない。premultiplied alpha前提のためRGBにαを乗算し、
@@ -97,6 +124,53 @@ object AdjustmentShader {
     """.trimIndent()
 
     fun create(): RuntimeShader = RuntimeShader(SOURCE)
+}
+
+/**
+ * 3D LUT(cube[R][G][B]、ARGB)をAGSL用の2Dストリップに変換する。
+ * レイアウト: 幅 size*size / 高さ size、x = r + size*b、y = g。
+ */
+object LutStrip {
+
+    fun fromCube(cube: Array<Array<IntArray>>): Bitmap {
+        val size = cube.size
+        val width = size * size
+        val pixels = IntArray(width * size)
+        for (bi in 0 until size) {
+            for (gi in 0 until size) {
+                for (ri in 0 until size) {
+                    pixels[gi * width + bi * size + ri] = cube[ri][gi][bi]
+                }
+            }
+        }
+        return Bitmap.createBitmap(pixels, width, size, Bitmap.Config.ARGB_8888)
+    }
+
+    /** uniform shaderは未バインドだと描画できないため、無効時に使うダミー。 */
+    val dummy: Bitmap by lazy {
+        Bitmap.createBitmap(intArrayOf(0xFF000000.toInt()), 1, 1, Bitmap.Config.ARGB_8888)
+    }
+}
+
+/** フィルタLUT(ストリップ)をシェーダーへ適用する。nullでフィルタ無効。 */
+fun RuntimeShader.applyFilterLut(strip: Bitmap?) {
+    if (strip != null) {
+        setInputShader(
+            "lut",
+            BitmapShader(strip, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+                filterMode = BitmapShader.FILTER_MODE_LINEAR
+            },
+        )
+        setFloatUniform("uLutEnabled", 1f)
+        setFloatUniform("uLutSize", strip.height.toFloat())
+    } else {
+        setInputShader(
+            "lut",
+            BitmapShader(LutStrip.dummy, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP),
+        )
+        setFloatUniform("uLutEnabled", 0f)
+        setFloatUniform("uLutSize", 2f)
+    }
 }
 
 fun RuntimeShader.applyAdjustments(a: Adjustments) {

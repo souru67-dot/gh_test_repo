@@ -45,6 +45,7 @@ object PhotoExporter {
     /**
      * @param cropRect 回転適用後の画像に対する正規化(0..1)クロップ領域。nullで全体
      * @param rotationDeg 0/90/180/270
+     * @param filterStrip フィルタLUT(強度ベイク済みストリップ)。nullでフィルタなし
      */
     suspend fun export(
         context: Context,
@@ -52,14 +53,16 @@ object PhotoExporter {
         adjustments: Adjustments,
         cropRect: RectF?,
         rotationDeg: Int,
+        filterStrip: Bitmap? = null,
     ): Uri = withContext(Dispatchers.Default) {
         val decoded = decodeFull(context, source)
         val transformed = rotateAndCrop(decoded, rotationDeg, cropRect)
         if (transformed != decoded) decoded.recycle()
-        val rendered = if (adjustments.isIdentity) {
+        val rendered = if (adjustments.isIdentity && filterStrip == null) {
             transformed
         } else {
-            renderWithShader(transformed, adjustments).also { transformed.recycle() }
+            renderWithShader(transformed, adjustments, filterStrip)
+                .also { transformed.recycle() }
         }
         val uri = saveToMediaStore(context, rendered, source)
         rendered.recycle()
@@ -104,11 +107,17 @@ object PhotoExporter {
      * プレビューと同じ RuntimeShader をオフスクリーンのGPU描画
      * (HardwareRenderer + ImageReader)で適用する。
      */
-    private fun renderWithShader(src: Bitmap, adjustments: Adjustments): Bitmap {
+    private fun renderWithShader(
+        src: Bitmap,
+        adjustments: Adjustments,
+        filterStrip: Bitmap?,
+    ): Bitmap {
         val width = src.width
         val height = src.height
         val shader = AdjustmentShader.create().apply {
             applyAdjustments(adjustments)
+            // プレビューと同じ順序(フィルタ→調整)がシェーダー内で保証される
+            applyFilterLut(filterStrip)
             setInputShader(
                 AdjustmentShader.CONTENT_SHADER_NAME,
                 BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP),

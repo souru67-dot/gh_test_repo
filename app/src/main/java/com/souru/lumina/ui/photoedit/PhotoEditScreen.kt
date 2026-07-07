@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -60,6 +62,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.edit.AdjustmentShader
 import com.souru.lumina.data.edit.applyAdjustments
+import com.souru.lumina.data.edit.applyFilterLut
 
 private enum class AdjustParam(
     val label: String,
@@ -170,9 +173,9 @@ fun PhotoEditScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             // トリミングモードではCropOverlayのドラッグと競合する
-                            // ため、長押しA/Bは調整モードのみで受け付ける
+                            // ため、長押しA/Bはフィルタ/調整モードで受け付ける
                             .pointerInput(state.mode) {
-                                if (state.mode == EditMode.ADJUST) {
+                                if (state.mode != EditMode.CROP) {
                                     detectTapGestures(
                                         onLongPress = { showOriginal = true },
                                         onPress = {
@@ -187,6 +190,8 @@ fun PhotoEditScreen(
                                     renderEffect = null
                                 } else {
                                     shader.applyAdjustments(state.adjustments)
+                                    // 適用順はシェーダー内で「フィルタ→調整」に固定
+                                    shader.applyFilterLut(state.filterStrip)
                                     renderEffect = RenderEffect
                                         .createRuntimeShaderEffect(
                                             shader,
@@ -239,6 +244,12 @@ fun PhotoEditScreen(
         // 下部パネル
         Column(Modifier.fillMaxWidth()) {
             when (state.mode) {
+                EditMode.FILTER -> FilterPanel(
+                    state = state,
+                    onSelectFilter = viewModel::selectFilter,
+                    onStrengthChange = viewModel::setFilterStrength,
+                )
+
                 EditMode.ADJUST -> AdjustPanel(
                     adjustments = state.adjustments,
                     selectedParamName = selectedParam,
@@ -262,6 +273,8 @@ fun PhotoEditScreen(
                     .fillMaxWidth()
                     .padding(vertical = 10.dp),
             ) {
+                ModeTab("フィルタ", state.mode == EditMode.FILTER) { viewModel.setMode(EditMode.FILTER) }
+                Spacer(Modifier.width(12.dp))
                 ModeTab("調整", state.mode == EditMode.ADJUST) { viewModel.setMode(EditMode.ADJUST) }
                 Spacer(Modifier.width(12.dp))
                 ModeTab("トリミング", state.mode == EditMode.CROP) { viewModel.setMode(EditMode.CROP) }
@@ -282,6 +295,124 @@ fun PhotoEditScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * フィルタ(LUT)選択パネル。この写真の縮小版に各フィルタを当てた
+ * 実プレビューサムネイルを横スクロールで表示する。
+ */
+@Composable
+private fun FilterPanel(
+    state: PhotoEditUiState,
+    onSelectFilter: (com.souru.lumina.data.luts.LutInfo?) -> Unit,
+    onStrengthChange: (Float) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            item(key = "none") {
+                FilterThumb(
+                    label = "なし",
+                    thumbnail = state.filterThumbs["none"],
+                    selected = state.selectedFilter == null,
+                    onClick = { onSelectFilter(null) },
+                )
+            }
+            items(state.luts, key = { it.id }) { lut ->
+                FilterThumb(
+                    label = lut.name,
+                    thumbnail = state.filterThumbs[lut.id],
+                    selected = state.selectedFilter?.id == lut.id,
+                    onClick = { onSelectFilter(lut) },
+                )
+            }
+        }
+        if (state.selectedFilter != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "強度",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                )
+                Slider(
+                    value = state.filterStrength,
+                    onValueChange = onStrengthChange,
+                    valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color.White,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.25f),
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp),
+                )
+                Text(
+                    text = "${(state.filterStrength * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterThumb(
+    label: String,
+    thumbnail: android.graphics.Bitmap?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 72.dp, height = 54.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .then(
+                    if (selected) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = Color.White,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
+            thumbnail?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = label,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
