@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
@@ -95,6 +96,7 @@ fun ViewerScreen(
     onSendToLightroom: ((GalleryEntry) -> Unit)? = null,
     onDelete: ((GalleryEntry) -> Unit)? = null,
     onToggleFavorite: ((GalleryEntry) -> Unit)? = null,
+    onOpenPostPreview: ((MediaItem) -> Unit)? = null,
 ) {
     if (entries.isEmpty()) {
         onClose()
@@ -266,6 +268,7 @@ fun ViewerScreen(
                 onEditVideo = onEditVideo,
                 onSendToLightroom = onSendToLightroom?.let { send -> { send(currentEntry) } },
                 onDelete = onDelete?.let { delete -> { delete(currentEntry) } },
+                onOpenPostPreview = onOpenPostPreview,
             )
         }
     }
@@ -286,6 +289,7 @@ private fun ViewerBottomBar(
     onEditVideo: ((MediaItem) -> Unit)?,
     onSendToLightroom: (() -> Unit)?,
     onDelete: (() -> Unit)?,
+    onOpenPostPreview: ((MediaItem) -> Unit)?,
 ) {
     val context = LocalContext.current
     Box(
@@ -333,6 +337,13 @@ private fun ViewerBottomBar(
                         onClick = { onEditPhoto(displayItem) },
                     )
                 }
+            }
+            if (onOpenPostPreview != null) {
+                ViewerAction(
+                    icon = Icons.Outlined.PhoneAndroid,
+                    label = "投稿",
+                    onClick = { onOpenPostPreview(displayItem) },
+                )
             }
             if (onDelete != null) {
                 ViewerAction(

@@ -92,6 +92,7 @@ private enum class AdjustParam(
 fun PhotoEditScreen(
     mediaId: Long,
     onClose: () -> Unit,
+    onOpenPostPreview: (() -> Unit)? = null,
     viewModel: PhotoEditViewModel = viewModel(
         key = "photoEdit-$mediaId",
         factory = PhotoEditViewModel.factory(mediaId),
@@ -140,6 +141,11 @@ fun PhotoEditScreen(
                 color = Color.White,
             )
             Spacer(Modifier.weight(1f))
+            if (onOpenPostPreview != null) {
+                TextButton(onClick = onOpenPostPreview) {
+                    Text("投稿プレビュー", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             TextButton(onClick = viewModel::save, enabled = !state.saving && state.previewBitmap != null) {
                 Text("保存", color = if (state.saving) Color.Gray else MaterialTheme.colorScheme.primary)
             }

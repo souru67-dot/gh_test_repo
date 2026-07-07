@@ -46,6 +46,7 @@ import com.souru.lumina.ui.library.LibraryScreen
 import com.souru.lumina.ui.library.LutManagerScreen
 import com.souru.lumina.ui.onboarding.OnboardingScreen
 import com.souru.lumina.ui.photoedit.PhotoEditScreen
+import com.souru.lumina.ui.postpreview.PostPreviewScreen
 import com.souru.lumina.ui.trash.TrashScreen
 import com.souru.lumina.ui.videoedit.VideoEditScreen
 import com.souru.lumina.util.hasMediaAccess
@@ -61,10 +62,12 @@ object Routes {
     const val Album = "album/{bucketId}?name={name}"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
+    const val PostPreview = "postPreview/{mediaId}"
 
     fun album(bucketId: Long, name: String) = "album/$bucketId?name=${Uri.encode(name)}"
     fun photoEdit(mediaId: Long) = "photoEdit/$mediaId"
     fun videoEdit(mediaId: Long) = "videoEdit/$mediaId"
+    fun postPreview(mediaId: Long) = "postPreview/$mediaId"
 }
 
 /** ボトムナビの高さぶんのコンテンツ余白(NavigationBarの標準高さ)。 */
@@ -131,6 +134,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                     onOpenVideoEditor = { mediaId ->
                         navController.navigate(Routes.videoEdit(mediaId)) { launchSingleTop = true }
                     },
+                    onOpenPostPreview = { mediaId ->
+                        navController.navigate(Routes.postPreview(mediaId)) { launchSingleTop = true }
+                    },
                     onBottomBarVisibleChange = { photosTabBarVisible = it },
                     bottomContentPadding = BottomNavContentPadding,
                 )
@@ -163,6 +169,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                     },
                     onOpenVideoEditor = { mediaId ->
                         navController.navigate(Routes.videoEdit(mediaId)) { launchSingleTop = true }
+                    },
+                    onOpenPostPreview = { mediaId ->
+                        navController.navigate(Routes.postPreview(mediaId)) { launchSingleTop = true }
                     },
                     bucketId = bucketId,
                     albumName = name.ifEmpty { "アルバム" },
@@ -200,6 +209,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 PhotoEditScreen(
                     mediaId = mediaId,
                     onClose = { navController.popBackStack() },
+                    onOpenPostPreview = {
+                        navController.navigate(Routes.postPreview(mediaId)) { launchSingleTop = true }
+                    },
                 )
             }
             composable(
@@ -208,6 +220,19 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             ) { entry ->
                 val mediaId = entry.arguments?.getLong("mediaId") ?: return@composable
                 VideoEditScreen(
+                    mediaId = mediaId,
+                    onClose = { navController.popBackStack() },
+                    onOpenPostPreview = {
+                        navController.navigate(Routes.postPreview(mediaId)) { launchSingleTop = true }
+                    },
+                )
+            }
+            composable(
+                route = Routes.PostPreview,
+                arguments = listOf(navArgument("mediaId") { type = NavType.LongType }),
+            ) { entry ->
+                val mediaId = entry.arguments?.getLong("mediaId") ?: return@composable
+                PostPreviewScreen(
                     mediaId = mediaId,
                     onClose = { navController.popBackStack() },
                 )

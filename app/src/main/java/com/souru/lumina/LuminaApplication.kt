@@ -21,6 +21,7 @@ class AppContainer(context: Context) {
     val lutRepository = LutRepository(context)
     val albumsSource: com.souru.lumina.data.albums.AlbumsSource =
         com.souru.lumina.data.albums.BucketAlbumsSource(mediaRepository)
+    val videoEditSession = com.souru.lumina.data.video.VideoEditSession()
 }
 
 class LuminaApplication : Application(), SingletonImageLoader.Factory {

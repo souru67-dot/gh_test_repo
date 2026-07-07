@@ -108,6 +108,7 @@ private enum class VideoAdjustParam(
 fun VideoEditScreen(
     mediaId: Long,
     onClose: () -> Unit,
+    onOpenPostPreview: (() -> Unit)? = null,
     viewModel: VideoEditViewModel = viewModel(
         key = "videoEdit-$mediaId",
         factory = VideoEditViewModel.factory(mediaId),
@@ -182,6 +183,7 @@ fun VideoEditScreen(
                 effects = effects,
                 viewModel = viewModel,
                 onClose = { requestClose() },
+                onOpenPostPreview = onOpenPostPreview,
             )
         }
     }
@@ -195,6 +197,7 @@ private fun VideoEditContent(
     effects: List<androidx.media3.common.Effect>,
     viewModel: VideoEditViewModel,
     onClose: () -> Unit,
+    onOpenPostPreview: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var showExportDialog by rememberSaveable { mutableStateOf(false) }
@@ -278,6 +281,11 @@ private fun VideoEditContent(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onOpenPostPreview != null) {
+                TextButton(onClick = onOpenPostPreview) {
+                    Text("投稿PV", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             TextButton(onClick = {
                 notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }) {

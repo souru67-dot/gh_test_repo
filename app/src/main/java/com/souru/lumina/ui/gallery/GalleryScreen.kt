@@ -123,6 +123,7 @@ fun sharedMediaKey(id: Long): String = "media-$id"
 fun GalleryRoute(
     onOpenPhotoEditor: (Long) -> Unit,
     onOpenVideoEditor: (Long) -> Unit,
+    onOpenPostPreview: (Long) -> Unit = {},
     onBottomBarVisibleChange: (Boolean) -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
     // アルバム(フォルダ)スコープ表示。nullなら全メディア
@@ -312,6 +313,7 @@ fun GalleryRoute(
                         onToggleFavorite = { entry ->
                             requestFavorite(listOf(entry), !isEntryFavorite(entry))
                         },
+                        onOpenPostPreview = { item -> onOpenPostPreview(item.id) },
                     )
                 }
             }

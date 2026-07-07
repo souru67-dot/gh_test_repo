@@ -85,7 +85,16 @@ class VideoEditViewModel(
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val videoEffects: StateFlow<List<Effect>> = colorParams
         .debounce(100)
-        .mapLatest { params -> buildEffects(params) }
+        .mapLatest { params ->
+            buildEffects(params).also { effects ->
+                // 投稿プレビュー(リール)が同じ見た目で再生できるよう共有する。
+                // A/B比較中の空リストは書き込まない
+                if (!params.comparing) {
+                    (context.applicationContext as LuminaApplication)
+                        .container.videoEditSession.update(mediaId, effects)
+                }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
