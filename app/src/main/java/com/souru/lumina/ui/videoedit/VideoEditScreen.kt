@@ -18,7 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -100,6 +103,7 @@ private enum class VideoAdjustParam(
  * LUTはリアルタイムにプレビューへ適用され、強度スライダーとA/B比較を備える。
  */
 @UnstableApi
+@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VideoEditScreen(
     mediaId: Long,
@@ -154,11 +158,14 @@ fun VideoEditScreen(
     }
 
     val item = state.item
+    // ビューアのバー非表示状態を引き継がないよう必ず表示に戻す。
+    // パディングも可視状態に依存しないInsetsで安定させる
+    com.souru.lumina.util.EnsureSystemBarsVisible()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .systemBarsPadding(),
+            .padding(WindowInsets.systemBarsIgnoringVisibility.asPaddingValues()),
     ) {
         if (state.loading || item == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

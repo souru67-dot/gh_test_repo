@@ -42,19 +42,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 外部アプリからのVIEW Intentを受けるビューア(デフォルトの画像/動画アプリ候補になる) -->
-        <activity
-            android:name=".ExternalViewerActivity"
-            android:exported="true"
-            android:theme="@style/Theme.Lumina">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="video/*" />
-            </intent-filter>
-        </activity>
-
         <!-- WorkManagerのフォアグラウンドサービスに動画書き出し用のタイプを付与 -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

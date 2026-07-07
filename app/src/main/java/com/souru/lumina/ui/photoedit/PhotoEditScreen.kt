@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -81,6 +84,7 @@ private enum class AdjustParam(
  * JPEG向けの簡易編集画面。調整はGPU(AGSL RuntimeShader)で即時プレビュー、
  * 保存は常に別名コピー(非破壊)。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PhotoEditScreen(
     mediaId: Long,
@@ -107,11 +111,14 @@ fun PhotoEditScreen(
         state.error?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
     }
 
+    // ビューアのバー非表示状態を引き継がないよう必ず表示に戻す。
+    // パディングも可視状態に依存しないInsetsで安定させる
+    com.souru.lumina.util.EnsureSystemBarsVisible()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .systemBarsPadding(),
+            .padding(WindowInsets.systemBarsIgnoringVisibility.asPaddingValues()),
     ) {
         // トップバー
         Row(
