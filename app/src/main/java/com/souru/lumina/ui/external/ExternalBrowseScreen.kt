@@ -3,6 +3,7 @@ package com.souru.lumina.ui.external
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -79,6 +80,7 @@ import com.souru.lumina.util.formatDuration
  * 端末ライブラリと同じグリッド(サムネイル・RAW+JPEGペア統合・ビューア・
  * EXIF)で表示する。お気に入り・ゴミ箱はMediaStore前提のため非対応。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ExternalBrowseScreen(
     onClose: () -> Unit,
