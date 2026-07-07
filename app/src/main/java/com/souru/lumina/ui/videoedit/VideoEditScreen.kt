@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -74,6 +75,8 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.model.MediaItem
+import com.souru.lumina.data.video.SdrPreviewRenderersFactory
+import com.souru.lumina.data.video.VideoExportPreset
 import com.souru.lumina.util.formatDuration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -198,8 +201,19 @@ private fun VideoEditContent(
     // レンダラー初回有効化時にしか生成されない(hasSetVideoSinkでラッチ)ため、
     // stop→setVideoEffects→prepareの後差しは端末により反映されない。
     // 唯一契約が保証される「新規プレイヤーに prepare 前に適用」を毎回行う。
-    val player = remember(item.id, effects) {
-        ExoPlayer.Builder(context).build().apply {
+    //
+    // HDR(HLG/PQ)素材は、書き出し(トーンマップ→LUT)と同じ順序になるよう
+    // デコーダーにSDRトーンマップを要求するRenderersFactoryを使う。
+    // これでプレビュー・書き出し・長押しA/Bのすべてが
+    // 「SDR(BT.709)に正規化してからLUT適用」の同一パイプラインを通る
+    val isHdrSource = state.colorInfo?.isHdr == true
+    val player = remember(item.id, effects, isHdrSource) {
+        val builder = if (isHdrSource) {
+            ExoPlayer.Builder(context, SdrPreviewRenderersFactory(context))
+        } else {
+            ExoPlayer.Builder(context)
+        }
+        builder.build().apply {
             setVideoEffects(effects) // 必ず prepare より前
             setMediaItem(Media3Item.fromUri(item.uri))
             repeatMode = Player.REPEAT_MODE_ALL
@@ -243,6 +257,19 @@ private fun VideoEditContent(
                 Icon(Icons.Default.Close, contentDescription = "閉じる", tint = Color.White)
             }
             Text("動画編集", style = MaterialTheme.typography.titleSmall, color = Color.White)
+            state.colorInfo?.let { info ->
+                // 入力の色特性バッジ(例: HLG 10bit)。推定を含む場合は「?」付き
+                Text(
+                    text = info.badgeLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = {
                 notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -373,9 +400,9 @@ private fun VideoEditContent(
     if (showExportDialog) {
         ExportDialog(
             onDismiss = { showExportDialog = false },
-            onExport = { height, bitrate ->
+            onExport = { preset, useHevc ->
                 showExportDialog = false
-                viewModel.export(height, bitrate)
+                viewModel.export(preset, useHevc)
             },
         )
     }
@@ -715,58 +742,59 @@ private fun VideoAdjustPanel(
 @Composable
 private fun ExportDialog(
     onDismiss: () -> Unit,
-    onExport: (targetHeight: Int, bitrate: Int) -> Unit,
+    onExport: (preset: VideoExportPreset, useHevc: Boolean) -> Unit,
 ) {
-    val resolutions = listOf("元の解像度" to 0, "4K (2160p)" to 2160, "1080p" to 1080, "720p" to 720)
-    val bitrates = listOf(
-        "自動" to 0,
-        "高 (50 Mbps)" to 50_000_000,
-        "標準 (25 Mbps)" to 25_000_000,
-        "低 (12 Mbps)" to 12_000_000,
-    )
-    var resolution by remember { mutableStateOf(resolutions.first()) }
-    var bitrate by remember { mutableStateOf(bitrates.first()) }
+    var preset by remember { mutableStateOf(VideoExportPreset.SNS_STANDARD) }
+    var useHevc by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("書き出し設定") },
         text = {
             Column {
-                Text("解像度", style = MaterialTheme.typography.labelMedium)
-                resolutions.forEach { option ->
+                VideoExportPreset.entries.forEach { option ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { resolution = option },
+                            .clickable { preset = option },
                     ) {
                         RadioButton(
-                            selected = resolution == option,
-                            onClick = { resolution = option },
+                            selected = preset == option,
+                            onClick = { preset = option },
                         )
-                        Text(option.first, style = MaterialTheme.typography.bodyMedium)
+                        Column {
+                            Text(option.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = option.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(4.dp))
                 }
-                Spacer(Modifier.height(8.dp))
-                Text("ビットレート", style = MaterialTheme.typography.labelMedium)
-                bitrates.forEach { option ->
+                if (preset == VideoExportPreset.HIGH_QUALITY_ARCHIVE) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { bitrate = option },
+                            .clickable { useHevc = !useHevc },
                     ) {
-                        RadioButton(
-                            selected = bitrate == option,
-                            onClick = { bitrate = option },
-                        )
-                        Text(option.first, style = MaterialTheme.typography.bodyMedium)
+                        Checkbox(checked = useHevc, onCheckedChange = { useHevc = it })
+                        Text("HEVC (H.265) で書き出す", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "どちらもSDR / BT.709に正規化して書き出します(HDR素材は自動でトーンマップ)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onExport(resolution.second, bitrate.second) }) {
+            TextButton(onClick = { onExport(preset, useHevc) }) {
                 Text("書き出す")
             }
         },

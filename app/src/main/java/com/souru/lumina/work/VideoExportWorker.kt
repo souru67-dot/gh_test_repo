@@ -9,13 +9,18 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.ColorInfo
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Presentation
 import androidx.media3.effect.SingleColorLut
+import androidx.media3.transformer.Codec
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
@@ -32,6 +37,7 @@ import androidx.work.workDataOf
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.luts.CubeLutParser
 import com.souru.lumina.data.luts.LutBaker
+import com.souru.lumina.data.video.VideoColorAnalyzer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -46,6 +52,22 @@ import java.util.Locale
  * LUT・強度・簡易調整は LutBaker で単一の3D LUTに焼き込むため、
  * プレビューと書き出しの色が一致する。元ファイルは非破壊で、
  * Movies/Lumina に別名保存する。
+ *
+ * ## 色管理(SNS向け正規化)
+ * SNSのアップロード再エンコードはSDR・BT.709前提のため、出力は常に
+ * 「SDR 8bit / BT.709 / リミテッドレンジ / 色メタデータ明示」に正規化する:
+ *
+ * 1. 入力の色特性を検出([VideoColorAnalyzer])
+ * 2. HDR(HLG/PQ)入力はTransformerのHDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL
+ *    でSDRへトーンマップ(非対応端末はUSING_MEDIACODECへフォールバック)。
+ *    LUTを含むGLエフェクトはトーンマップ後のSDR(BT.709)信号に適用される
+ * 3. SDR入力はトーンマップをスキップして同一パイプラインを通す
+ * 4. エンコーダーには色メタデータ(BT.709/SDR/limited)を明示指定する
+ * 5. 書き出し後に出力ファイルの色タグ(MP4のcolrボックス由来)を自己検証する
+ *
+ * HDRのままの書き出し(HLGパススルー)は将来の拡張点。実装する場合は
+ * hdrModeにHDR_MODE_KEEP_HDRを渡しエンコーダー色指定を入力に合わせるが、
+ * SNS側のトーンマップが不定なため既定にはしないこと。
  */
 @UnstableApi
 class VideoExportWorker(
@@ -70,27 +92,66 @@ class VideoExportWorker(
         val trimEndMs = inputData.getLong(KEY_TRIM_END_MS, 0L)
         val targetHeight = inputData.getInt(KEY_TARGET_HEIGHT, 0)
         val bitrate = inputData.getInt(KEY_BITRATE, 0)
+        val useHevc = inputData.getBoolean(KEY_USE_HEVC, false)
 
         setForeground(createForegroundInfo(0))
+
+        val uri = Uri.parse(uriString)
+        // 入力の色特性を検出し、HDRならSDRへのトーンマップを有効化する
+        val colorInfo = withContext(Dispatchers.IO) {
+            VideoColorAnalyzer.detect(applicationContext, uri)
+        }
+        val isHdr = colorInfo?.isHdr == true
 
         val outputFile = File(
             applicationContext.cacheDir,
             "export_${System.currentTimeMillis()}.mp4",
         )
+
+        suspend fun runTransform(hdrMode: Int) = transform(
+            uri = uri,
+            outputFile = outputFile,
+            lutPath = lutPath,
+            strength = strength,
+            adjustments = adjustments,
+            trimStartMs = trimStartMs,
+            trimEndMs = trimEndMs,
+            targetHeight = targetHeight,
+            bitrate = bitrate,
+            useHevc = useHevc,
+            hdrMode = hdrMode,
+        )
+
         return try {
-            transform(
-                uri = Uri.parse(uriString),
-                outputFile = outputFile,
-                lutPath = lutPath,
-                strength = strength,
-                adjustments = adjustments,
-                trimStartMs = trimStartMs,
-                trimEndMs = trimEndMs,
-                targetHeight = targetHeight,
-                bitrate = bitrate,
-            )
+            if (isHdr) {
+                try {
+                    runTransform(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
+                } catch (e: ExportException) {
+                    // OpenGLトーンマップ非対応端末はMediaCodecトーンマップへ
+                    android.util.Log.w(
+                        "VideoExport",
+                        "OpenGLトーンマップに失敗。MediaCodecへフォールバック",
+                        e,
+                    )
+                    outputFile.delete()
+                    runTransform(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_MEDIACODEC)
+                }
+            } else {
+                // SDR入力: トーンマップ不要。残りは同一パイプライン
+                runTransform(Composition.HDR_MODE_KEEP_HDR)
+            }
+
+            // 自己検証: 出力の色タグがBT.709/SDR/limitedになっているか
+            val check = VideoColorAnalyzer.verifySdrBt709(outputFile.absolutePath)
+
             val savedUri = saveToMediaStore(outputFile, baseName)
-            notifyFinished("書き出しが完了しました", "Movies/Lumina に保存しました")
+            val note = if (check.ok) {
+                "Movies/Lumina に保存しました"
+            } else {
+                "Movies/Lumina に保存しました(注意: 色タグの検証で相違を検出。" +
+                    "SNS投稿で色が変わる可能性があります)"
+            }
+            notifyFinished("書き出しが完了しました", note)
             Result.success(workDataOf(KEY_RESULT_URI to savedUri.toString()))
         } catch (c: kotlinx.coroutines.CancellationException) {
             // キャンセルはWorkManagerに委ねる(pending行はsaveToMediaStore内で削除済み)
@@ -113,6 +174,8 @@ class VideoExportWorker(
         trimEndMs: Long,
         targetHeight: Int,
         bitrate: Int,
+        useHevc: Boolean,
+        hdrMode: Int,
     ) {
         // LUTベイクはCPU負荷が小さいので先に実行しておく
         val lut = lutPath?.let { CubeLutParser.parse(File(it).readText()) }
@@ -141,18 +204,19 @@ class VideoExportWorker(
         // Transformer は Looper スレッドで動かす必要がある
         withContext(Dispatchers.Main) {
             val done = CompletableDeferred<Unit>()
-            val transformer = Transformer.Builder(applicationContext)
+            val baseEncoderFactory = DefaultEncoderFactory.Builder(applicationContext)
                 .apply {
                     if (bitrate > 0) {
-                        setEncoderFactory(
-                            DefaultEncoderFactory.Builder(applicationContext)
-                                .setRequestedVideoEncoderSettings(
-                                    VideoEncoderSettings.Builder().setBitrate(bitrate).build(),
-                                )
-                                .build(),
+                        setRequestedVideoEncoderSettings(
+                            VideoEncoderSettings.Builder().setBitrate(bitrate).build(),
                         )
                     }
                 }
+                .build()
+            val transformer = Transformer.Builder(applicationContext)
+                .setVideoMimeType(if (useHevc) MimeTypes.VIDEO_H265 else MimeTypes.VIDEO_H264)
+                // 色メタデータを未指定にしない(SDR/BT.709/limitedを明示)
+                .setEncoderFactory(SdrBt709EncoderFactory(baseEncoderFactory))
                 .addListener(object : Transformer.Listener {
                     override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                         done.complete(Unit)
@@ -168,7 +232,10 @@ class VideoExportWorker(
                 })
                 .build()
 
-            transformer.start(editedItem, outputFile.absolutePath)
+            val composition = Composition.Builder(EditedMediaItemSequence(listOf(editedItem)))
+                .setHdrMode(hdrMode)
+                .build()
+            transformer.start(composition, outputFile.absolutePath)
 
             val holder = ProgressHolder()
             try {
@@ -273,6 +340,7 @@ class VideoExportWorker(
         const val KEY_TRIM_END_MS = "trimEndMs"
         const val KEY_TARGET_HEIGHT = "targetHeight"
         const val KEY_BITRATE = "bitrate"
+        const val KEY_USE_HEVC = "useHevc"
         const val KEY_RESULT_URI = "resultUri"
         const val KEY_ERROR = "error"
 
@@ -286,6 +354,7 @@ class VideoExportWorker(
             trimEndMs: Long,
             targetHeight: Int,
             bitrate: Int,
+            useHevc: Boolean = false,
         ): OneTimeWorkRequest {
             val data = Data.Builder()
                 .putString(KEY_URI, uri.toString())
@@ -301,6 +370,7 @@ class VideoExportWorker(
                 .putLong(KEY_TRIM_END_MS, trimEndMs)
                 .putInt(KEY_TARGET_HEIGHT, targetHeight)
                 .putInt(KEY_BITRATE, bitrate)
+                .putBoolean(KEY_USE_HEVC, useHevc)
                 .apply { lutPath?.let { putString(KEY_LUT_PATH, it) } }
                 .build()
             return OneTimeWorkRequestBuilder<VideoExportWorker>()
@@ -308,4 +378,27 @@ class VideoExportWorker(
                 .build()
         }
     }
+}
+
+/**
+ * エンコード入力Formatの色情報をSDR/BT.709/limitedへ強制するラッパー。
+ * これによりMediaFormatの KEY_COLOR_STANDARD=BT709 / KEY_COLOR_TRANSFER=SDR /
+ * KEY_COLOR_RANGE=LIMITED が明示され、MP4のcolrボックスにもBT.709が入る。
+ */
+@UnstableApi
+private class SdrBt709EncoderFactory(
+    private val delegate: Codec.EncoderFactory,
+) : Codec.EncoderFactory {
+
+    override fun createForAudioEncoding(format: Format): Codec =
+        delegate.createForAudioEncoding(format)
+
+    override fun createForVideoEncoding(format: Format): Codec =
+        delegate.createForVideoEncoding(
+            format.buildUpon().setColorInfo(ColorInfo.SDR_BT709_LIMITED).build(),
+        )
+
+    override fun audioNeedsEncoding(): Boolean = delegate.audioNeedsEncoding()
+
+    override fun videoNeedsEncoding(): Boolean = delegate.videoNeedsEncoding()
 }

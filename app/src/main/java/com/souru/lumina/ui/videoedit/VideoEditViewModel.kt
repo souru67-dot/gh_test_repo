@@ -18,6 +18,9 @@ import com.souru.lumina.data.luts.LutBaker
 import com.souru.lumina.data.luts.LutInfo
 import com.souru.lumina.data.luts.LutRepository
 import com.souru.lumina.data.model.MediaItem
+import com.souru.lumina.data.video.VideoColorAnalyzer
+import com.souru.lumina.data.video.VideoColorInfo
+import com.souru.lumina.data.video.VideoExportPreset
 import com.souru.lumina.work.VideoExportWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,6 +40,8 @@ import kotlinx.coroutines.withContext
 data class VideoEditUiState(
     val loading: Boolean = true,
     val item: MediaItem? = null,
+    /** 入力動画の色特性(HLG/PQ/SDRバッジ表示とトーンマップ判定に使用)。 */
+    val colorInfo: VideoColorInfo? = null,
     val luts: List<LutInfo> = emptyList(),
     val selectedLut: LutInfo? = null,
     val strength: Float = 1f,
@@ -93,6 +98,14 @@ class VideoEditViewModel(
                     trimEndMs = item?.durationMs ?: 0L,
                     message = if (item == null) "ファイルが見つかりません" else null,
                 )
+            }
+            if (item != null) {
+                // 入力の色特性(HLG 10bit等)を検出してバッジ表示とプレビューの
+                // トーンマップ判定に使う
+                val info = withContext(Dispatchers.IO) {
+                    VideoColorAnalyzer.detect(context, item.uri)
+                }
+                _uiState.update { it.copy(colorInfo = info) }
             }
         }
         viewModelScope.launch {
@@ -178,11 +191,29 @@ class VideoEditViewModel(
     fun consumeMessage() = _uiState.update { it.copy(message = null) }
 
     /** WorkManagerで書き出しをバックグラウンド実行する。 */
-    fun export(targetHeight: Int, bitrate: Int) {
+    fun export(preset: VideoExportPreset, useHevc: Boolean) {
         val state = _uiState.value
         val item = state.item ?: return
         val trimStart = state.trimStartMs.takeIf { it > 0 } ?: 0L
         val trimEnd = state.trimEndMs.takeIf { it in 1 until item.durationMs } ?: 0L
+
+        val sourceHeight = item.height
+        val targetHeight: Int
+        val bitrate: Int
+        when (preset) {
+            VideoExportPreset.SNS_STANDARD -> {
+                // 解像度は元のまま(上限4K)、SNS想定の適正ビットレート
+                targetHeight = if (sourceHeight > 2160) 2160 else 0
+                val effective = if (targetHeight > 0) targetHeight else sourceHeight
+                bitrate = if (effective >= 2160) 35_000_000 else 16_000_000
+            }
+
+            VideoExportPreset.HIGH_QUALITY_ARCHIVE -> {
+                targetHeight = 0
+                bitrate = if (sourceHeight >= 2160) 60_000_000 else 30_000_000
+            }
+        }
+
         val request = VideoExportWorker.buildRequest(
             uri = item.uri,
             baseName = item.baseName,
@@ -193,6 +224,8 @@ class VideoEditViewModel(
             trimEndMs = trimEnd,
             targetHeight = targetHeight,
             bitrate = bitrate,
+            // HEVCは高品質アーカイブのみ選択可(SNS標準は互換性優先でH.264固定)
+            useHevc = useHevc && preset == VideoExportPreset.HIGH_QUALITY_ARCHIVE,
         )
         WorkManager.getInstance(context).enqueue(request)
         _uiState.update {
