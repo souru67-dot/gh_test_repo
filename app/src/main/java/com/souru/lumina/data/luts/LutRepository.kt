@@ -115,7 +115,26 @@ class LutRepository(private val context: Context) {
     }
 
     suspend fun load(info: LutInfo): CubeLut = withContext(Dispatchers.IO) {
-        cache.getOrPut(info.id) { CubeLutParser.parse(info.file.readText()) }
+        cache[info.id]?.let { return@withContext it }
+        val parsed = try {
+            CubeLutParser.parse(info.file.readText())
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            // 標準プリセットのファイルが破損・途中書き込みだった場合は
+            // 生成し直して1度だけ再試行する(「読み込めませんでした」の自己修復)
+            val preset = info.preset
+            if (preset != null) {
+                runCatching {
+                    info.file.writeText(LutPresets.generateCubeText(preset))
+                }
+                CubeLutParser.parse(info.file.readText())
+            } else {
+                throw t
+            }
+        }
+        cache[info.id] = parsed
+        parsed
     }
 
     suspend fun loadByPath(path: String): CubeLut = withContext(Dispatchers.IO) {
