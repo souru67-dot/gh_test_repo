@@ -51,11 +51,23 @@ class MediaMimeTest {
     @Test
     fun `mp4以外の動画MIME(quicktime等)でも動画として通常どおり扱える`() {
         // 動画判定はMEDIA_TYPEカラムで行うため、MIMEが何であれ
-        // フィルタは種別軸のみで判定される
-        val filter = GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.RAW)
-        assertTrue(filter.matches(isVideo = true, isRaw = false, isJpeg = false))
+        // 種別軸で扱える。すべて×すべて・動画のみでは表示、
+        // 写真のみ・写真形式指定(JPEG/RAW)では非表示
+        assertTrue(
+            GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.ALL)
+                .matches(isVideo = true, isRaw = false, isJpeg = false),
+        )
+        assertTrue(
+            GalleryFilter(MediaTypeFilter.VIDEO, RawFilterMode.ALL)
+                .matches(isVideo = true, isRaw = false, isJpeg = false),
+        )
         assertFalse(
             GalleryFilter(MediaTypeFilter.PHOTO, RawFilterMode.ALL)
+                .matches(isVideo = true, isRaw = false, isJpeg = false),
+        )
+        // 写真形式にRAW/JPEGを指定した時点で動画は除外される(バグ修正)
+        assertFalse(
+            GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.RAW)
                 .matches(isVideo = true, isRaw = false, isJpeg = false),
         )
     }

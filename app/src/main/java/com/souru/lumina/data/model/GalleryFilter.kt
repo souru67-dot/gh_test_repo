@@ -34,7 +34,10 @@ data class GalleryFilter(
      * 写真: 種別が「動画のみ」でないこと + 形式フィルタに一致すること
      */
     fun matches(isVideo: Boolean, isRaw: Boolean, isJpeg: Boolean): Boolean = when {
-        isVideo -> type != MediaTypeFilter.PHOTO && format == RawFilterMode.ALL
+        // 動画のみ選択時は常に動画を表示。すべて選択時は写真形式が
+        // 「すべて」のときだけ(JPEG/RAW指定は写真限定なので動画は除外)
+        isVideo -> type == MediaTypeFilter.VIDEO ||
+            (type == MediaTypeFilter.ALL && format == RawFilterMode.ALL)
         else -> type != MediaTypeFilter.VIDEO && when (format) {
             RawFilterMode.ALL -> true
             RawFilterMode.JPEG -> isJpeg
