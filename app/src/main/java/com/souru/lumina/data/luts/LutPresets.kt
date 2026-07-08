@@ -48,31 +48,34 @@ object FadedFilmParams {
     /** 黒点。わずかに浮かせて暗部にグレー/色みを残す(小さいほど黒が締まる)。 */
     const val BLACK_POINT = 0.008f
     /** 白のロールオフ開始点と、その上での圧縮スロープ(白飛び手前を柔らかく)。 */
-    const val TONE_HI = 0.80f
-    const val HIGHLIGHT_ROLLOFF = 0.35f
-    /** コントラスト(>1で高め・黒を締める)とその中心ピボット(低めで暗部を締める)。 */
-    const val CONTRAST = 1.22f
-    const val CONTRAST_PIVOT = 0.44f
-    /** マットな質感を出すためのベース彩度(1未満で全体を低彩度に)。 */
-    const val BASE_SATURATION = 0.74f
+    const val TONE_HI = 0.83f
+    const val HIGHLIGHT_ROLLOFF = 0.38f
+    /** コントラスト(>1で高め・黒を締める)とその中心ピボット(低めで暗部を締める)。
+     *  効きを他プリセット(Teal & Orange / Cinematic Warm)並みに引き上げるため
+     *  コントラストを強めに設定している。 */
+    const val CONTRAST = 1.40f
+    const val CONTRAST_PIVOT = 0.42f
+    /** ベース彩度。マット感は保ちつつ、動画でも色が乗って見える程度に上げる。 */
+    const val BASE_SATURATION = 0.85f
 
     /** 暗部に残す色み(わずかな緑・青)。純黒に沈む手前にグレー〜寒色を残す。 */
-    const val SHADOW_TINT_GREEN = 0.008f
-    const val SHADOW_TINT_BLUE = 0.016f
+    const val SHADOW_TINT_GREEN = 0.018f
+    const val SHADOW_TINT_BLUE = 0.034f
 
     /** ハイライトの暖色量(赤>緑で黄〜オレンジ寄り)。 */
-    const val HIGHLIGHT_WARM_RED = 0.034f
-    const val HIGHLIGHT_WARM_GREEN = 0.018f
+    const val HIGHLIGHT_WARM_RED = 0.050f
+    const val HIGHLIGHT_WARM_GREEN = 0.026f
 
     /** 緑域をさらにくすませる量(1に近いほど彩度を残す)。 */
-    const val GREEN_DESAT = 0.55f
+    const val GREEN_DESAT = 0.50f
     /** 緑域をイエロー寄りへシフトする量(赤を上げ青を下げる)。 */
     const val GREEN_HUE_SHIFT = 0.050f
     /** 緑域判定の鋭さ。 */
     const val GREEN_WEIGHT_GAIN = 3.0f
 
-    /** 暖色(オレンジ・肌)域で戻す彩度(1超で維持〜強調)。被写体を沈ませない。 */
-    const val WARM_SAT_KEEP = 1.26f
+    /** 暖色(オレンジ・肌)域で戻す彩度(1超で維持〜強調)。被写体を沈ませない。
+     *  高コントラストで既に暖色が持ち上がるため、白飛び防止にやや控えめ。 */
+    const val WARM_SAT_KEEP = 1.22f
     /** 暖色域判定の鋭さ。 */
     const val WARM_WEIGHT_GAIN = 3.0f
 }
@@ -92,8 +95,11 @@ object LutPresets {
      *     一度検証し直すよう版を更新
      * v6: Faded Filmを作例により忠実化。黒点を締め(0.015→0.008)コントラストを
      *     上げて(1.16→1.22)、動画でも効果がはっきり分かるメリハリを付けた
+     * v7: 動画で効きが地味との指摘を受け、効き量を他プリセット並みに増強。
+     *     コントラスト1.22→1.40、ベース彩度0.74→0.85、暗部/ハイライトの
+     *     色分離とハイライト暖色を強化(平均逸脱量をCinematic Warm相当へ)
      */
-    const val VERSION = 6
+    const val VERSION = 7
 
     /**
      * 1色を変換する。入出力とも0..1。
