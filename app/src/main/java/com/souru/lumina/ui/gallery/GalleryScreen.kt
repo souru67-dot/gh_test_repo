@@ -111,7 +111,7 @@ import com.souru.lumina.util.mediaAccessState
 import com.souru.lumina.util.mediaPermissions
 import com.souru.lumina.util.openAppSettings
 import com.souru.lumina.util.resolveDeletionItems
-import com.souru.lumina.util.shareMediaItems
+import com.souru.lumina.ui.share.ShareOptionsDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,6 +149,8 @@ fun GalleryRoute(
     var showLightroomDialog by remember { mutableStateOf(false) }
     // RAW+JPEGペアを含む削除の対象選択待ち
     var pendingDeleteEntries by remember { mutableStateOf<List<GalleryEntry>?>(null) }
+    // 共有オプションダイアログの対象(位置情報除去の選択に使う)
+    var shareTargets by remember { mutableStateOf<List<MediaItem>?>(null) }
 
     // 権限状態は一覧側で管理し、復帰(設定変更・追加選択)のたびに再評価する
     var access by remember { mutableStateOf(mediaAccessState(context)) }
@@ -326,12 +328,17 @@ fun GalleryRoute(
                 selectedEntries.all { isEntryFavorite(it) }
             SelectionActionBar(
                 allFavorite = allFavorite,
-                onShare = { shareMediaItems(context, selectedEntries.map { it.item }) },
+                onShare = { shareTargets = selectedEntries.map { it.item } },
                 onToggleFavorite = { requestFavorite(selectedEntries, !allFavorite) },
                 onSendToLightroom = { sendToLightroom(selectedEntries) },
                 onDelete = { onDeleteRequest(selectedEntries) },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
+        }
+
+        // 共有シート導線(位置情報除去オプションを統合)
+        shareTargets?.let { items ->
+            ShareOptionsDialog(items = items, onDismiss = { shareTargets = null })
         }
 
         SnackbarHost(

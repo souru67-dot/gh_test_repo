@@ -73,8 +73,8 @@ import com.souru.lumina.data.MediaInfoLoader
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
+import com.souru.lumina.ui.share.ShareOptionsDialog
 import com.souru.lumina.util.formatViewerTitle
-import com.souru.lumina.util.shareMediaItem
 
 /**
  * 没入型ビューア。横スワイプで前後のメディアへ、タップでUI表示切替、
@@ -109,6 +109,7 @@ fun ViewerScreen(
     var chromeVisible by remember { mutableStateOf(true) }
     var dismissProgress by remember { mutableFloatStateOf(0f) }
     var showInfo by remember { mutableStateOf(false) }
+    var shareTarget by remember { mutableStateOf<MediaItem?>(null) }
 
     // 情報シート用メタデータのプリフェッチ(表示前にIOで読んでおく)
     val context = LocalContext.current
@@ -243,6 +244,7 @@ fun ViewerScreen(
                 },
                 onToggleFavorite = onToggleFavorite?.let { toggle -> { toggle(current) } },
                 onShowInfo = { showInfo = true },
+                onOpenPostPreview = onOpenPostPreview?.let { open -> { open(displayItemOf(current)) } },
             )
         }
 
@@ -264,12 +266,17 @@ fun ViewerScreen(
             ViewerBottomBar(
                 entry = currentEntry,
                 displayItem = displayItemOf(currentEntry),
+                onShare = { shareTarget = it },
                 onEditPhoto = onEditPhoto,
                 onEditVideo = onEditVideo,
                 onSendToLightroom = onSendToLightroom?.let { send -> { send(currentEntry) } },
                 onDelete = onDelete?.let { delete -> { delete(currentEntry) } },
-                onOpenPostPreview = onOpenPostPreview,
             )
+        }
+
+        // 共有シート導線(位置情報除去オプションを統合)
+        shareTarget?.let { item ->
+            ShareOptionsDialog(items = listOf(item), onDismiss = { shareTarget = null })
         }
     }
 }
@@ -285,13 +292,12 @@ fun ViewerScreen(
 private fun ViewerBottomBar(
     entry: GalleryEntry,
     displayItem: MediaItem,
+    onShare: (MediaItem) -> Unit,
     onEditPhoto: ((MediaItem) -> Unit)?,
     onEditVideo: ((MediaItem) -> Unit)?,
     onSendToLightroom: (() -> Unit)?,
     onDelete: (() -> Unit)?,
-    onOpenPostPreview: ((MediaItem) -> Unit)?,
 ) {
-    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -312,7 +318,7 @@ private fun ViewerBottomBar(
             ViewerAction(
                 icon = Icons.Outlined.Share,
                 label = "共有",
-                onClick = { shareMediaItem(context, displayItem) },
+                onClick = { onShare(displayItem) },
             )
             if (displayItem.kind == MediaKind.VIDEO) {
                 if (onEditVideo != null) {
@@ -337,13 +343,6 @@ private fun ViewerBottomBar(
                         onClick = { onEditPhoto(displayItem) },
                     )
                 }
-            }
-            if (onOpenPostPreview != null) {
-                ViewerAction(
-                    icon = Icons.Outlined.PhoneAndroid,
-                    label = "投稿",
-                    onClick = { onOpenPostPreview(displayItem) },
-                )
             }
             if (onDelete != null) {
                 ViewerAction(
@@ -395,6 +394,7 @@ private fun ViewerTopBar(
     onSwapRawJpeg: () -> Unit,
     onToggleFavorite: (() -> Unit)? = null,
     onShowInfo: () -> Unit = {},
+    onOpenPostPreview: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -440,6 +440,16 @@ private fun ViewerTopBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onOpenPostPreview != null) {
+                // 投稿プレビュー導線は編集画面と同じく上部トップバーに置く
+                IconButton(onClick = onOpenPostPreview) {
+                    Icon(
+                        Icons.Outlined.PhoneAndroid,
+                        contentDescription = "投稿プレビュー",
+                        tint = Color.White,
+                    )
+                }
+            }
             if (onToggleFavorite != null) {
                 IconButton(onClick = onToggleFavorite) {
                     Icon(

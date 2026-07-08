@@ -127,27 +127,10 @@ object Lightroom {
     }
 }
 
-/** OSの共有シートで共有する。 */
-fun shareMediaItem(context: Context, item: MediaItem) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = item.mimeType
-        putExtra(Intent.EXTRA_STREAM, item.uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, null))
-}
+/** OSの共有シートで共有する(MIME正規化は [Sharing] に一元化)。 */
+fun shareMediaItem(context: Context, item: MediaItem) =
+    Sharing.share(context, item, stripLocation = false)
 
 /** 複数アイテムをOSの共有シートで共有する。 */
-fun shareMediaItems(context: Context, items: List<MediaItem>) {
-    if (items.isEmpty()) return
-    if (items.size == 1) {
-        shareMediaItem(context, items.first())
-        return
-    }
-    val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-        type = "*/*"
-        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(items.map { it.uri }))
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, null))
-}
+fun shareMediaItems(context: Context, items: List<MediaItem>) =
+    Sharing.shareMultiple(context, items, stripLocation = false)

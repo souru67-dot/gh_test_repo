@@ -646,11 +646,13 @@ private fun ReelOverlay(captionLines: Int) {
                 .align(Alignment.BottomEnd)
                 .padding(end = 10.dp, bottom = 84.dp),
         ) {
-            ReelAction(Icons.Outlined.FavoriteBorder, "119.7万")
-            ReelAction(Icons.Outlined.ChatBubbleOutline, "3,632")
-            ReelAction(Icons.Outlined.Repeat, "8.5万")
-            ReelAction(Icons.AutoMirrored.Outlined.Send, "23.8万")
-            ReelAction(Icons.Outlined.BookmarkBorder, "11.4万")
+            // エンゲージメント数値は桁数によるレイアウト影響を最小化するため
+            // すべて「1」に固定(見え方確認が目的)
+            ReelAction(Icons.Outlined.FavoriteBorder, "1")
+            ReelAction(Icons.Outlined.ChatBubbleOutline, "1")
+            ReelAction(Icons.Outlined.Repeat, "1")
+            ReelAction(Icons.AutoMirrored.Outlined.Send, "1")
+            ReelAction(Icons.Outlined.BookmarkBorder, "1")
             Icon(
                 Icons.Default.MoreVert,
                 null,

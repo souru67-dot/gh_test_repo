@@ -16,28 +16,48 @@ class GalleryFilterTest {
     private fun GalleryFilter.raw() = matches(isVideo = false, isRaw = true, isJpeg = false)
     private fun GalleryFilter.other() = matches(isVideo = false, isRaw = false, isJpeg = false)
 
+    /**
+     * メディア種別 × 写真形式(3×3)の期待表。値は (video, jpeg, raw, other) の可視。
+     * 動画は「種別が写真以外」かつ「形式がすべて」のときだけ表示される。
+     * (VIDEO×JPEG / VIDEO×RAW は normalized() で VIDEO×ALL に正規化される)
+     *
+     *              | ALL              | JPEG      | RAW
+     * ------------ | ---------------- | --------- | ---------
+     * ALL(すべて)  | v, j, r, o       | j のみ    | r のみ
+     * PHOTO(写真)  | j, r, o(動画無)  | j のみ    | r のみ
+     * VIDEO(動画)  | v のみ           | v のみ*   | v のみ*   (*正規化でALL扱い)
+     */
     @Test
-    fun `すべて×すべて は全部表示`() {
-        val f = GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.ALL)
-        assertTrue(f.video()); assertTrue(f.jpeg()); assertTrue(f.raw()); assertTrue(f.other())
+    fun `メディア種別×写真形式の3×3組み合わせが期待どおり`() {
+        data class Expect(val video: Boolean, val jpeg: Boolean, val raw: Boolean, val other: Boolean)
+
+        val table = mapOf(
+            (MediaTypeFilter.ALL to RawFilterMode.ALL) to Expect(true, true, true, true),
+            (MediaTypeFilter.ALL to RawFilterMode.JPEG) to Expect(false, true, false, false),
+            (MediaTypeFilter.ALL to RawFilterMode.RAW) to Expect(false, false, true, false),
+            (MediaTypeFilter.PHOTO to RawFilterMode.ALL) to Expect(false, true, true, true),
+            (MediaTypeFilter.PHOTO to RawFilterMode.JPEG) to Expect(false, true, false, false),
+            (MediaTypeFilter.PHOTO to RawFilterMode.RAW) to Expect(false, false, true, false),
+            (MediaTypeFilter.VIDEO to RawFilterMode.ALL) to Expect(true, false, false, false),
+            (MediaTypeFilter.VIDEO to RawFilterMode.JPEG) to Expect(true, false, false, false),
+            (MediaTypeFilter.VIDEO to RawFilterMode.RAW) to Expect(true, false, false, false),
+        )
+
+        for ((combo, expect) in table) {
+            // 実際の利用と同じく正規化してから判定する
+            val f = GalleryFilter(combo.first, combo.second).normalized()
+            val label = "${combo.first}×${combo.second}"
+            assertEquals("$label video", expect.video, f.video())
+            assertEquals("$label jpeg", expect.jpeg, f.jpeg())
+            assertEquals("$label raw", expect.raw, f.raw())
+            assertEquals("$label other", expect.other, f.other())
+        }
     }
 
     @Test
-    fun `形式フィルタは動画に作用しない(すべて×JPEG・すべて×RAWでも動画は表示)`() {
-        assertTrue(GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.JPEG).video())
-        assertTrue(GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.RAW).video())
-    }
-
-    @Test
-    fun `すべて×JPEG はJPEGのみ+動画`() {
-        val f = GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.JPEG)
-        assertTrue(f.jpeg()); assertFalse(f.raw()); assertFalse(f.other()); assertTrue(f.video())
-    }
-
-    @Test
-    fun `すべて×RAW はRAWのみ+動画`() {
-        val f = GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.RAW)
-        assertFalse(f.jpeg()); assertTrue(f.raw()); assertFalse(f.other()); assertTrue(f.video())
+    fun `すべて×JPEG・すべて×RAWでは動画が除外される(バグ回帰)`() {
+        assertFalse(GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.JPEG).video())
+        assertFalse(GalleryFilter(MediaTypeFilter.ALL, RawFilterMode.RAW).video())
     }
 
     @Test
@@ -78,7 +98,13 @@ class GalleryFilterTest {
     fun `不正な保存値はデフォルトにフォールバックする`() {
         val f = GalleryFilter.fromStored("BROKEN_VALUE", "!!!corrupt!!!")
         assertEquals(MediaTypeFilter.ALL, f.type)
-        assertEquals(RawFilterMode.JPEG, f.format)
+        assertEquals(RawFilterMode.ALL, f.format)
+    }
+
+    @Test
+    fun `既定フィルタはPNGスクショと動画を表示する(すべて×すべて)`() {
+        val f = GalleryFilter.DEFAULT
+        assertTrue(f.video()); assertTrue(f.jpeg()); assertTrue(f.raw()); assertTrue(f.other())
     }
 
     @Test
