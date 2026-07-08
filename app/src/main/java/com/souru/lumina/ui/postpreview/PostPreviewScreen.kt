@@ -1,7 +1,10 @@
 package com.souru.lumina.ui.postpreview
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,16 +50,24 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -241,43 +252,28 @@ private fun GridPreview(
             }
         }
 
-        // 3列グリッド(先頭セルが今回の投稿。セル比率は現行Instagramの3:4近似)
-        val cells: List<MediaItem?> = listOf<MediaItem?>(item) +
-            (0 until 8).map { neighbors.getOrNull(it) }
-        Column {
-            cells.chunked(3).forEach { rowItems ->
-                Row(Modifier.fillMaxWidth()) {
-                    rowItems.forEach { cell ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(1.dp)
-                                .aspectRatio(3f / 4f)
-                                .background(Color.White.copy(alpha = 0.08f)),
-                        ) {
-                            if (cell != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(
-                                            MediaThumb(
-                                                uri = cell.uri,
-                                                id = cell.id,
-                                                rotationDeg = if (cell.isRaw) cell.orientationDeg else 0,
-                                            ),
-                                        )
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = null,
-                                    // グリッドサムネイルは中央クロップで切り抜かれる
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+        Text(
+            text = "対象の写真(枠付き)を長押ししてドラッグすると位置を入れ替えられます",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+
+        // 3列グリッド(対象=今回の投稿。セル比率は現行Instagramの3:4近似)。
+        // 対象と周囲のセルをドラッグ&ドロップで入れ替えられる
+        val slots = remember(item.id, neighbors) {
+            (listOf<MediaItem?>(item) + (0 until 8).map { neighbors.getOrNull(it) })
+                .toMutableStateList()
         }
+        ReorderableProfileGrid(
+            slots = slots,
+            targetId = item.id,
+            onSwap = { from, to ->
+                val tmp = slots[from]
+                slots[from] = slots[to]
+                slots[to] = tmp
+            },
+        )
 
         TextButton(
             onClick = { showPicker = true },
@@ -342,6 +338,124 @@ private fun GridPreview(
                                     .padding(6.dp)
                                     .size(20.dp),
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3列のプロフィールグリッド。対象(投稿)セルおよび周囲のセルを
+ * 長押し→ドラッグで入れ替えられる。ドラッグ中は軽い拡大+触覚フィードバック。
+ */
+@Composable
+private fun ReorderableProfileGrid(
+    slots: List<MediaItem?>,
+    targetId: Long,
+    onSwap: (from: Int, to: Int) -> Unit,
+) {
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
+    val columns = 3
+    val rows = (slots.size + columns - 1) / columns
+
+    var draggingIndex by remember { mutableStateOf(-1) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val cellW = maxWidth / columns
+        val cellH = cellW * 4f / 3f // アスペクト3:4
+        val cellWpx = with(density) { cellW.toPx() }
+        val cellHpx = with(density) { cellH.toPx() }
+
+        Column {
+            for (row in 0 until rows) {
+                Row(Modifier.fillMaxWidth()) {
+                    for (col in 0 until columns) {
+                        val index = row * columns + col
+                        if (index >= slots.size) {
+                            Spacer(Modifier.weight(1f))
+                            continue
+                        }
+                        val cell = slots[index]
+                        val isDragging = index == draggingIndex
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(1.dp)
+                                .aspectRatio(3f / 4f)
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .graphicsLayer {
+                                    if (isDragging) {
+                                        translationX = dragOffset.x
+                                        translationY = dragOffset.y
+                                        scaleX = 1.06f
+                                        scaleY = 1.06f
+                                        shadowElevation = 12f
+                                    }
+                                }
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .pointerInput(index, slots.size) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            draggingIndex = index
+                                            dragOffset = Offset.Zero
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount
+                                        },
+                                        onDragEnd = {
+                                            val startCol = index % columns
+                                            val startRow = index / columns
+                                            val centerX = (startCol + 0.5f) * cellWpx + dragOffset.x
+                                            val centerY = (startRow + 0.5f) * cellHpx + dragOffset.y
+                                            val tCol = (centerX / cellWpx).toInt().coerceIn(0, columns - 1)
+                                            val tRow = (centerY / cellHpx).toInt().coerceIn(0, rows - 1)
+                                            val target = (tRow * columns + tCol).coerceIn(0, slots.size - 1)
+                                            if (target != index) {
+                                                onSwap(index, target)
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                            draggingIndex = -1
+                                            dragOffset = Offset.Zero
+                                        },
+                                        onDragCancel = {
+                                            draggingIndex = -1
+                                            dragOffset = Offset.Zero
+                                        },
+                                    )
+                                },
+                        ) {
+                            if (cell != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(
+                                            MediaThumb(
+                                                uri = cell.uri,
+                                                id = cell.id,
+                                                rotationDeg = if (cell.isRaw) cell.orientationDeg else 0,
+                                            ),
+                                        )
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
+                                    // グリッドサムネイルは中央クロップで切り抜かれる
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            // 対象(投稿)セルは枠で強調
+                            if (cell?.id == targetId) {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .border(2.dp, MaterialTheme.colorScheme.primary),
+                                )
+                            }
                         }
                     }
                 }

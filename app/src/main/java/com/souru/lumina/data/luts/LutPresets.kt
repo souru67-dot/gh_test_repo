@@ -33,6 +33,49 @@ enum class LutPreset(
     RETRO_VHS("Retro VHS", "Retro VHS.cube", LutCategory.EMO),
     AIRY_FILM("Airy Film", "Airy Film.cube", LutCategory.EMO),
     GOLDEN_MEMORIES("Golden Memories", "Golden Memories.cube", LutCategory.EMO),
+    FADED_FILM("Faded Film", "Faded Film.cube", LutCategory.EMO),
+}
+
+/**
+ * 作例(くすみ・エモ・ノスタルジックフィルム)の色を再現するための調整量。
+ * 後から「もう少しシャドウを浮かせて」「緑をもっとくすませて」等の指示に
+ * 即応できるよう、各特徴を名前付き定数として分離している。値はすべて
+ * 「強度100%」時の効き量(強度スライダーでこれを線形に薄められる)。
+ */
+object FadedFilmParams {
+    /** トーンの下端/上端。上端を1.0手前に置き白飛びを柔らかくロールオフ。 */
+    const val TONE_LO = 0.015f
+    const val TONE_HI = 0.98f
+    /** 低コントラスト係数(1未満で中間に寄せる)。 */
+    const val CONTRAST = 0.80f
+    /** マットな質感を出すためのベース彩度(1未満で全体を低彩度に)。 */
+    const val BASE_SATURATION = 0.70f
+
+    /** シャドウ(黒)の持ち上げ量。純黒にせずグレーを残す。 */
+    const val SHADOW_LIFT = 0.045f
+    /** 暗部に残す色み(わずかな緑・青)。 */
+    const val SHADOW_TINT_GREEN = 0.010f
+    const val SHADOW_TINT_BLUE = 0.020f
+
+    /** ハイライトの暖色量(赤>緑で黄〜オレンジ寄り)。 */
+    const val HIGHLIGHT_WARM_RED = 0.050f
+    const val HIGHLIGHT_WARM_GREEN = 0.022f
+
+    /** 緑域をさらにくすませる量(1に近いほど彩度を残す)。 */
+    const val GREEN_DESAT = 0.55f
+    /** 緑域をイエロー寄りへシフトする量(赤を上げ青を下げる)。 */
+    const val GREEN_HUE_SHIFT = 0.045f
+    /** 緑域判定の鋭さ。 */
+    const val GREEN_WEIGHT_GAIN = 3.0f
+
+    /** 暖色(オレンジ・肌)域で戻す彩度(1超で維持〜強調)。 */
+    const val WARM_SAT_KEEP = 1.22f
+    /** 暖色域判定の鋭さ。 */
+    const val WARM_WEIGHT_GAIN = 3.0f
+
+    /** 全体のフェード(黒側の底上げと軽い圧縮)。 */
+    const val FADE_LIFT = 0.028f
+    const val FADE_GAIN = 0.94f
 }
 
 object LutPresets {
@@ -43,9 +86,10 @@ object LutPresets {
      * プリセット生成アルゴリズムの版。変えると既存生成物が再生成される。
      * v2: 「強度100%で仕上がった濃度」を基準にコントラスト・彩度の
      * 振り幅を全体的に引き上げ(従来は約70%相当の薄さだった)。
-     * エモ・ノスタルジー系6種を追加
+     * エモ・ノスタルジー系6種を追加。
+     * v3: 作例(くすみフィルム)再現の Faded Film を追加
      */
-    const val VERSION = 2
+    const val VERSION = 3
 
     /**
      * 1色を変換する。入出力とも0..1。
@@ -239,6 +283,8 @@ object LutPresets {
                 b = 0.04f + b * 0.96f
             }
 
+            LutPreset.FADED_FILM -> return fadedFilm(r0, g0, b0)
+
             LutPreset.GOLDEN_MEMORIES -> {
                 // 全体を金色に寄せる強い暖色ノスタルジー
                 r = tone(r0, 0.05f, 0.90f)
@@ -286,11 +332,83 @@ object LutPresets {
     private fun fmt(v: Float): String = "%.6f".format(java.util.Locale.US, v)
 
     /**
+     * 作例(オレンジの猫/くすみフィルム)の色を再現する変換。
+     * 低彩度マット・低コントラスト・黒浮き・くすんだ黄緑・暖色ハイライトを、
+     * 緑域と暖色域を色相選択的に扱って作る。調整量は [FadedFilmParams]。
+     *
+     * グレー軸(r=g=b)では緑/暖色の重みが0になり、線形寄りトーン+
+     * シャドウリフト+ハイライト暖色のみが効くため単調性が保たれる(テスト済)。
+     */
+    private fun fadedFilm(r0: Float, g0: Float, b0: Float): FloatArray {
+        val p = FadedFilmParams
+        // 1) 低コントラストの線形寄りトーン(端の傾きを確保)+上端ソフトロールオフ
+        var r = softTone(r0, p.TONE_LO, p.TONE_HI)
+        var g = softTone(g0, p.TONE_LO, p.TONE_HI)
+        var b = softTone(b0, p.TONE_LO, p.TONE_HI)
+        // 中間コントラストを弱める(<1)
+        r = (r - 0.5f) * p.CONTRAST + 0.5f
+        g = (g - 0.5f) * p.CONTRAST + 0.5f
+        b = (b - 0.5f) * p.CONTRAST + 0.5f
+
+        // 2) 全体をマットな低彩度へ
+        var l = luma(r, g, b)
+        r = sat(r, l, p.BASE_SATURATION)
+        g = sat(g, l, p.BASE_SATURATION)
+        b = sat(b, l, p.BASE_SATURATION)
+
+        // 3) 緑域: さらにくすませ、イエロー寄りへシフト(植物の緑を枯れ気味に)
+        val greenW = (((g - max(r, b)) * p.GREEN_WEIGHT_GAIN)).coerceIn(0f, 1f)
+        if (greenW > 0f) {
+            val gl = luma(r, g, b)
+            r = lerp(r, sat(r, gl, p.GREEN_DESAT), greenW)
+            g = lerp(g, sat(g, gl, p.GREEN_DESAT), greenW)
+            b = lerp(b, sat(b, gl, p.GREEN_DESAT), greenW)
+            r += p.GREEN_HUE_SHIFT * greenW
+            b -= p.GREEN_HUE_SHIFT * 0.5f * greenW
+        }
+
+        // 4) 暖色(オレンジ・肌)域: 彩度を戻して被写体を沈ませない
+        val warmW = (((r - b) * p.WARM_WEIGHT_GAIN)).coerceIn(0f, 1f) *
+            smoothstep(-0.02f, 0.06f, r - g)
+        if (warmW > 0f) {
+            val wl = luma(r, g, b)
+            val keep = lerp(1f, p.WARM_SAT_KEEP, warmW)
+            r = sat(r, wl, keep)
+            g = sat(g, wl, keep)
+            b = sat(b, wl, keep)
+        }
+
+        // 5) スプリットトーン: 暗部に緑/青を残し、ハイライトを暖色へ
+        l = luma(r, g, b)
+        val sw = (1f - l) * (1f - l)
+        val hw = l * l
+        r += p.SHADOW_LIFT * sw + p.HIGHLIGHT_WARM_RED * hw
+        g += (p.SHADOW_LIFT + p.SHADOW_TINT_GREEN) * sw + p.HIGHLIGHT_WARM_GREEN * hw
+        b += (p.SHADOW_LIFT + p.SHADOW_TINT_BLUE) * sw
+
+        // 6) フェード(黒の底上げと軽い圧縮)でマット感を仕上げる
+        r = p.FADE_LIFT + r * p.FADE_GAIN
+        g = p.FADE_LIFT + g * p.FADE_GAIN
+        b = p.FADE_LIFT + b * p.FADE_GAIN
+
+        return floatArrayOf(clamp01(r), clamp01(g), clamp01(b))
+    }
+
+    private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    /**
      * Log素材を持ち上げるS字トーン。線形成分を混ぜて端でも傾きが
      * 0.15を下回らないようにする(単調性の保証)。
      */
     private fun tone(x: Float, lo: Float, hi: Float): Float =
         0.15f * x + 0.85f * smoothstep(lo, hi, x)
+
+    /**
+     * Faded Film用の柔らかいトーン。線形成分を厚め(0.35)にして低コントラスト
+     * ・端の傾き確保(単調性)を両立し、上端をhi手前に置いて白飛びをロールオフ。
+     */
+    private fun softTone(x: Float, lo: Float, hi: Float): Float =
+        0.35f * x + 0.65f * smoothstep(lo, hi, x)
 
     private fun sat(c: Float, l: Float, factor: Float): Float = l + (c - l) * factor
 

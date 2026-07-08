@@ -19,7 +19,7 @@ object Sharing {
 
     private const val AUTHORITY_SUFFIX = ".fileprovider"
 
-    /** 共有に使うMIME。無効・非対応値はkindから image/* ・ video/* に落とす。 */
+    /** 共有に使うMIME。無効・非対応値はkindから画像系・動画系のワイルドカードに落とす。 */
     fun shareMime(item: MediaItem): String {
         val m = item.mimeType.lowercase()
         return when {
@@ -32,7 +32,7 @@ object Sharing {
         }
     }
 
-    /** 複数共有のMIME。種別が混在すれば */*、揃っていれば image/* か video/*。 */
+    /** 複数共有のMIME。種別が混在すれば全許可、揃っていれば画像系か動画系のワイルドカード。 */
     private fun shareMimeMultiple(items: List<MediaItem>): String {
         val allImage = items.all { it.kind == MediaKind.IMAGE }
         val allVideo = items.all { it.kind == MediaKind.VIDEO }
