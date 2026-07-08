@@ -1,5 +1,7 @@
 package com.souru.lumina.data.luts
 
+import kotlin.math.max
+
 /** LUTライブラリでのカテゴリ分け。 */
 enum class LutCategory(val label: String) {
     BASIC("ベーシック"),
