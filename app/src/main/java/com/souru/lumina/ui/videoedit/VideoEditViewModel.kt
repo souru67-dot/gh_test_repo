@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -86,14 +86,28 @@ class VideoEditViewModel(
     val videoEffects: StateFlow<List<Effect>> = colorParams
         .debounce(100)
         .mapLatest { params ->
-            buildEffects(params).also { effects ->
-                // 投稿プレビュー(リール)が同じ見た目で再生できるよう共有する。
-                // A/B比較中の空リストは書き込まない
-                if (!params.comparing) {
-                    (context.applicationContext as LuminaApplication)
-                        .container.videoEditSession.update(mediaId, effects)
-                }
+            // どんな失敗もフローを停止させない(停止すると以後どのLUTも反映
+            // されずトーストも出ない状態になる)。失敗時は空=元映像へフォールバック
+            val effects = try {
+                buildEffects(params)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                android.util.Log.w("VideoEdit", "エフェクト構築に失敗", t)
+                _uiState.update { it.copy(message = "エフェクトの適用に失敗しました: ${t.message}") }
+                emptyList()
             }
+            // 投稿プレビュー(リール)が同じ見た目で再生できるよう共有する。
+            // A/B比較中の空リストは書き込まない
+            if (!params.comparing) {
+                (context.applicationContext as LuminaApplication)
+                    .container.videoEditSession.update(mediaId, effects)
+            }
+            effects
+        }
+        .catch { t ->
+            android.util.Log.w("VideoEdit", "videoEffectsフロー例外", t)
+            emit(emptyList())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

@@ -46,12 +46,12 @@ enum class LutPreset(
  */
 object FadedFilmParams {
     /** 黒点。わずかに浮かせて暗部にグレー/色みを残す(小さいほど黒が締まる)。 */
-    const val BLACK_POINT = 0.015f
+    const val BLACK_POINT = 0.008f
     /** 白のロールオフ開始点と、その上での圧縮スロープ(白飛び手前を柔らかく)。 */
     const val TONE_HI = 0.80f
     const val HIGHLIGHT_ROLLOFF = 0.35f
     /** コントラスト(>1で高め・黒を締める)とその中心ピボット(低めで暗部を締める)。 */
-    const val CONTRAST = 1.16f
+    const val CONTRAST = 1.22f
     const val CONTRAST_PIVOT = 0.44f
     /** マットな質感を出すためのベース彩度(1未満で全体を低彩度に)。 */
     const val BASE_SATURATION = 0.74f
@@ -90,8 +90,10 @@ object LutPresets {
      * v4: Faded Filmを作例に忠実化(黒締め・高コントラスト)。
      * v5: 生成物のパース検証+破損時の個別再生成を導入したため、全プリセットを
      *     一度検証し直すよう版を更新
+     * v6: Faded Filmを作例により忠実化。黒点を締め(0.015→0.008)コントラストを
+     *     上げて(1.16→1.22)、動画でも効果がはっきり分かるメリハリを付けた
      */
-    const val VERSION = 5
+    const val VERSION = 6
 
     /**
      * 1色を変換する。入出力とも0..1。
