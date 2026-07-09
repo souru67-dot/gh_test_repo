@@ -114,6 +114,38 @@ class LutPresetsTest {
         }
     }
 
+    /**
+     * Faded Filmは参考画像の計測値(tools/lut_analysis)をターゲットに収束させた
+     * プリセット。ニュートラル軸(グレー入力)の各輝度帯の出力が、計測ターゲットに
+     * 一定許容内で一致すること=「グレードの芯」を数値で担保する回帰テスト。
+     */
+    @Test
+    fun `Faded Filmのニュートラル軸が計測ターゲットに一致`() {
+        // (入力x, 目標RGB) 目標は参考2枚の共通特性(analyze_reference.pyの計測)
+        val targets = listOf(
+            Triple(0.00f, floatArrayOf(0.040f, 0.051f, 0.053f), "黒: 緑シアンに軽く浮く"),
+            Triple(0.20f, floatArrayOf(0.158f, 0.190f, 0.178f), "シャドウ: 緑かぶり"),
+            Triple(0.50f, floatArrayOf(0.498f, 0.512f, 0.476f), "ミッド: ほぼ中立・低彩度"),
+            Triple(0.85f, floatArrayOf(0.888f, 0.872f, 0.820f), "ハイライト: 暖色"),
+            Triple(1.00f, floatArrayOf(0.962f, 0.950f, 0.922f), "白: 軽い抑え+暖色"),
+        )
+        val tol = 0.03f
+        for ((x, tgt, label) in targets) {
+            val out = LutPresets.transform(LutPreset.FADED_FILM, x, x, x)
+            for (ch in 0..2) {
+                assertTrue(
+                    "$label ch=$ch 出力=${out[ch]} 目標=${tgt[ch]} (許容$tol)",
+                    abs(out[ch] - tgt[ch]) <= tol,
+                )
+            }
+        }
+        // 特性の符号: シャドウは緑(G>R)、ハイライトは暖色(B<R)
+        val sh = LutPresets.transform(LutPreset.FADED_FILM, 0.2f, 0.2f, 0.2f)
+        assertTrue("シャドウは緑寄り(G>R)", sh[1] > sh[0])
+        val hi = LutPresets.transform(LutPreset.FADED_FILM, 0.85f, 0.85f, 0.85f)
+        assertTrue("ハイライトは暖色(B<R)", hi[2] < hi[0])
+    }
+
     @Test
     fun `Clean Contrastはグレーを無彩色のまま保つ`() {
         val steps = 33

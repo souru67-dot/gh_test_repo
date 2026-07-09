@@ -45,37 +45,41 @@ enum class LutPreset(
  * 「強度100%」時の効き量(強度スライダーでこれを線形に薄められる)。
  */
 object FadedFilmParams {
-    /** 黒点。わずかに浮かせて暗部にグレー/色みを残す(小さいほど黒が締まる)。 */
-    const val BLACK_POINT = 0.006f
-    /** 白のロールオフ開始点と、その上での圧縮スロープ(白飛び手前を柔らかく)。 */
-    const val TONE_HI = 0.85f
-    const val HIGHLIGHT_ROLLOFF = 0.42f
-    /** コントラスト(>1で高め・黒を締める)とその中心ピボット(低めで暗部を締める)。
-     *  効きを最も強いプリセット(Teal & Orange)級まで引き上げるため
-     *  コントラストを強めに設定している。 */
-    const val CONTRAST = 1.52f
-    const val CONTRAST_PIVOT = 0.41f
-    /** ベース彩度。マット感は保ちつつ、動画でもしっかり色が乗る強さに上げる。 */
-    const val BASE_SATURATION = 0.92f
+    // これらの値は形容詞ベースの手調整ではなく、参考画像2枚の色特性を
+    // 計測(tools/lut_analysis/analyze_reference.py)し、その計測値を
+    // ターゲットに合成チャート上で収束させて得た(generate_and_verify.py)。
+    // ニュートラル軸の各輝度帯の色かぶりを参考実測に数/255内で一致させている。
 
-    /** 暗部に残す色み(わずかな緑・青)。純黒に沈む手前にグレー〜寒色を残す。 */
-    const val SHADOW_TINT_GREEN = 0.024f
-    const val SHADOW_TINT_BLUE = 0.042f
+    /** ブラックポイント。入力0がこの値へ着地する(黒の浮き量)。 */
+    const val BLACK_POINT = 0.0576f
+    /** ホワイトポイント。入力1がこの値へ着地する(白の抑え=ソフトな飛び)。 */
+    const val WHITE_POINT = 0.9243f
+    /** コントラスト(ピボット周り)。先に効かせてから[BLACK_POINT]〜[WHITE_POINT]へ圧縮。 */
+    const val CONTRAST = 1.1477f
+    const val CONTRAST_PIVOT = 0.4931f
 
-    /** ハイライトの暖色量(赤>緑で黄〜オレンジ寄り)。 */
-    const val HIGHLIGHT_WARM_RED = 0.060f
-    const val HIGHLIGHT_WARM_GREEN = 0.030f
+    /** シャドウの色かぶり(加算)。実測=緑〜シアン(Rを引いて緑寄り)。 */
+    const val SHADOW_TINT_R = -0.0355f
+    const val SHADOW_TINT_G = 0.0000f
+    const val SHADOW_TINT_B = 0.0000f
 
-    /** 緑域をさらにくすませる量(1に近いほど彩度を残す)。 */
-    const val GREEN_DESAT = 0.50f
-    /** 緑域をイエロー寄りへシフトする量(赤を上げ青を下げる)。 */
-    const val GREEN_HUE_SHIFT = 0.055f
+    /** ハイライトの色かぶり(加算)。実測=暖色(青が沈み黄〜オレンジ寄り)。 */
+    const val HIGHLIGHT_TINT_R = 0.0500f
+    const val HIGHLIGHT_TINT_G = 0.0300f
+    const val HIGHLIGHT_TINT_B = -0.0234f
+
+    /** マットなベース彩度(1未満で全体を低彩度に)。 */
+    const val BASE_SATURATION = 0.7200f
+
+    /** 緑域の彩度(1で据え置き、<1でさらにくすむ)。 */
+    const val GREEN_DESAT = 1.0000f
+    /** 緑域をイエロー寄りへシフトする量(赤を上げ青を下げる=枯れた黄緑)。 */
+    const val GREEN_HUE_SHIFT = 0.0569f
     /** 緑域判定の鋭さ。 */
     const val GREEN_WEIGHT_GAIN = 3.0f
 
-    /** 暖色(オレンジ・肌)域で戻す彩度(1超で維持〜強調)。被写体を沈ませない。
-     *  高コントラストで既に暖色が持ち上がるため、白飛び防止にやや控えめ。 */
-    const val WARM_SAT_KEEP = 1.18f
+    /** 暖色(オレンジ・肌)域で戻す彩度(1で据え置き、>1で維持〜強調)。 */
+    const val WARM_SAT_KEEP = 1.0000f
     /** 暖色域判定の鋭さ。 */
     const val WARM_WEIGHT_GAIN = 3.0f
 }
@@ -100,8 +104,12 @@ object LutPresets {
      *     色分離とハイライト暖色を強化(平均逸脱量をCinematic Warm相当へ)
      * v8: さらに強くとの要望で最も強いプリセット(Teal & Orange)級へ。
      *     コントラスト1.40→1.52、ベース彩度0.85→0.92、色分離もさらに強化
+     * v9: 形容詞ベースの手調整をやめ、参考画像2枚の色特性を計測→計測値を
+     *     ターゲットに収束させた値へ全面改訂(tools/lut_analysis)。トーンは
+     *     コントラスト→[BP,WP]圧縮の順に変更、スプリットトーンは輝度帯域別の
+     *     加算方式(シャドウ緑/ハイライト暖色)。マットな低彩度の忠実再現
      */
-    const val VERSION = 8
+    const val VERSION = 9
 
     /**
      * 1色を変換する。入出力とも0..1。
@@ -344,29 +352,40 @@ object LutPresets {
     private fun fmt(v: Float): String = "%.6f".format(java.util.Locale.US, v)
 
     /**
-     * 作例(オレンジの猫/くすみフィルム)の色を再現する変換。
-     * 引き締めた黒・高めのコントラスト・マットな低彩度・くすんだ黄緑・
-     * 暖色のソフトなハイライトを、緑域と暖色域を色相選択的に扱って作る。
-     * 調整量は [FadedFilmParams]。
+     * 参考画像(くすみフィルム)の色を計測値ベースで再現する変換。
+     * tools/lut_analysis/generate_and_verify.py の transform() と同一構造で、
+     * 収束させた定数 [FadedFilmParams] をそのまま用いる。合成チャート上で
+     * ニュートラル軸の各輝度帯の色かぶりを参考実測に一致させてある。
      *
-     * グレー軸(r=g=b)では緑/暖色の重みが0になり、黒点+ロールオフ+
-     * コントラスト+暗部/ハイライトの色みのみが効くため単調性が保たれる(テスト済)。
+     * 手順: (1)コントラスト→[BLACK_POINT]〜[WHITE_POINT]へ圧縮(フェード)
+     * (2)輝度帯域別のスプリットトーン加算(シャドウ=緑/ハイライト=暖色)
+     * (3)マットなベース低彩度 (4)緑域を色相選択で黄寄り (5)暖色域の彩度維持。
+     *
+     * グレー軸(r=g=b)では緑/暖色の重みが0になり、トーン+スプリットトーンのみが
+     * 効く。各段の傾きが正になるよう構成され単調性が保たれる(テスト済)。
      */
     private fun fadedFilm(r0: Float, g0: Float, b0: Float): FloatArray {
         val p = FadedFilmParams
-        // 1) トーン: 黒点(締まり)→白ロールオフ(柔らかい飛び)→ピボット周りの
-        //    高コントラスト
+        // 1) トーン: 先にコントラスト → [BLACK_POINT, WHITE_POINT] へ圧縮
         var r = fadedTone(r0)
         var g = fadedTone(g0)
         var b = fadedTone(b0)
 
-        // 2) 全体をマットな低彩度へ
+        // 2) スプリットトーン: 輝度帯域別に色みを加算(シャドウ緑/ハイライト暖色)
         var l = luma(r, g, b)
+        val sw = 1f - smoothstep(0f, 0.5f, l)
+        val hw = smoothstep(0.5f, 1f, l)
+        r += p.SHADOW_TINT_R * sw + p.HIGHLIGHT_TINT_R * hw
+        g += p.SHADOW_TINT_G * sw + p.HIGHLIGHT_TINT_G * hw
+        b += p.SHADOW_TINT_B * sw + p.HIGHLIGHT_TINT_B * hw
+
+        // 3) 全体をマットな低彩度へ
+        l = luma(r, g, b)
         r = sat(r, l, p.BASE_SATURATION)
         g = sat(g, l, p.BASE_SATURATION)
         b = sat(b, l, p.BASE_SATURATION)
 
-        // 3) 緑域: さらにくすませ、イエロー寄りへシフト(植物の緑を枯れ気味に)
+        // 4) 緑域: 彩度を落とし、イエロー寄りへシフト(植物の緑を枯れ気味に)
         val greenW = (((g - max(r, b)) * p.GREEN_WEIGHT_GAIN)).coerceIn(0f, 1f)
         if (greenW > 0f) {
             val gl = luma(r, g, b)
@@ -377,7 +396,7 @@ object LutPresets {
             b -= p.GREEN_HUE_SHIFT * 0.5f * greenW
         }
 
-        // 4) 暖色(オレンジ・肌)域: 彩度を戻して被写体を沈ませない
+        // 5) 暖色(オレンジ・肌)域: 彩度を維持して被写体を沈ませない
         val warmW = (((r - b) * p.WARM_WEIGHT_GAIN)).coerceIn(0f, 1f) *
             smoothstep(-0.02f, 0.06f, r - g)
         if (warmW > 0f) {
@@ -388,26 +407,18 @@ object LutPresets {
             b = sat(b, wl, keep)
         }
 
-        // 5) 暗部に緑/青の色みを残し、ハイライトを暖色へ寄せる
-        l = luma(r, g, b)
-        val sw = (1f - l) * (1f - l)
-        val hw = l * l
-        r += p.HIGHLIGHT_WARM_RED * hw
-        g += p.SHADOW_TINT_GREEN * sw + p.HIGHLIGHT_WARM_GREEN * hw
-        b += p.SHADOW_TINT_BLUE * sw
-
         return floatArrayOf(clamp01(r), clamp01(g), clamp01(b))
     }
 
     /**
-     * Faded Film専用トーン。黒点で締め、[TONE_HI] 以上をロールオフして
-     * 白飛びを柔らかくし、ピボット周りで高コントラスト化する。
+     * Faded Film専用トーン。先にピボット周りのコントラストを効かせ(0..1でクランプ)、
+     * その後 [BLACK_POINT]〜[WHITE_POINT] へ線形圧縮する。この順序なら黒の浮きが
+     * コントラストで潰れず、黒は正確に[BLACK_POINT]へ、白は[WHITE_POINT]へ着地する。
      */
     private fun fadedTone(x: Float): Float {
         val p = FadedFilmParams
-        var y = p.BLACK_POINT + (1f - p.BLACK_POINT) * x
-        if (y > p.TONE_HI) y = p.TONE_HI + (y - p.TONE_HI) * p.HIGHLIGHT_ROLLOFF
-        return (y - p.CONTRAST_PIVOT) * p.CONTRAST + p.CONTRAST_PIVOT
+        val y = ((x - p.CONTRAST_PIVOT) * p.CONTRAST + p.CONTRAST_PIVOT).coerceIn(0f, 1f)
+        return p.BLACK_POINT + (p.WHITE_POINT - p.BLACK_POINT) * y
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
