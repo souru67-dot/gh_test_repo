@@ -207,6 +207,7 @@ private fun VideoEditContent(
     // 課金ゲート: ProのLUTを当てた動画の書き出しと .cube インポートを案内する。
     // SNSセーフ書き出し自体は無料。プレビューは自由(書き出し/取り込み時にのみ案内)。
     val isPro = com.souru.lumina.ui.pro.rememberIsPro()
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     var upsell by remember { mutableStateOf<com.souru.lumina.ui.pro.ProFeature?>(null) }
     val lutNeedsPro = state.selectedLut?.let { com.souru.lumina.ui.pro.isProLut(it) } == true && !isPro
     upsell?.let { feature ->
@@ -339,7 +340,12 @@ private fun VideoEditContent(
                                     currentPlayer.play()
                                 }
                             },
-                            onLongPress = { viewModel.setComparing(true) },
+                            onLongPress = {
+                                haptics.performHapticFeedback(
+                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                                )
+                                viewModel.setComparing(true)
+                            },
                             onPress = {
                                 tryAwaitRelease()
                                 viewModel.setComparing(false)

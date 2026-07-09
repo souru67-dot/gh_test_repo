@@ -104,6 +104,7 @@ fun PhotoEditScreen(
     var selectedParam by rememberSaveable { mutableStateOf(AdjustParam.EXPOSURE.name) }
     val isPro = com.souru.lumina.ui.pro.rememberIsPro()
     var showUpsell by remember { mutableStateOf(false) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     // ProのLUTフィルタ適用時はプレビューは自由。保存(書き出し)時にのみ案内する
     val filterNeedsPro = state.selectedFilter?.let {
@@ -200,7 +201,12 @@ fun PhotoEditScreen(
                             .pointerInput(state.mode) {
                                 if (state.mode != EditMode.CROP) {
                                     detectTapGestures(
-                                        onLongPress = { showOriginal = true },
+                                        onLongPress = {
+                                        haptics.performHapticFeedback(
+                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                                        )
+                                        showOriginal = true
+                                    },
                                         onPress = {
                                             tryAwaitRelease()
                                             showOriginal = false

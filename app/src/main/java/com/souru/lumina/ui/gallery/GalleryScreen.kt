@@ -82,6 +82,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -207,8 +209,10 @@ fun GalleryRoute(
     fun isEntryFavorite(entry: GalleryEntry): Boolean =
         entry.item.isFavorite || entry.counterpart?.isFavorite == true
 
+    val deleteHaptics = LocalHapticFeedback.current
     fun requestTrash(items: List<MediaItem>) {
         if (items.isEmpty()) return
+        deleteHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
         scope.launch {
             // 大量選択でもUIスレッドを塞がないようURIリスト構築はバックグラウンド
             val request = withContext(Dispatchers.Default) {
@@ -422,6 +426,7 @@ private fun GalleryGridScreen(
     onClose: (() -> Unit)? = null,
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
+    val haptics = LocalHapticFeedback.current
     val layoutDirection = LocalLayoutDirection.current
     // ビューアの全画面切替(バーhide/show)の遷移中でも一覧のレイアウトが
     // 動かないよう、バーの表示状態に依存しないInsetsを使う
@@ -459,7 +464,10 @@ private fun GalleryGridScreen(
                     columns = columnsProvider,
                     minColumns = SettingsRepository.MIN_COLUMNS,
                     maxColumns = SettingsRepository.MAX_COLUMNS,
-                    onColumnsChange = viewModel::setColumns,
+                    onColumnsChange = { c ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.setColumns(c)
+                    },
                 ),
         ) {
             items(
@@ -486,7 +494,10 @@ private fun GalleryGridScreen(
                                 onOpenViewer(slot)
                             }
                         },
-                        onLongClick = { viewModel.toggleSelection(slot.entry.id) },
+                        onLongClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.toggleSelection(slot.entry.id)
+                        },
                     )
                 }
             }
