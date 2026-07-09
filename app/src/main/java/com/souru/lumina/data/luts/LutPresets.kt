@@ -84,6 +84,34 @@ object FadedFilmParams {
     const val WARM_WEIGHT_GAIN = 3.0f
 }
 
+/**
+ * Faded Film のランタイム可変パラメータ。既定値は計測収束済みの
+ * [FadedFilmParams]。デバッグのLUTチューニング画面でスライダー調整し、
+ * 確定値をそのまま [FadedFilmParams] の定数へ反映する運用。
+ */
+data class FadedFilmTuning(
+    val blackPoint: Float = FadedFilmParams.BLACK_POINT,
+    val whitePoint: Float = FadedFilmParams.WHITE_POINT,
+    val contrast: Float = FadedFilmParams.CONTRAST,
+    val contrastPivot: Float = FadedFilmParams.CONTRAST_PIVOT,
+    val shadowTintR: Float = FadedFilmParams.SHADOW_TINT_R,
+    val shadowTintG: Float = FadedFilmParams.SHADOW_TINT_G,
+    val shadowTintB: Float = FadedFilmParams.SHADOW_TINT_B,
+    val highlightTintR: Float = FadedFilmParams.HIGHLIGHT_TINT_R,
+    val highlightTintG: Float = FadedFilmParams.HIGHLIGHT_TINT_G,
+    val highlightTintB: Float = FadedFilmParams.HIGHLIGHT_TINT_B,
+    val baseSaturation: Float = FadedFilmParams.BASE_SATURATION,
+    val greenDesat: Float = FadedFilmParams.GREEN_DESAT,
+    val greenHueShift: Float = FadedFilmParams.GREEN_HUE_SHIFT,
+    val warmSatKeep: Float = FadedFilmParams.WARM_SAT_KEEP,
+    val greenWeightGain: Float = FadedFilmParams.GREEN_WEIGHT_GAIN,
+    val warmWeightGain: Float = FadedFilmParams.WARM_WEIGHT_GAIN,
+) {
+    companion object {
+        val DEFAULT = FadedFilmTuning()
+    }
+}
+
 object LutPresets {
 
     const val SIZE = 33
@@ -364,44 +392,51 @@ object LutPresets {
      * グレー軸(r=g=b)では緑/暖色の重みが0になり、トーン+スプリットトーンのみが
      * 効く。各段の傾きが正になるよう構成され単調性が保たれる(テスト済)。
      */
-    private fun fadedFilm(r0: Float, g0: Float, b0: Float): FloatArray {
-        val p = FadedFilmParams
-        // 1) トーン: 先にコントラスト → [BLACK_POINT, WHITE_POINT] へ圧縮
-        var r = fadedTone(r0)
-        var g = fadedTone(g0)
-        var b = fadedTone(b0)
+    private fun fadedFilm(r0: Float, g0: Float, b0: Float): FloatArray =
+        fadedFilm(FadedFilmTuning.DEFAULT, r0, g0, b0)
+
+    /**
+     * ランタイム可変パラメータ版の Faded Film 変換。デバッグの
+     * LUTチューニング画面(スライダー)から任意の [t] で呼べる。
+     * 既定値 [FadedFilmTuning.DEFAULT] は計測収束済みの [FadedFilmParams]。
+     */
+    fun fadedFilm(t: FadedFilmTuning, r0: Float, g0: Float, b0: Float): FloatArray {
+        // 1) トーン: 先にコントラスト → [blackPoint, whitePoint] へ圧縮
+        var r = fadedTone(t, r0)
+        var g = fadedTone(t, g0)
+        var b = fadedTone(t, b0)
 
         // 2) スプリットトーン: 輝度帯域別に色みを加算(シャドウ緑/ハイライト暖色)
         var l = luma(r, g, b)
         val sw = 1f - smoothstep(0f, 0.5f, l)
         val hw = smoothstep(0.5f, 1f, l)
-        r += p.SHADOW_TINT_R * sw + p.HIGHLIGHT_TINT_R * hw
-        g += p.SHADOW_TINT_G * sw + p.HIGHLIGHT_TINT_G * hw
-        b += p.SHADOW_TINT_B * sw + p.HIGHLIGHT_TINT_B * hw
+        r += t.shadowTintR * sw + t.highlightTintR * hw
+        g += t.shadowTintG * sw + t.highlightTintG * hw
+        b += t.shadowTintB * sw + t.highlightTintB * hw
 
         // 3) 全体をマットな低彩度へ
         l = luma(r, g, b)
-        r = sat(r, l, p.BASE_SATURATION)
-        g = sat(g, l, p.BASE_SATURATION)
-        b = sat(b, l, p.BASE_SATURATION)
+        r = sat(r, l, t.baseSaturation)
+        g = sat(g, l, t.baseSaturation)
+        b = sat(b, l, t.baseSaturation)
 
         // 4) 緑域: 彩度を落とし、イエロー寄りへシフト(植物の緑を枯れ気味に)
-        val greenW = (((g - max(r, b)) * p.GREEN_WEIGHT_GAIN)).coerceIn(0f, 1f)
+        val greenW = (((g - max(r, b)) * t.greenWeightGain)).coerceIn(0f, 1f)
         if (greenW > 0f) {
             val gl = luma(r, g, b)
-            r = lerp(r, sat(r, gl, p.GREEN_DESAT), greenW)
-            g = lerp(g, sat(g, gl, p.GREEN_DESAT), greenW)
-            b = lerp(b, sat(b, gl, p.GREEN_DESAT), greenW)
-            r += p.GREEN_HUE_SHIFT * greenW
-            b -= p.GREEN_HUE_SHIFT * 0.5f * greenW
+            r = lerp(r, sat(r, gl, t.greenDesat), greenW)
+            g = lerp(g, sat(g, gl, t.greenDesat), greenW)
+            b = lerp(b, sat(b, gl, t.greenDesat), greenW)
+            r += t.greenHueShift * greenW
+            b -= t.greenHueShift * 0.5f * greenW
         }
 
         // 5) 暖色(オレンジ・肌)域: 彩度を維持して被写体を沈ませない
-        val warmW = (((r - b) * p.WARM_WEIGHT_GAIN)).coerceIn(0f, 1f) *
+        val warmW = (((r - b) * t.warmWeightGain)).coerceIn(0f, 1f) *
             smoothstep(-0.02f, 0.06f, r - g)
         if (warmW > 0f) {
             val wl = luma(r, g, b)
-            val keep = lerp(1f, p.WARM_SAT_KEEP, warmW)
+            val keep = lerp(1f, t.warmSatKeep, warmW)
             r = sat(r, wl, keep)
             g = sat(g, wl, keep)
             b = sat(b, wl, keep)
@@ -411,14 +446,37 @@ object LutPresets {
     }
 
     /**
-     * Faded Film専用トーン。先にピボット周りのコントラストを効かせ(0..1でクランプ)、
-     * その後 [BLACK_POINT]〜[WHITE_POINT] へ線形圧縮する。この順序なら黒の浮きが
-     * コントラストで潰れず、黒は正確に[BLACK_POINT]へ、白は[WHITE_POINT]へ着地する。
+     * .cubeテキストを任意の [t] から生成する(チューニング画面の書き出し用)。
      */
-    private fun fadedTone(x: Float): Float {
-        val p = FadedFilmParams
-        val y = ((x - p.CONTRAST_PIVOT) * p.CONTRAST + p.CONTRAST_PIVOT).coerceIn(0f, 1f)
-        return p.BLACK_POINT + (p.WHITE_POINT - p.BLACK_POINT) * y
+    fun generateFadedCubeText(t: FadedFilmTuning, title: String, size: Int = SIZE): String {
+        val sb = StringBuilder(size * size * size * 24)
+        sb.append("TITLE \"").append(title).append("\"\n")
+        sb.append("# Generated by Lumina LUT Tuner\n")
+        sb.append("LUT_3D_SIZE ").append(size).append('\n')
+        sb.append("DOMAIN_MIN 0.0 0.0 0.0\n")
+        sb.append("DOMAIN_MAX 1.0 1.0 1.0\n")
+        val maxIndex = (size - 1).toFloat()
+        for (bi in 0 until size) {
+            for (gi in 0 until size) {
+                for (ri in 0 until size) {
+                    val out = fadedFilm(t, ri / maxIndex, gi / maxIndex, bi / maxIndex)
+                    sb.append(fmt(out[0])).append(' ')
+                        .append(fmt(out[1])).append(' ')
+                        .append(fmt(out[2])).append('\n')
+                }
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Faded Film専用トーン。先にピボット周りのコントラストを効かせ(0..1でクランプ)、
+     * その後 [blackPoint]〜[whitePoint] へ線形圧縮する。この順序なら黒の浮きが
+     * コントラストで潰れず、黒は正確に[blackPoint]へ、白は[whitePoint]へ着地する。
+     */
+    private fun fadedTone(t: FadedFilmTuning, x: Float): Float {
+        val y = ((x - t.contrastPivot) * t.contrast + t.contrastPivot).coerceIn(0f, 1f)
+        return t.blackPoint + (t.whitePoint - t.blackPoint) * y
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t

@@ -137,6 +137,30 @@ class LutRepository(private val context: Context) {
         LutInfo(id = target.name, name = target.nameWithoutExtension, file = target)
     }
 
+    /**
+     * 生成済みの .cube テキストを名前付きでライブラリへ取り込む
+     * (LUTチューニング画面の書き出し用)。パース不能なら例外。
+     */
+    suspend fun importCubeText(displayName: String, text: String): LutInfo =
+        withContext(Dispatchers.IO) {
+            val parsed = CubeLutParser.parse(text) // 妥当性検証
+            val base = (if (displayName.endsWith(".cube", ignoreCase = true)) {
+                displayName
+            } else {
+                "$displayName.cube"
+            }).replace(Regex("[/\\\\]"), "_")
+            var target = File(dir, base)
+            var suffix = 1
+            while (target.exists()) {
+                target = File(dir, "${base.removeSuffix(".cube")}_$suffix.cube")
+                suffix++
+            }
+            target.writeText(text)
+            cache[target.name] = parsed
+            refresh()
+            LutInfo(id = target.name, name = target.nameWithoutExtension, file = target)
+        }
+
     suspend fun delete(info: LutInfo) = withContext(Dispatchers.IO) {
         if (info.isPreset) return@withContext // 標準プリセットは削除不可
         info.file.delete()
