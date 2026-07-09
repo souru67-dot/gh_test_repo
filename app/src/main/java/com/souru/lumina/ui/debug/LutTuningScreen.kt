@@ -202,7 +202,6 @@ private fun LabeledImage(
                 Text(
                     "未選択",
                     color = Color.White.copy(alpha = 0.5f),
-                    textAlign = TextAlign.Center,
                 )
             }
         }
