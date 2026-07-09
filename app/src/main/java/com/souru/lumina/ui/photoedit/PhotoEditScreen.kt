@@ -102,6 +102,20 @@ fun PhotoEditScreen(
     val context = LocalContext.current
     val shader = remember { AdjustmentShader.create() }
     var selectedParam by rememberSaveable { mutableStateOf(AdjustParam.EXPOSURE.name) }
+    val isPro = com.souru.lumina.ui.pro.rememberIsPro()
+    var showUpsell by remember { mutableStateOf(false) }
+
+    // ProのLUTフィルタ適用時はプレビューは自由。保存(書き出し)時にのみ案内する
+    val filterNeedsPro = state.selectedFilter?.let {
+        com.souru.lumina.ui.pro.isProLut(it)
+    } == true && !isPro
+
+    if (showUpsell) {
+        com.souru.lumina.ui.pro.ProUpsellDialog(
+            com.souru.lumina.ui.pro.ProFeature.ALL_LUTS,
+            onDismiss = { showUpsell = false },
+        )
+    }
 
     BackHandler(onBack = onClose)
 
@@ -146,7 +160,10 @@ fun PhotoEditScreen(
                     Text("投稿プレビュー", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            TextButton(onClick = viewModel::save, enabled = !state.saving && state.previewBitmap != null) {
+            TextButton(
+                onClick = { if (filterNeedsPro) showUpsell = true else viewModel.save() },
+                enabled = !state.saving && state.previewBitmap != null,
+            ) {
                 Text("保存", color = if (state.saving) Color.Gray else MaterialTheme.colorScheme.primary)
             }
         }

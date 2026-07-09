@@ -59,10 +59,19 @@ fun LutManagerScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var deleteTarget by remember { mutableStateOf<LutInfo?>(null) }
+    val isPro = com.souru.lumina.ui.pro.rememberIsPro()
+    var showUpsell by remember { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(viewModel::import) }
+
+    if (showUpsell) {
+        com.souru.lumina.ui.pro.ProUpsellDialog(
+            com.souru.lumina.ui.pro.ProFeature.CUBE_IMPORT,
+            onDismiss = { showUpsell = false },
+        )
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -93,7 +102,9 @@ fun LutManagerScreen(
                 color = Color.White,
             )
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+            IconButton(onClick = {
+                if (isPro) importLauncher.launch(arrayOf("*/*")) else showUpsell = true
+            }) {
                 Icon(Icons.Default.Add, contentDescription = ".cubeをインポート", tint = MaterialTheme.colorScheme.primary)
             }
         }

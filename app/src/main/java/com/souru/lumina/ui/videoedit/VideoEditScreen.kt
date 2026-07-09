@@ -204,6 +204,15 @@ private fun VideoEditContent(
     var selectedParam by rememberSaveable { mutableStateOf(VideoAdjustParam.EXPOSURE.name) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
+    // 課金ゲート: ProのLUTを当てた動画の書き出しと .cube インポートを案内する。
+    // SNSセーフ書き出し自体は無料。プレビューは自由(書き出し/取り込み時にのみ案内)。
+    val isPro = com.souru.lumina.ui.pro.rememberIsPro()
+    var upsell by remember { mutableStateOf<com.souru.lumina.ui.pro.ProFeature?>(null) }
+    val lutNeedsPro = state.selectedLut?.let { com.souru.lumina.ui.pro.isProLut(it) } == true && !isPro
+    upsell?.let { feature ->
+        com.souru.lumina.ui.pro.ProUpsellDialog(feature, onDismiss = { upsell = null })
+    }
+
     // 再生位置・再生状態はプレイヤー再生成をまたいで保持する
     val playbackKeeper = remember(item.id) { PlaybackKeeper() }
 
@@ -287,7 +296,11 @@ private fun VideoEditContent(
                 }
             }
             TextButton(onClick = {
-                notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                if (lutNeedsPro) {
+                    upsell = com.souru.lumina.ui.pro.ProFeature.ALL_LUTS
+                } else {
+                    notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
             }) {
                 Text("書き出し", color = MaterialTheme.colorScheme.primary)
             }
@@ -392,7 +405,13 @@ private fun VideoEditContent(
                         state = state,
                         onSelect = viewModel::selectLut,
                         onDelete = viewModel::deleteLut,
-                        onImport = { lutImportLauncher.launch(arrayOf("*/*")) },
+                        onImport = {
+                            if (isPro) {
+                                lutImportLauncher.launch(arrayOf("*/*"))
+                            } else {
+                                upsell = com.souru.lumina.ui.pro.ProFeature.CUBE_IMPORT
+                            }
+                        },
                     )
                     if (state.selectedLut != null) {
                         StrengthSlider(

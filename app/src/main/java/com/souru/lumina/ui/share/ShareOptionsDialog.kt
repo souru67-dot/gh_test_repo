@@ -17,12 +17,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.souru.lumina.data.model.MediaItem
+import com.souru.lumina.ui.pro.ProFeature
+import com.souru.lumina.ui.pro.ProUpsellDialog
+import com.souru.lumina.ui.pro.rememberIsPro
 import com.souru.lumina.util.Sharing
 
 /**
@@ -36,6 +43,13 @@ fun ShareOptionsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val isPro = rememberIsPro()
+    var showUpsell by remember { mutableStateOf(false) }
+
+    if (showUpsell) {
+        ProUpsellDialog(ProFeature.GEO_SHARE, onDismiss = { showUpsell = false; onDismiss() })
+        return
+    }
 
     // 位置除去できる対象が無ければダイアログを出さず直接共有する
     if (!Sharing.anyStrippable(items)) {
@@ -60,11 +74,15 @@ fun ShareOptionsDialog(
                 )
                 ShareRow(
                     icon = Icons.Outlined.LocationOff,
-                    title = "位置情報を除去して共有",
+                    title = if (isPro) "位置情報を除去して共有" else "位置情報を除去して共有 (Pro)",
                     subtitle = "JPEGのGPS情報を取り除いたコピーを共有します",
                     onClick = {
-                        onDismiss()
-                        Sharing.shareMultiple(context, items, stripLocation = true)
+                        if (isPro) {
+                            onDismiss()
+                            Sharing.shareMultiple(context, items, stripLocation = true)
+                        } else {
+                            showUpsell = true
+                        }
                     },
                 )
             }

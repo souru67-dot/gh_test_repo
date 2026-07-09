@@ -84,6 +84,9 @@ import com.souru.lumina.LuminaApplication
 import com.souru.lumina.data.coil.MediaThumb
 import com.souru.lumina.data.model.MediaItem
 import com.souru.lumina.data.model.MediaKind
+import com.souru.lumina.ui.pro.ProFeature
+import com.souru.lumina.ui.pro.ProUpsellDialog
+import com.souru.lumina.ui.pro.rememberIsPro
 
 private enum class PreviewTab(val label: String) {
     GRID("グリッド"),
@@ -114,6 +117,17 @@ fun PostPreviewScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val item = state.item
+
+    // 投稿プレビューはPro機能。開いた時点で機能紹介+購入を案内し、未購入なら閉じる
+    if (!rememberIsPro()) {
+        Box(
+            Modifier.fillMaxSize().background(Color.Black).systemBarsPadding(),
+            contentAlignment = Alignment.Center,
+        ) {
+            ProUpsellDialog(ProFeature.POST_PREVIEW, onDismiss = onClose)
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
