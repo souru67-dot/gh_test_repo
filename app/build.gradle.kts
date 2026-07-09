@@ -35,6 +35,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // デバッグ限定のPro状態トグル(BuildConfig.DEBUG)で使用
+        buildConfig = true
     }
 }
 
@@ -54,6 +56,7 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.effect)
     implementation(libs.media3.transformer)
+    implementation(libs.billing.ktx)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)

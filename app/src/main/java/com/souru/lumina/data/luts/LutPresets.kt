@@ -22,12 +22,14 @@ enum class LutPreset(
     val displayName: String,
     val fileName: String,
     val category: LutCategory,
+    /** 無料で使えるベーシックLUTか(false=Pro)。無料はClean Contrastとモノクロのみ。 */
+    val free: Boolean = false,
 ) {
-    CLEAN_CONTRAST("Clean Contrast", "Clean Contrast.cube", LutCategory.BASIC),
+    CLEAN_CONTRAST("Clean Contrast", "Clean Contrast.cube", LutCategory.BASIC, free = true),
     TEAL_ORANGE("Teal & Orange", "Teal & Orange.cube", LutCategory.CINEMATIC),
     CINEMATIC_WARM("Cinematic Warm", "Cinematic Warm.cube", LutCategory.CINEMATIC),
     CHROME_FILM("Chrome Film", "Chrome Film.cube", LutCategory.CINEMATIC),
-    MONO_CINEMA("Mono Cinema", "Mono Cinema.cube", LutCategory.CINEMATIC),
+    MONO_CINEMA("Mono Cinema", "Mono Cinema.cube", LutCategory.CINEMATIC, free = true),
     NOSTALGIC_FILM("Nostalgic Film", "Nostalgic Film.cube", LutCategory.EMO),
     EMO_DUSK("Emo Dusk", "Emo Dusk.cube", LutCategory.EMO),
     HALATION_GLOW("Halation Glow", "Halation Glow.cube", LutCategory.EMO),

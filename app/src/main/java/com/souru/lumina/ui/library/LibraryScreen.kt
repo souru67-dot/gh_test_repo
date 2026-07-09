@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Usb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ fun LibraryScreen(
     onOpenTrash: () -> Unit,
     onOpenLutManager: () -> Unit,
     onOpenExternal: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
 ) {
     Column(
@@ -75,6 +77,12 @@ fun LibraryScreen(
             title = "外部デバイス",
             subtitle = "USB/SDカードの写真・動画を閲覧・取り込み",
             onClick = onOpenExternal,
+        )
+        LibraryRow(
+            icon = Icons.Outlined.Settings,
+            title = "設定",
+            subtitle = "Lumina Pro・購入の復元",
+            onClick = onOpenSettings,
         )
     }
 }

@@ -7,6 +7,11 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.souru.lumina.data.MediaRepository
 import com.souru.lumina.data.SettingsRepository
+import com.souru.lumina.data.billing.BillingRepository
+import com.souru.lumina.data.billing.EntitlementRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.souru.lumina.data.coil.DngPreview
 import com.souru.lumina.data.coil.DngPreviewFetcher
 import com.souru.lumina.data.coil.DngPreviewKeyer
@@ -19,6 +24,9 @@ import com.souru.lumina.data.coil.MediaThumbKeyer
 import com.souru.lumina.data.luts.LutRepository
 
 class AppContainer(context: Context) {
+    /** アプリ全体で共有する長寿命スコープ(課金の照会・権利同期などに使用)。 */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val settingsRepository = SettingsRepository(context)
     val mediaRepository = MediaRepository(context)
     val lutRepository = LutRepository(context)
@@ -27,6 +35,14 @@ class AppContainer(context: Context) {
     val videoEditSession = com.souru.lumina.data.video.VideoEditSession()
     val externalDeviceRepository =
         com.souru.lumina.data.external.ExternalDeviceRepository(context, settingsRepository)
+
+    val billingRepository = BillingRepository(context)
+    val entitlementRepository = EntitlementRepository(
+        billing = billingRepository,
+        settings = settingsRepository,
+        scope = appScope,
+        isDebugBuild = BuildConfig.DEBUG,
+    )
 }
 
 class LuminaApplication : Application(), SingletonImageLoader.Factory {
@@ -38,6 +54,8 @@ class LuminaApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         installCrashLogger()
         container = AppContainer(this)
+        // 起動時に課金接続と購入照会(復元)を開始する
+        container.entitlementRepository.refresh()
     }
 
     /**
