@@ -11,43 +11,54 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 
 /**
- * 旧Xperiaアルバム風の「ピンチイン/アウトでグリッド列数変更」。
- * 2本指ピンチ中はグリッドスクロールに渡さず(Initialパスで消費)、
- * 累積ズームがしきい値を超えるたびに1段ずつ列数を変える。
- * 1回のジェスチャで連続して複数段変えられる。
+ * 旧Xperiaアルバム風の「ピンチで列数変更」を、離散ジャンプではなく
+ * **連続スケール追従 + シームレスなスナップ**で行う。
+ *
+ * 指の動きに合わせてグリッド全体を [onScale] のスケールで拡大縮小し(呼び出し側が
+ * graphicsLayer に適用)、拡大率が「隣の列数のセルサイズ」に達した瞬間に列数を
+ * 切り替え、同時にスケールを1へ再ベースする。切替時に見かけのセルサイズが連続する
+ * ため段差が出ない。ジェスチャ終了時は [onSettle] で残りのスケールをばね収束させる。
+ *
+ * 列数の限界(min/max)では列を切り替えられないぶんスケールが伸び、
+ * [0.6, 1.8] にクランプしてゴムのような抵抗感を出す。
  */
 fun Modifier.pinchToChangeColumns(
     columns: () -> Int,
     minColumns: Int,
     maxColumns: Int,
     onColumnsChange: (Int) -> Unit,
+    onScale: (Float) -> Unit = {},
+    onSettle: () -> Unit = {},
 ): Modifier = pointerInput(minColumns, maxColumns) {
     awaitEachGesture {
-        var zoom = 1f
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        var scale = 1f
+        var pinching = false
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
             if (event.changes.none { it.pressed }) break
             if (event.changes.count { it.pressed } >= 2) {
-                zoom *= event.calculateZoom()
+                pinching = true
+                scale *= event.calculateZoom()
                 val current = columns()
-                if (zoom >= STEP_UP) {
-                    // ピンチアウト=拡大=列を減らす
-                    if (current > minColumns) onColumnsChange(current - 1)
-                    zoom = 1f
-                } else if (zoom <= STEP_DOWN) {
-                    // ピンチイン=縮小=列を増やす
-                    if (current < maxColumns) onColumnsChange(current + 1)
-                    zoom = 1f
+                // 列数を1段変えたときのセルサイズ比。ここへ達したら切替+再ベース
+                val toFewer = current.toFloat() / (current - 1) // ピンチアウト(拡大)
+                val toMore = current.toFloat() / (current + 1)  // ピンチイン(縮小)
+                if (current > minColumns && scale >= toFewer) {
+                    onColumnsChange(current - 1)
+                    scale /= toFewer
+                } else if (current < maxColumns && scale <= toMore) {
+                    onColumnsChange(current + 1)
+                    scale /= toMore
                 }
+                scale = scale.coerceIn(0.6f, 1.8f)
+                onScale(scale)
                 event.changes.forEach { it.consume() }
             }
         }
+        if (pinching) onSettle()
     }
 }
-
-private const val STEP_UP = 1.3f
-private const val STEP_DOWN = 1f / 1.3f
 
 @Composable
 fun rememberColumnsProvider(columns: Int): () -> Int {

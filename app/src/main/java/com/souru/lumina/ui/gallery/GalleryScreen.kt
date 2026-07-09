@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
@@ -82,6 +84,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -427,6 +430,10 @@ private fun GalleryGridScreen(
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val haptics = LocalHapticFeedback.current
+    // ピンチ中のグリッド全体の連続スケール(指追従)。列切替時は1へ再ベースされ、
+    // 指を離すとばねで1へ収束する。旧Xperiaアルバム風の滑らかな列数変更
+    val pinchScale = remember { Animatable(1f) }
+    val pinchScope = rememberCoroutineScope()
     val layoutDirection = LocalLayoutDirection.current
     // ビューアの全画面切替(バーhide/show)の遷移中でも一覧のレイアウトが
     // 動かないよう、バーの表示状態に依存しないInsetsを使う
@@ -460,6 +467,11 @@ private fun GalleryGridScreen(
             ),
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val s = pinchScale.value
+                    scaleX = s
+                    scaleY = s
+                }
                 .pinchToChangeColumns(
                     columns = columnsProvider,
                     minColumns = SettingsRepository.MIN_COLUMNS,
@@ -467,6 +479,15 @@ private fun GalleryGridScreen(
                     onColumnsChange = { c ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         viewModel.setColumns(c)
+                    },
+                    onScale = { s -> pinchScope.launch { pinchScale.snapTo(s) } },
+                    onSettle = {
+                        pinchScope.launch {
+                            pinchScale.animateTo(
+                                1f,
+                                spring(dampingRatio = 0.75f, stiffness = 350f),
+                            )
+                        }
                     },
                 ),
         ) {
