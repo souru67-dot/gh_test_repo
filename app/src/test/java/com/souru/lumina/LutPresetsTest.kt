@@ -115,35 +115,38 @@ class LutPresetsTest {
     }
 
     /**
-     * Faded Filmは参考画像の計測値(tools/lut_analysis)をターゲットに収束させた
-     * プリセット。ニュートラル軸(グレー入力)の各輝度帯の出力が、計測ターゲットに
-     * 一定許容内で一致すること=「グレードの芯」を数値で担保する回帰テスト。
+     * Faded Filmの「グレードの性格」を数値で担保する回帰テスト。色の性格は
+     * 参考画像の計測(tools/lut_analysis)に基づき、強度はLog→709復元量。
+     * 絶対値ではなく方向性(黒の浮き・シャドウ緑・ハイライト暖色・十分な効き)を
+     * 検証する(強度は素材前提で調整され得るため)。
      */
     @Test
-    fun `Faded Filmのニュートラル軸が計測ターゲットに一致`() {
-        // (入力x, 目標RGB) 目標は参考2枚の共通特性(analyze_reference.pyの計測)
-        val targets = listOf(
-            Triple(0.00f, floatArrayOf(0.040f, 0.051f, 0.053f), "黒: 緑シアンに軽く浮く"),
-            Triple(0.20f, floatArrayOf(0.158f, 0.190f, 0.178f), "シャドウ: 緑かぶり"),
-            Triple(0.50f, floatArrayOf(0.498f, 0.512f, 0.476f), "ミッド: ほぼ中立・低彩度"),
-            Triple(0.85f, floatArrayOf(0.888f, 0.872f, 0.820f), "ハイライト: 暖色"),
-            Triple(1.00f, floatArrayOf(0.962f, 0.950f, 0.922f), "白: 軽い抑え+暖色"),
-        )
-        val tol = 0.03f
-        for ((x, tgt, label) in targets) {
-            val out = LutPresets.transform(LutPreset.FADED_FILM, x, x, x)
-            for (ch in 0..2) {
-                assertTrue(
-                    "$label ch=$ch 出力=${out[ch]} 目標=${tgt[ch]} (許容$tol)",
-                    abs(out[ch] - tgt[ch]) <= tol,
-                )
-            }
-        }
-        // 特性の符号: シャドウは緑(G>R)、ハイライトは暖色(B<R)
+    fun `Faded Filmのグレード性格`() {
+        val black = LutPresets.transform(LutPreset.FADED_FILM, 0f, 0f, 0f)
         val sh = LutPresets.transform(LutPreset.FADED_FILM, 0.2f, 0.2f, 0.2f)
-        assertTrue("シャドウは緑寄り(G>R)", sh[1] > sh[0])
         val hi = LutPresets.transform(LutPreset.FADED_FILM, 0.85f, 0.85f, 0.85f)
+
+        // 黒はわずかに浮き、緑シアン寄り(純黒でない/G,B >= R)
+        val blackLuma = 0.2126f * black[0] + 0.7152f * black[1] + 0.0722f * black[2]
+        assertTrue("黒がわずかに浮く: $blackLuma", blackLuma in 0.0f..0.10f)
+        assertTrue("黒は緑シアン寄り(G>=R)", black[1] >= black[0])
+        // シャドウは緑かぶり(G>R)
+        assertTrue("シャドウは緑寄り(G>R)", sh[1] > sh[0])
+        // ハイライトは暖色(青が沈む B<R かつ B<G)
         assertTrue("ハイライトは暖色(B<R)", hi[2] < hi[0])
+        assertTrue("ハイライトは暖色(B<G)", hi[2] < hi[1])
+
+        // 他プリセット同等の効き: 恒等からの最大逸脱が十分大きい(薄すぎない)
+        val steps = 9
+        var maxDev = 0f
+        for (ri in 0 until steps) for (gi in 0 until steps) for (bi in 0 until steps) {
+            val r = ri / (steps - 1f)
+            val g = gi / (steps - 1f)
+            val b = bi / (steps - 1f)
+            val out = LutPresets.transform(LutPreset.FADED_FILM, r, g, b)
+            maxDev = maxOf(maxDev, abs(out[0] - r), abs(out[1] - g), abs(out[2] - b))
+        }
+        assertTrue("効きが十分(薄すぎない): maxDev=$maxDev", maxDev > 0.15f)
     }
 
     @Test

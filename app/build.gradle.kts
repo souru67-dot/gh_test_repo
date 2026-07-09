@@ -35,8 +35,6 @@ android {
     }
     buildFeatures {
         compose = true
-        // BuildConfig.DEBUG でデバッグ限定機能(LUTチューニング画面)を出し分ける
-        buildConfig = true
     }
 }
 

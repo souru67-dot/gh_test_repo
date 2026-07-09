@@ -28,8 +28,8 @@ def _load_transform():
         "gv", os.path.join(_HERE, "generate_and_verify.py"))
     gv = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gv)
-    P, _ = gv.optimize(gv.P0)
-    return gv, P
+    # アプリに載せている確定値(v10)で検証する
+    return gv, gv.SHIPPED
 
 
 W = 900
@@ -54,6 +54,19 @@ def _blocks(h, cols):
     return img
 
 
+def _logify(rgb):
+    """通常sRGBを S-Cinetone for Mobile 風(Log系フラット・低彩度)へ近似圧縮。
+
+    このプリセットは他プリセット同様 Log 系フラット素材を前提とするため、
+    実素材相当の検証はこの前処理を通した入力で行う。
+    """
+    rgb = np.asarray(rgb, dtype=float)
+    flat = 0.16 + 0.66 * rgb
+    lum = (0.2126 * flat[..., 0] + 0.7152 * flat[..., 1]
+           + 0.0722 * flat[..., 2])[..., None]
+    return lum + (flat - lum) * 0.55
+
+
 def build_sheet(gv, P, out):
     def grade(img):
         return gv.transform(img, P)
@@ -63,11 +76,12 @@ def build_sheet(gv, P, out):
                 (0.55, 0.54, 0.52)]
     night = [(0.02, 0.03, 0.05), (0.05, 0.07, 0.12), (0.90, 0.70, 0.40),
              (0.12, 0.10, 0.18), (0.30, 0.15, 0.10)]
+    # シーン系は S-Cinetone(Log)相当に前処理してから適用(実素材の使用条件)
     rows = [
-        ("Gray ramp", _gray(70)),
-        ("Hue wheel (S0.6)", _hue(70)),
-        ("Daylight: foliage + warm subject", _blocks(90, daylight)),
-        ("Night scene", _blocks(90, night)),
+        ("Gray ramp (direct)", _gray(70)),
+        ("Hue wheel S0.6 (direct)", _hue(70)),
+        ("Daylight foliage+warm (Log input)", _logify(_blocks(90, daylight))),
+        ("Night scene (Log input)", _logify(_blocks(90, night))),
     ]
 
     def to8(a):
@@ -87,7 +101,7 @@ def build_sheet(gv, P, out):
     d = ImageDraw.Draw(canvas)
     y = 10
     for label, strip in strips:
-        d.text((10, y), f"{label}   (top = original / bottom = Faded Film v9)",
+        d.text((10, y), f"{label}   (top = input / bottom = Faded Film v10)",
                fill=(230, 230, 230))
         y += 20
         canvas.paste(Image.fromarray(strip), (10, y))
@@ -97,10 +111,12 @@ def build_sheet(gv, P, out):
 
 
 def breakdown_report(gv, P):
+    """Log(S-Cinetone相当)入力に適用した結果で破綻を検査する。"""
     def grade1(c):
-        return gv.transform(np.array([[c]]), P)[0, 0]
+        ci = _logify(np.array([c]))[0]
+        return gv.transform(np.array([ci]), P)[0]
 
-    print("\n=== breakdown check ===")
+    print("\n=== breakdown check (on S-Cinetone/Log input) ===")
     checks = [
         ("dark foliage", (0.14, 0.28, 0.13)), ("bright foliage", (0.30, 0.52, 0.22)),
         ("orange subject", (0.78, 0.45, 0.20)), ("skin", (0.82, 0.63, 0.51)),
@@ -108,10 +124,9 @@ def breakdown_report(gv, P):
     ]
     for nm, c in checks:
         o = grade1(c)
-        hi, si, _ = colorsys.rgb_to_hsv(*c)
-        ho, so, _ = colorsys.rgb_to_hsv(*o)
-        print(f"  {nm:15s} S {si:.2f}->{so:.2f}  H {hi * 360:5.1f}->{ho * 360:5.1f}"
-              f"  out({o[0] * 255:.0f},{o[1] * 255:.0f},{o[2] * 255:.0f})")
+        _, so, _ = colorsys.rgb_to_hsv(*o)
+        print(f"  {nm:15s} outS={so:.2f}  out"
+              f"({o[0] * 255:.0f},{o[1] * 255:.0f},{o[2] * 255:.0f})")
 
 
 if __name__ == "__main__":

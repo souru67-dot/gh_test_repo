@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Usb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.souru.lumina.BuildConfig
 
 /**
  * ライブラリタブ。お気に入り・ゴミ箱・LUT管理などの入口をまとめる。
@@ -39,7 +37,6 @@ fun LibraryScreen(
     onOpenTrash: () -> Unit,
     onOpenLutManager: () -> Unit,
     onOpenExternal: () -> Unit,
-    onOpenLutTuning: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
 ) {
     Column(
@@ -79,15 +76,6 @@ fun LibraryScreen(
             subtitle = "USB/SDカードの写真・動画を閲覧・取り込み",
             onClick = onOpenExternal,
         )
-        // デバッグビルド限定: 計測ベース Faded Film の最終仕上げ用ツール
-        if (BuildConfig.DEBUG) {
-            LibraryRow(
-                icon = Icons.Outlined.Tune,
-                title = "LUTチューニング(デバッグ)",
-                subtitle = "参考画像と並べて Faded Film を微調整・書き出し",
-                onClick = onOpenLutTuning,
-            )
-        }
     }
 }
 
