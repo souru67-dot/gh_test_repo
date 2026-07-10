@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -383,7 +385,8 @@ private fun FilterPanel(
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 12.dp)
+                        .semantics { contentDescription = "フィルタ強度" },
                 )
                 Text(
                     text = "${(state.filterStrength * 100).toInt()}%",
@@ -507,7 +510,9 @@ private fun AdjustPanel(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                // TalkBack にパラメータ名を読み上げさせる(視覚ラベルとの関連付け)
+                .semantics { contentDescription = param.label },
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),

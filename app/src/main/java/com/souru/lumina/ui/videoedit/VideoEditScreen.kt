@@ -66,6 +66,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -557,6 +559,7 @@ private fun TrimBar(
                 activeTrackColor = MaterialTheme.colorScheme.primary,
                 inactiveTrackColor = Color.White.copy(alpha = 0.2f),
             ),
+            modifier = Modifier.semantics { contentDescription = "トリム範囲" },
         )
     }
 }
@@ -692,7 +695,8 @@ private fun StrengthSlider(
             ),
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 12.dp)
+                .semantics { contentDescription = "LUT強度" },
         )
         Text(
             text = "${(strength * 100).toInt()}%",
@@ -750,7 +754,9 @@ private fun VideoAdjustPanel(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                // TalkBack にパラメータ名を読み上げさせる(視覚ラベルとの関連付け)
+                .semantics { contentDescription = param.label },
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
