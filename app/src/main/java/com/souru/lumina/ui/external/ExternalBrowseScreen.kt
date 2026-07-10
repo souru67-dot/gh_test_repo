@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Usb
-import androidx.compose.material3.CircularProgressIndicator
+import com.souru.lumina.ui.common.LuminaLoading
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -150,7 +150,7 @@ fun ExternalBrowseScreen(
 
             when (state.status) {
                 ExternalBrowseStatus.Loading -> CenterBox {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LuminaLoading()
                 }
 
                 ExternalBrowseStatus.NotSelected -> EmptyState(

@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import com.souru.lumina.ui.common.LuminaLoading
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -171,7 +171,7 @@ fun VideoEditScreen(
         if (state.loading || item == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (state.loading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LuminaLoading()
                 } else {
                     Text("動画を読み込めませんでした", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

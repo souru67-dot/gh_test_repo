@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import com.souru.lumina.ui.common.LuminaLoading
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -178,10 +178,7 @@ fun TrashScreen(
                     .weight(1f),
             ) {
                 if (state.loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    LuminaLoading(modifier = Modifier.align(Alignment.Center))
                 } else if (state.items.isEmpty()) {
                     Text(
                         text = "ゴミ箱は空です",

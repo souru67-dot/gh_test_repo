@@ -61,7 +61,6 @@ import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,6 +97,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.souru.lumina.data.SettingsRepository
 import com.souru.lumina.data.coil.MediaThumb
+import com.souru.lumina.ui.common.LuminaLoading
 import com.souru.lumina.data.model.GalleryEntry
 import com.souru.lumina.data.model.GridSlot
 import com.souru.lumina.data.model.MediaItem
@@ -525,10 +525,7 @@ private fun GalleryGridScreen(
         }
 
         if (state.loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            LuminaLoading(modifier = Modifier.align(Alignment.Center))
         } else if (state.slots.isEmpty()) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
