@@ -26,6 +26,9 @@ Lumina は「撮る人」のために作った、黒基調でミニマルなギ�
 **そのまま仕上げる編集**
 - 写真の基本調整(露出・コントラスト・色温度など11項目)を GPU でリアルタイム、保存は常に別名(非破壊)
 - 動画に 3D LUT(.cube)をリアルタイム適用、トリム、簡易調整、SNS向けの安全な書き出し
+- 入力変換: 各社の Log 素材を Rec.709 に正規化してから同じプリセットを適用。
+  Sony S-Log3 / Apple Log は公開仕様の数式で対応、HLG はトーンマップで対応。
+  DJI・各スマホの Log は近似対応(アプリ内で「近似」と明示)
 - 自前で数学生成した LUT プリセット(実在ブランド名は不使用)
 - Lightroom Mobile 連携で RAW をそのまま現像へ
 
@@ -63,6 +66,9 @@ Lumina is a minimal, black-first gallery built for people who shoot. Your photos
 **Finish without leaving**
 - Real-time GPU photo adjustments (11 controls); saves are always non-destructive copies
 - Apply 3D LUTs (.cube) to video in real time, trim, quick adjustments, SNS-safe export
+- Input transform: normalize Log footage to Rec.709 before applying the same preset.
+  Sony S-Log3 / Apple Log use published-spec math; HLG is handled via tone mapping.
+  DJI and phone-maker Logs are approximate (labeled "approx." in-app)
 - Mathematically self-generated LUT presets (no real-world brand names)
 - Send RAW straight to Lightroom Mobile
 
