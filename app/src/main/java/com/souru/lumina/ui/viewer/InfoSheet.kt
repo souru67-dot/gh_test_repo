@@ -32,6 +32,7 @@ import com.souru.lumina.data.MediaInfo
 fun MediaInfoSheet(
     info: MediaInfo?,
     onDismiss: () -> Unit,
+    histogramUri: Uri? = null,
 ) {
     val context = LocalContext.current
     ModalBottomSheet(
@@ -83,6 +84,18 @@ fun MediaInfoSheet(
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
+            }
+
+            // ヒストグラム(輝度+RGB)。撮影者向けの露出・色被り確認
+            histogramUri?.let { uri ->
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "ヒストグラム",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(6.dp))
+                HistogramSection(uri)
             }
 
             Spacer(Modifier.height(14.dp))

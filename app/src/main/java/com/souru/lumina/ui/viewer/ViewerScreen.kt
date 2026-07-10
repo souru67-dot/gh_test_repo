@@ -253,6 +253,8 @@ fun ViewerScreen(
             MediaInfoSheet(
                 info = infoCache[current.id],
                 onDismiss = { showInfo = false },
+                // 表示中の面(RAW⇔JPEG切替を反映)のヒストグラムを出す
+                histogramUri = displayItemOf(current).uri,
             )
         }
 
