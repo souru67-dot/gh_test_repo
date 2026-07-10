@@ -52,10 +52,43 @@ class LuminaApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
         installCrashLogger()
         container = AppContainer(this)
         // 起動時に課金接続と購入照会(復元)を開始する
         container.entitlementRepository.refresh()
+    }
+
+    /**
+     * デバッグ時のみ StrictMode を有効化し、メインスレッドのI/O・ネットワーク・
+     * リークをログに出す(penaltyDeathにはせず、既存挙動を壊さず可視化のみ)。
+     */
+    private fun enableStrictMode() {
+        android.os.StrictMode.setThreadPolicy(
+            android.os.StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .detectCustomSlowCalls()
+                .penaltyLog()
+                .build(),
+        )
+        android.os.StrictMode.setVmPolicy(
+            android.os.StrictMode.VmPolicy.Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedSqlLiteObjects()
+                .detectActivityLeaks()
+                .penaltyLog()
+                .build(),
+        )
+    }
+
+    /** メモリ逼迫時に画像メモリキャッシュを解放して OOM を避ける。 */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            runCatching { coil3.SingletonImageLoader.get(this).memoryCache?.clear() }
+        }
     }
 
     /**
