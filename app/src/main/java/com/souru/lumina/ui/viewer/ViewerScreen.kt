@@ -3,6 +3,8 @@ package com.souru.lumina.ui.viewer
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -34,6 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -41,7 +44,10 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Slideshow
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -169,6 +176,30 @@ fun ViewerScreen(
         onDispose { showSystemBars() }
     }
 
+    // スライドショー: 一定間隔で自動送り(末尾で先頭へループ)。
+    // 実行中は画面を常時点灯にし、画面タップ(=UI再表示)で停止する
+    var slideshow by remember { mutableStateOf(false) }
+    LaunchedEffect(slideshow) {
+        while (slideshow) {
+            kotlinx.coroutines.delay(4_000)
+            if (!slideshow) break
+            val next = (pagerState.currentPage + 1) % entries.size
+            pagerState.animateScrollToPage(next)
+        }
+    }
+    LaunchedEffect(chromeVisible) {
+        if (chromeVisible) slideshow = false
+    }
+    DisposableEffect(slideshow) {
+        val window = view.context.findActivity()?.window
+        if (slideshow) {
+            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     val backgroundAlpha = (1f - dismissProgress * 1.2f).coerceIn(0f, 1f)
 
     Box(
@@ -181,6 +212,10 @@ fun ViewerScreen(
 
         fun displayItemOf(entry: GalleryEntry) =
             entry.counterpart?.takeIf { entry.id in swappedIds } ?: entry.item
+
+        // オーバーフローの「回転」による表示のみの回転(90°刻み、保存しない)。
+        // 横向きのまま保存された写真をその場で確認する用途
+        var viewRotations by remember { mutableStateOf(mapOf<Long, Float>()) }
 
         HorizontalPager(
             state = pagerState,
@@ -205,7 +240,9 @@ fun ViewerScreen(
             when (displayItem.kind) {
                 MediaKind.IMAGE -> PhotoPage(
                     item = displayItem,
-                    imageModifier = sharedModifier,
+                    imageModifier = sharedModifier.graphicsLayer {
+                        rotationZ = viewRotations[entry.id] ?: 0f
+                    },
                     onToggleChrome = { chromeVisible = !chromeVisible },
                     onDismiss = { closeWithBarsRestored() },
                     onDismissProgress = { progress ->
@@ -245,6 +282,28 @@ fun ViewerScreen(
                 onToggleFavorite = onToggleFavorite?.let { toggle -> { toggle(current) } },
                 onShowInfo = { showInfo = true },
                 onOpenPostPreview = onOpenPostPreview?.let { open -> { open(displayItemOf(current)) } },
+                onStartSlideshow = if (entries.size > 1) {
+                    {
+                        chromeVisible = false
+                        slideshow = true
+                    }
+                } else {
+                    null
+                },
+                onSetWallpaper = if (displayItemOf(current).kind == MediaKind.IMAGE) {
+                    { setAsWallpaper(context, displayItemOf(current).uri) }
+                } else {
+                    null
+                },
+                onRotateView = if (displayItemOf(current).kind == MediaKind.IMAGE) {
+                    {
+                        val id = current.id
+                        viewRotations = viewRotations +
+                            (id to ((viewRotations[id] ?: 0f) + 90f) % 360f)
+                    }
+                } else {
+                    null
+                },
             )
         }
 
@@ -397,6 +456,9 @@ private fun ViewerTopBar(
     onToggleFavorite: (() -> Unit)? = null,
     onShowInfo: () -> Unit = {},
     onOpenPostPreview: (() -> Unit)? = null,
+    onStartSlideshow: (() -> Unit)? = null,
+    onSetWallpaper: (() -> Unit)? = null,
+    onRotateView: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -442,6 +504,15 @@ private fun ViewerTopBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (onStartSlideshow != null) {
+                IconButton(onClick = onStartSlideshow) {
+                    Icon(
+                        Icons.Outlined.Slideshow,
+                        contentDescription = "スライドショー",
+                        tint = Color.White,
+                    )
+                }
+            }
             if (onOpenPostPreview != null) {
                 // 投稿プレビュー導線は編集画面と同じく上部トップバーに置く
                 IconButton(onClick = onOpenPostPreview) {
@@ -472,6 +543,38 @@ private fun ViewerTopBar(
                     tint = Color.White,
                 )
             }
+            if (onSetWallpaper != null || onRotateView != null) {
+                var menuOpen by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "その他のメニュー",
+                            tint = Color.White,
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (onRotateView != null) {
+                            DropdownMenuItem(
+                                text = { Text("回転(表示のみ)") },
+                                onClick = {
+                                    menuOpen = false
+                                    onRotateView()
+                                },
+                            )
+                        }
+                        if (onSetWallpaper != null) {
+                            DropdownMenuItem(
+                                text = { Text("壁紙に設定") },
+                                onClick = {
+                                    menuOpen = false
+                                    onSetWallpaper()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
             if (isPaired) {
                 // 同一構図のままRAW⇔JPEGを切り替える
                 TextButton(onClick = onSwapRawJpeg) {
@@ -490,5 +593,24 @@ private fun ViewerTopBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * システムの壁紙設定(クロップUI付き)を開く。対応がない端末では
+ * ACTION_ATTACH_DATA のチューザへフォールバックする。
+ */
+private fun setAsWallpaper(context: Context, uri: Uri) {
+    val cropIntent = runCatching {
+        android.app.WallpaperManager.getInstance(context).getCropAndSetWallpaperIntent(uri)
+    }.getOrNull()
+    val intent = cropIntent ?: Intent(Intent.ACTION_ATTACH_DATA).apply {
+        addCategory(Intent.CATEGORY_DEFAULT)
+        setDataAndType(uri, "image/*")
+        putExtra("mimeType", "image/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }.let { Intent.createChooser(it, "壁紙に設定") }
+    runCatching { context.startActivity(intent) }.onFailure {
+        android.widget.Toast.makeText(context, "壁紙設定を開けませんでした", android.widget.Toast.LENGTH_SHORT).show()
     }
 }
