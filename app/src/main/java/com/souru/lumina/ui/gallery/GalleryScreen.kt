@@ -53,6 +53,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.AutoFixHigh
@@ -135,6 +136,7 @@ fun GalleryRoute(
     bucketId: Long? = null,
     albumName: String? = null,
     onClose: (() -> Unit)? = null,
+    onOpenSearch: (() -> Unit)? = null,
     viewModel: GalleryViewModel = viewModel(
         key = bucketId?.let { "gallery-$it" },
         factory = GalleryViewModel.factory(bucketId),
@@ -306,6 +308,7 @@ fun GalleryRoute(
                         bottomContentPadding = bottomContentPadding,
                         albumName = albumName,
                         onClose = onClose,
+                        onOpenSearch = onOpenSearch,
                     )
                 } else {
                     ViewerScreen(
@@ -427,6 +430,7 @@ private fun GalleryGridScreen(
     bottomContentPadding: Dp = 0.dp,
     albumName: String? = null,
     onClose: (() -> Unit)? = null,
+    onOpenSearch: (() -> Unit)? = null,
 ) {
     val columnsProvider = rememberColumnsProvider(state.columns)
     val haptics = LocalHapticFeedback.current
@@ -611,6 +615,7 @@ private fun GalleryGridScreen(
             onSelectTypeFilter = viewModel::setTypeFilter,
             albumName = albumName,
             onClose = onClose,
+            onOpenSearch = onOpenSearch,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -637,6 +642,7 @@ private fun GalleryTopBar(
     onSelectTypeFilter: (MediaTypeFilter) -> Unit,
     albumName: String? = null,
     onClose: (() -> Unit)? = null,
+    onOpenSearch: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val statusBarPadding = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues()
@@ -727,6 +733,15 @@ private fun GalleryTopBar(
                     enabled = state.filter.type != MediaTypeFilter.VIDEO,
                     onSelect = onSelectFilter,
                 )
+                if (onOpenSearch != null) {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "検索",
+                            tint = Color.White,
+                        )
+                    }
+                }
             }
         }
     }

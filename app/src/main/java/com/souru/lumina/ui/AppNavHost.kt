@@ -47,6 +47,7 @@ import com.souru.lumina.ui.library.LibraryScreen
 import com.souru.lumina.ui.library.LutManagerScreen
 import com.souru.lumina.ui.onboarding.OnboardingScreen
 import com.souru.lumina.ui.photoedit.PhotoEditScreen
+import com.souru.lumina.ui.search.SearchScreen
 import com.souru.lumina.ui.settings.SettingsScreen
 import com.souru.lumina.ui.postpreview.PostPreviewScreen
 import com.souru.lumina.ui.trash.TrashScreen
@@ -63,6 +64,7 @@ object Routes {
     const val LutManager = "lutManager"
     const val ExternalDevice = "externalDevice"
     const val Settings = "settings"
+    const val Search = "search"
     const val Album = "album/{bucketId}?name={name}"
     const val PhotoEdit = "photoEdit/{mediaId}"
     const val VideoEdit = "videoEdit/{mediaId}"
@@ -143,6 +145,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                     },
                     onBottomBarVisibleChange = { photosTabBarVisible = it },
                     bottomContentPadding = BottomNavContentPadding,
+                    onOpenSearch = {
+                        navController.navigate(Routes.Search) { launchSingleTop = true }
+                    },
                 )
             }
             composable(Routes.Albums) {
@@ -216,6 +221,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             }
             composable(Routes.Settings) {
                 SettingsScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Routes.Search) {
+                SearchScreen(onClose = { navController.popBackStack() })
             }
             composable(
                 route = Routes.PhotoEdit,
