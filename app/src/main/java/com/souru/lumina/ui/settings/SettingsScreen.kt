@@ -134,6 +134,31 @@ fun SettingsScreen(onClose: () -> Unit) {
             }
         }
 
+        // 不具合を報告(端末内 crash.txt を共有シートで送る。自動送信はしない)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    val shared = com.souru.lumina.util.Sharing.shareCrashLog(context)
+                    if (!shared) {
+                        android.widget.Toast.makeText(
+                            context, "報告できる不具合ログはありません", android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("不具合を報告", color = Color.White)
+                Text(
+                    "直近のクラッシュログを共有(自動送信はしません)",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
         // デバッグ限定: Pro状態トグル
         if (BuildConfig.DEBUG) {
             val debugOverride by container.settingsRepository.proDebugOverride

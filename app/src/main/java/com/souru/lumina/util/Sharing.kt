@@ -103,6 +103,33 @@ object Sharing {
     fun anyStrippable(items: List<MediaItem>): Boolean = items.any { canStripLocation(it) }
 
     /**
+     * 端末内の crash.txt(直近のクラッシュのスタックトレース)を共有シートで送る。
+     * 自動送信はせず、ユーザーが設定から任意で共有する用途。ログが無ければ false。
+     */
+    fun shareCrashLog(context: Context): Boolean {
+        val src = File(context.filesDir, "crash.txt")
+        if (!src.exists() || src.length() == 0L) return false
+        return runCatching {
+            val dir = File(context.cacheDir, "share").apply { mkdirs() }
+            val out = File(dir, "lumina-crash.txt")
+            src.copyTo(out, overwrite = true)
+            val uri = FileProvider.getUriForFile(
+                context, context.packageName + AUTHORITY_SUFFIX, out,
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Lumina 不具合ログ")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(
+                Intent.createChooser(intent, "不具合ログを共有")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.isSuccess
+    }
+
+    /**
      * 元ファイルをcacheDir/share/にコピーし、GPS系EXIFタグを削除して
      * FileProviderのcontent URIを返す。失敗時はnull(呼び出し側で原本にフォールバック)。
      */
