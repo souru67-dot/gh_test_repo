@@ -51,6 +51,67 @@ object VideoColorAnalyzer {
         withVideoTrackFormat(context, uri) { format -> analyze(format) }
     }.getOrNull()
 
+    /**
+     * 入力変換([InputTransform])の自動推定。コンテナ/コーデックのタグから
+     * 確実に判別できるものだけを返し、判別できない各社Logは推測で当てない
+     * (誤った色になるより「なし(709)」の方が安全。ユーザーが手動選択できる)。
+     *
+     * - HDR(HLG/PQ): デコーダのSDRトーンマップが709化を担うため [InputTransform.HLG]
+     *   (=トーンマップ委譲。decodeは行わない)。バッジには「入力: HLG(自動)」と出せる。
+     * - それ以外(SDR): Log収録はメタデータに現れないことが多く、確実な判別が
+     *   できないため [InputTransform.NONE](Rec.709入力とみなす)。
+     *
+     * 端末モデル名やベンダー独自Logは公開判別材料が乏しいため、ここでは推測せず、
+     * ヒストグラムが中央に寄っている場合のUI側ヒント + 手動選択に委ねる。
+     */
+    fun detectInputTransform(info: VideoColorInfo?): InputTransform =
+        if (info?.isHdr == true) InputTransform.HLG else InputTransform.NONE
+
+    /**
+     * 「Log素材の可能性」ヒント判定(IOで呼ぶこと)。代表フレームを1枚だけ
+     * 縮小取得し、輝度ヒストグラムが中央に強く寄っている(=フラットで彩度・
+     * コントラストが低いLog特有の分布)場合に true。確実な判別ではなく、
+     * ユーザーに手動選択を促すためのヒントに留める(誤検出は無害)。
+     */
+    fun detectLogLikely(context: Context, uri: Uri): Boolean = runCatching {
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            val durationMs = retriever
+                .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            val atUs = (durationMs / 2).coerceAtLeast(0L) * 1000L
+            val frame = retriever.getScaledFrameAtTime(
+                atUs,
+                android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                64,
+                64,
+            ) ?: return false
+            var inMid = 0
+            var total = 0
+            val w = frame.width
+            val h = frame.height
+            val row = IntArray(w)
+            var y = 0
+            while (y < h) {
+                frame.getPixels(row, 0, w, 0, y, w, 1)
+                for (px in row) {
+                    val r = (px shr 16) and 0xFF
+                    val g = (px shr 8) and 0xFF
+                    val b = px and 0xFF
+                    val luma = (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255f
+                    if (luma in 0.22f..0.62f) inMid++
+                    total++
+                }
+                y += 2 // 1行おきで十分
+            }
+            frame.recycle()
+            total > 0 && inMid.toFloat() / total >= 0.88f
+        } finally {
+            retriever.release()
+        }
+    }.getOrDefault(false)
+
     private fun analyze(format: MediaFormat): VideoColorInfo {
         var inferred = false
         val width = format.intOrNull(MediaFormat.KEY_WIDTH) ?: 0

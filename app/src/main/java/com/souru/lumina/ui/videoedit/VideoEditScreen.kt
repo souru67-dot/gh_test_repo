@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,7 +40,9 @@ import androidx.compose.material3.Checkbox
 import com.souru.lumina.ui.common.LuminaLoading
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Slider
@@ -80,6 +83,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.model.MediaItem
+import com.souru.lumina.data.video.InputAccuracy
+import com.souru.lumina.data.video.InputTransform
+import com.souru.lumina.data.video.InputTransformParams
 import com.souru.lumina.data.video.SdrPreviewRenderersFactory
 import com.souru.lumina.data.video.VideoExportPreset
 import com.souru.lumina.util.formatDuration
@@ -205,6 +211,7 @@ private fun VideoEditContent(
     var showExportDialog by rememberSaveable { mutableStateOf(false) }
     var selectedParam by rememberSaveable { mutableStateOf(VideoAdjustParam.EXPOSURE.name) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var showInputSheet by rememberSaveable { mutableStateOf(false) }
 
     // 課金ゲート: ProのLUTを当てた動画の書き出しと .cube インポートを案内する。
     // SNSセーフ書き出し自体は無料。プレビューは自由(書き出し/取り込み時にのみ案内)。
@@ -409,6 +416,15 @@ private fun VideoEditContent(
                         onSeek = { player.seekTo(it) },
                     )
                 } else {
+                    // 入力変換(各社Log→709)。クリエイティブLUTの前段で素材を709へ
+                    // 正規化するため、色タブの最上部に置く。写真編集には出さない
+                    // (静止画は将来対応: Log静止画は稀で、まず動画に集中する)
+                    InputTransformSection(
+                        state = state,
+                        onOpen = { showInputSheet = true },
+                        onExposure = viewModel::setInputExposure,
+                        onContrast = viewModel::setInputContrast,
+                    )
                     LutRow(
                         state = state,
                         onSelect = viewModel::selectLut,
@@ -446,6 +462,17 @@ private fun VideoEditContent(
                 showExportDialog = false
                 viewModel.export(preset, useHevc)
             },
+        )
+    }
+
+    if (showInputSheet) {
+        InputTransformSheet(
+            current = state.inputTransform,
+            onSelect = {
+                viewModel.setInputTransform(it)
+                showInputSheet = false
+            },
+            onDismiss = { showInputSheet = false },
         )
     }
 }
@@ -703,6 +730,233 @@ private fun StrengthSlider(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** 精度区分ラベル(UIに「(公式)」「(近似)」を明示。厳密対応を偽らない)。 */
+private fun InputAccuracy.label(): String = when (this) {
+    InputAccuracy.OFFICIAL -> "公式"
+    InputAccuracy.APPROX -> "近似"
+    InputAccuracy.NONE -> ""
+}
+
+/**
+ * 入力変換セクション。色タブ最上部に置き、現在の入力変換(自動/手動・精度)を
+ * バッジ表示し、選択シートを開く。選択中は露出/コントラストの微調整を出す。
+ */
+@Composable
+private fun InputTransformSection(
+    state: VideoEditUiState,
+    onOpen: () -> Unit,
+    onExposure: (Float) -> Unit,
+    onContrast: (Float) -> Unit,
+) {
+    val input = state.inputTransform
+    Text(
+        text = "入力",
+        style = MaterialTheme.typography.labelMedium,
+        color = Color.White,
+        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 6.dp),
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        InputRampPreview(
+            input = input,
+            hdrToneMapped = state.colorInfo?.isHdr == true,
+            modifier = Modifier
+                .width(44.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(4.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = input.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                maxLines = 1,
+            )
+            val origin = if (state.inputAutoDetected) "自動" else "手動"
+            val acc = input.accuracy.label()
+            val sub = if (acc.isNotEmpty()) "$origin ・ $acc" else origin
+            Text(
+                text = sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = "変更",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    // Log素材の可能性ヒント(中央寄りヒストグラム由来)
+    if (state.logLikelyHint && input == InputTransform.NONE) {
+        Text(
+            text = "Log素材の可能性があります。入力変換を選ぶと色が正しく出る場合があります。",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp),
+        )
+    }
+    // 微調整(選択中のみ)。露出±2EVとコントラスト微調整で個体差・露出ばらつきを吸収
+    if (input != InputTransform.NONE) {
+        InputTrimSlider(
+            label = "露出",
+            value = state.inputParams.exposureEv,
+            range = -2f..2f,
+            valueText = "%+.1fEV".format(state.inputParams.exposureEv),
+            onChange = onExposure,
+        )
+        InputTrimSlider(
+            label = "ｺﾝﾄﾗｽﾄ",
+            value = state.inputParams.contrast,
+            range = -0.3f..0.3f,
+            valueText = "%+.2f".format(state.inputParams.contrast),
+            onChange = onContrast,
+        )
+    }
+}
+
+@Composable
+private fun InputTrimSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    valueText: String,
+    onChange: (Float) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White)
+        Slider(
+            value = value,
+            onValueChange = onChange,
+            valueRange = range,
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.25f),
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+                .semantics { contentDescription = "入力変換の$label" },
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 入力変換をグレーランプ(0..1)に当てた結果を小さな帯で描く。各社Logの
+ * トーンカーブ効果を一目で比較できる簡易サムネイル(実素材フレームの描画は
+ * 11種同時ではコストが高いため、代表ランプで軽量に表現する)。
+ */
+@Composable
+private fun InputRampPreview(
+    input: InputTransform,
+    hdrToneMapped: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier) {
+        val out = FloatArray(3)
+        val steps = 24
+        val w = size.width / steps
+        for (i in 0 until steps) {
+            val x = i / (steps - 1f)
+            input.apply(x, x, x, InputTransformParams(), hdrToneMapped, out)
+            drawRect(
+                color = Color(out[0].coerceIn(0f, 1f), out[1].coerceIn(0f, 1f), out[2].coerceIn(0f, 1f), 1f),
+                topLeft = androidx.compose.ui.geometry.Offset(i * w, 0f),
+                size = androidx.compose.ui.geometry.Size(w + 1f, size.height),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InputTransformSheet(
+    current: InputTransform,
+    onSelect: (InputTransform) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF111111)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                text = "入力変換を選択",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
+            )
+            Text(
+                text = "各社Log素材をRec.709へ正規化してからLUTを当てます。「(近似)」は公開カーブが" +
+                    "無いため厳密ではありません。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+            )
+            InputTransform.entries.forEach { option ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(option) }
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                ) {
+                    RadioButton(selected = option == current, onClick = { onSelect(option) })
+                    Spacer(Modifier.width(4.dp))
+                    InputRampPreview(
+                        input = option,
+                        hdrToneMapped = false,
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(22.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = option.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val acc = option.accuracy.label()
+                    if (acc.isNotEmpty()) {
+                        Text(
+                            text = acc,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (option.accuracy == InputAccuracy.OFFICIAL) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

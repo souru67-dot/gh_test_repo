@@ -79,6 +79,14 @@ class SettingsRepository(private val context: Context) {
         safeEdit { it[proDebugOverrideKey] = enabled }
     }
 
+    /** 動画ごとに手動選択した入力変換(各社Log→709)のID。素材IDでキーする。 */
+    suspend fun videoInputTransform(mediaId: Long): String? =
+        safeData.map { it[stringPreferencesKey("video_input_$mediaId")] }.first()
+
+    suspend fun setVideoInputTransform(mediaId: Long, id: String) {
+        safeEdit { it[stringPreferencesKey("video_input_$mediaId")] = id }
+    }
+
     suspend fun setExternalTreeUri(uri: String?) {
         safeEdit { prefs ->
             if (uri == null) prefs.remove(externalTreeUriKey) else prefs[externalTreeUriKey] = uri

@@ -126,6 +126,10 @@ class PhotoEditViewModel(
             delay(80)
             val strip = runCatching {
                 val parsed = lutRepository.load(lut)
+                // 写真は Rec.709 入力前提(709デフォルトの LutBaker.bake)。動画側の
+                // 入力変換(各社Log→709)は写真編集には未導入。将来、Log収録の静止画
+                // (HEIF/DNG等)対応を検討する際は、ここに InputTransform を通す
+                // オーバーロードへ差し替える(現状はLog静止画が稀なため見送り)。
                 LutStrip.fromCube(LutBaker.bake(parsed, state.filterStrength, Adjustments()))
             }.getOrNull()
             if (strip != null) {

@@ -141,8 +141,32 @@ object LutBaker {
 
     const val BAKE_SIZE = 33
 
-    /** 空リスト(=効果なし)を返す条件も含めて判定は呼び出し側で行う。 */
+    /** 入力変換なし(Rec.709入力前提)の従来経路。既存挙動を完全維持する。 */
     fun bake(
+        lut: CubeLut?,
+        strength: Float,
+        adjustments: Adjustments,
+        size: Int = BAKE_SIZE,
+    ): Array<Array<IntArray>> = bake(
+        input = com.souru.lumina.data.video.InputTransform.NONE,
+        inputParams = com.souru.lumina.data.video.InputTransformParams(),
+        hdrToneMapped = false,
+        lut = lut,
+        strength = strength,
+        adjustments = adjustments,
+        size = size,
+    )
+
+    /**
+     * 入力変換(Log→709)→ クリエイティブLUT → 簡易調整 を単一の3D LUTへ合成する。
+     * 入力変換で709へ正規化してからLUTが当たるため、どのLog素材でも同じプリセットが
+     * 同じ色の方向性で効く。[input]=NONE のときは従来と完全一致(非回帰)。
+     * クリエイティブLUTの強度は「正規化後の709」と「709+LUT」の間で補間する。
+     */
+    fun bake(
+        input: com.souru.lumina.data.video.InputTransform,
+        inputParams: com.souru.lumina.data.video.InputTransformParams,
+        hdrToneMapped: Boolean,
         lut: CubeLut?,
         strength: Float,
         adjustments: Adjustments,
@@ -150,25 +174,34 @@ object LutBaker {
     ): Array<Array<IntArray>> {
         val cube = Array(size) { Array(size) { IntArray(size) } }
         val sampled = FloatArray(3)
+        val tin = FloatArray(3)
         val maxIndex = (size - 1).toFloat()
         val s = strength.coerceIn(0f, 1f)
+        val hasInput = input != com.souru.lumina.data.video.InputTransform.NONE || !inputParams.isIdentity
         for (ri in 0 until size) {
             val r = ri / maxIndex
             for (gi in 0 until size) {
                 val g = gi / maxIndex
                 for (bi in 0 until size) {
                     val b = bi / maxIndex
-                    var rr = r
-                    var gg = g
-                    var bb = b
-                    if (lut != null && s > 0f) {
-                        lut.sample(r, g, b, sampled)
-                        rr = r + (sampled[0] - r) * s
-                        gg = g + (sampled[1] - g) * s
-                        bb = b + (sampled[2] - b) * s
+                    // 入力変換で 709 へ正規化(NONEなら恒等)
+                    var rr: Float
+                    var gg: Float
+                    var bb: Float
+                    if (hasInput) {
+                        input.apply(r, g, b, inputParams, hdrToneMapped, tin)
+                        rr = tin[0]; gg = tin[1]; bb = tin[2]
+                    } else {
+                        rr = r; gg = g; bb = b
                     }
-                    val adjusted = applyColorAdjustments(rr, gg, bb, adjustments)
-                    cube[ri][gi][bi] = adjusted
+                    // クリエイティブLUT(正規化後の値を入力に)
+                    if (lut != null && s > 0f) {
+                        lut.sample(rr, gg, bb, sampled)
+                        rr += (sampled[0] - rr) * s
+                        gg += (sampled[1] - gg) * s
+                        bb += (sampled[2] - bb) * s
+                    }
+                    cube[ri][gi][bi] = applyColorAdjustments(rr, gg, bb, adjustments)
                 }
             }
         }

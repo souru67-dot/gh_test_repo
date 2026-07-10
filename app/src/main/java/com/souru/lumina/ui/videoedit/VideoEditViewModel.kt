@@ -46,6 +46,15 @@ data class VideoEditUiState(
     val selectedLut: LutInfo? = null,
     val strength: Float = 1f,
     val adjustments: Adjustments = Adjustments(),
+    /** 入力変換(各社Log→709)。既定はなし(Rec.709)。 */
+    val inputTransform: com.souru.lumina.data.video.InputTransform =
+        com.souru.lumina.data.video.InputTransform.NONE,
+    val inputParams: com.souru.lumina.data.video.InputTransformParams =
+        com.souru.lumina.data.video.InputTransformParams(),
+    /** 入力変換が自動検出由来か(手動選択でfalse)。バッジ表示用。 */
+    val inputAutoDetected: Boolean = true,
+    /** 輝度が中央に寄っており、Log素材の可能性がある(手動選択を促すヒント)。 */
+    val logLikelyHint: Boolean = false,
     val comparing: Boolean = false,
     val trimStartMs: Long = 0L,
     val trimEndMs: Long = 0L,
@@ -57,6 +66,8 @@ private data class ColorParams(
     val lut: LutInfo?,
     val strength: Float,
     val adjustments: Adjustments,
+    val input: com.souru.lumina.data.video.InputTransform,
+    val inputParams: com.souru.lumina.data.video.InputTransformParams,
     val comparing: Boolean,
 )
 
@@ -75,7 +86,16 @@ class VideoEditViewModel(
     private val _uiState = MutableStateFlow(VideoEditUiState())
     val uiState: StateFlow<VideoEditUiState> = _uiState.asStateFlow()
 
-    private val colorParams = MutableStateFlow(ColorParams(null, 1f, Adjustments(), false))
+    private val colorParams = MutableStateFlow(
+        ColorParams(
+            lut = null,
+            strength = 1f,
+            adjustments = Adjustments(),
+            input = com.souru.lumina.data.video.InputTransform.NONE,
+            inputParams = com.souru.lumina.data.video.InputTransformParams(),
+            comparing = false,
+        ),
+    )
 
     /**
      * プレビュー用エフェクト。A/B比較中は空リスト(=元の映像)。
@@ -128,7 +148,29 @@ class VideoEditViewModel(
                 val info = withContext(Dispatchers.IO) {
                     VideoColorAnalyzer.detect(context, item.uri)
                 }
-                _uiState.update { it.copy(colorInfo = info) }
+                // 入力変換: 素材ごとに手動選択が保存されていれば優先復元し、
+                // 無ければ自動推定(HDR→HLG委譲 / それ以外→なし)を適用する
+                val savedId = withContext(Dispatchers.IO) {
+                    (context.applicationContext as LuminaApplication)
+                        .container.settingsRepository.videoInputTransform(mediaId)
+                }
+                val (input, autoDetected) = if (savedId != null) {
+                    com.souru.lumina.data.video.InputTransform.fromId(savedId) to false
+                } else {
+                    VideoColorAnalyzer.detectInputTransform(info) to true
+                }
+                _uiState.update {
+                    it.copy(colorInfo = info, inputTransform = input, inputAutoDetected = autoDetected)
+                }
+                colorParams.update { it.copy(input = input) }
+                // Log素材ヒントは代表フレーム1枚の輝度分布から(SDR素材のみ・
+                // 自動でHLGにならなかった場合に手動選択を促す)
+                if (info?.isHdr != true) {
+                    val logLikely = withContext(Dispatchers.IO) {
+                        VideoColorAnalyzer.detectLogLikely(context, item.uri)
+                    }
+                    if (logLikely) _uiState.update { it.copy(logLikelyHint = true) }
+                }
             }
         }
         viewModelScope.launch {
@@ -142,7 +184,12 @@ class VideoEditViewModel(
     private suspend fun buildEffects(params: ColorParams): List<Effect> {
         if (params.comparing) return emptyList()
         val hasLut = params.lut != null && params.strength > 0f
-        if (!hasLut && params.adjustments.isIdentity) return emptyList()
+        val hasInput = params.input != com.souru.lumina.data.video.InputTransform.NONE ||
+            !params.inputParams.isIdentity
+        if (!hasLut && params.adjustments.isIdentity && !hasInput) return emptyList()
+        // HDR(HLG/PQ)入力はデコーダがSDR(709)へトーンマップ済みなので、
+        // 入力変換のLog decodeは二重適用しない(EV/コントラストのみ)
+        val hdrToneMapped = _uiState.value.colorInfo?.isHdr == true
         val cube = withContext(Dispatchers.Default) {
             val lut = params.lut?.let { info ->
                 runCatching { lutRepository.load(info) }
@@ -155,9 +202,38 @@ class VideoEditViewModel(
                     }
                     .getOrNull()
             }
-            LutBaker.bake(lut, params.strength, params.adjustments)
+            LutBaker.bake(
+                params.input,
+                params.inputParams,
+                hdrToneMapped,
+                lut,
+                params.strength,
+                params.adjustments,
+            )
         }
         return listOf(SingleColorLut.createFromCube(cube))
+    }
+
+    fun setInputTransform(input: com.souru.lumina.data.video.InputTransform) {
+        _uiState.update { it.copy(inputTransform = input, inputAutoDetected = false) }
+        colorParams.update { it.copy(input = input) }
+        // 素材ごとに手動選択を記憶する
+        viewModelScope.launch {
+            (context.applicationContext as LuminaApplication)
+                .container.settingsRepository.setVideoInputTransform(mediaId, input.id)
+        }
+    }
+
+    fun setInputExposure(ev: Float) {
+        val v = ev.coerceIn(-2f, 2f)
+        _uiState.update { it.copy(inputParams = it.inputParams.copy(exposureEv = v)) }
+        colorParams.update { it.copy(inputParams = it.inputParams.copy(exposureEv = v)) }
+    }
+
+    fun setInputContrast(contrast: Float) {
+        val v = contrast.coerceIn(-0.3f, 0.3f)
+        _uiState.update { it.copy(inputParams = it.inputParams.copy(contrast = v)) }
+        colorParams.update { it.copy(inputParams = it.inputParams.copy(contrast = v)) }
     }
 
     fun selectLut(lut: LutInfo?) {
@@ -243,6 +319,9 @@ class VideoEditViewModel(
             lutPath = state.selectedLut?.takeIf { state.strength > 0f }?.file?.absolutePath,
             strength = state.strength,
             adjustments = state.adjustments,
+            inputTransformId = state.inputTransform.id,
+            inputExposureEv = state.inputParams.exposureEv,
+            inputContrast = state.inputParams.contrast,
             trimStartMs = trimStart,
             trimEndMs = trimEnd,
             targetHeight = targetHeight,

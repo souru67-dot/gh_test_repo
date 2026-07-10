@@ -37,6 +37,8 @@ import androidx.work.workDataOf
 import com.souru.lumina.data.edit.Adjustments
 import com.souru.lumina.data.luts.CubeLutParser
 import com.souru.lumina.data.luts.LutBaker
+import com.souru.lumina.data.video.InputTransform
+import com.souru.lumina.data.video.InputTransformParams
 import com.souru.lumina.data.video.VideoColorAnalyzer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +95,12 @@ class VideoExportWorker(
         val targetHeight = inputData.getInt(KEY_TARGET_HEIGHT, 0)
         val bitrate = inputData.getInt(KEY_BITRATE, 0)
         val useHevc = inputData.getBoolean(KEY_USE_HEVC, false)
+        // 入力変換(各社Log→709)。プレビューと同じ焼き込みを書き出しでも行う
+        val inputTransform = InputTransform.fromId(inputData.getString(KEY_INPUT_TRANSFORM))
+        val inputParams = InputTransformParams(
+            exposureEv = inputData.getFloat(KEY_INPUT_EXPOSURE, 0f),
+            contrast = inputData.getFloat(KEY_INPUT_CONTRAST, 0f),
+        )
 
         setForeground(createForegroundInfo(0))
 
@@ -114,6 +122,10 @@ class VideoExportWorker(
             lutPath = lutPath,
             strength = strength,
             adjustments = adjustments,
+            inputTransform = inputTransform,
+            inputParams = inputParams,
+            // HDR入力はデコーダがSDR(709)へトーンマップ済み。Log decodeは二重適用しない
+            hdrToneMapped = isHdr,
             trimStartMs = trimStartMs,
             trimEndMs = trimEndMs,
             targetHeight = targetHeight,
@@ -170,6 +182,9 @@ class VideoExportWorker(
         lutPath: String?,
         strength: Float,
         adjustments: Adjustments,
+        inputTransform: InputTransform,
+        inputParams: InputTransformParams,
+        hdrToneMapped: Boolean,
         trimStartMs: Long,
         trimEndMs: Long,
         targetHeight: Int,
@@ -179,10 +194,22 @@ class VideoExportWorker(
     ) {
         // LUTベイクはCPU負荷が小さいので先に実行しておく
         val lut = lutPath?.let { CubeLutParser.parse(File(it).readText()) }
-        val hasColorEffect = lut != null && strength > 0f || !adjustments.isIdentity
+        val hasInput = inputTransform != InputTransform.NONE || !inputParams.isIdentity
+        val hasColorEffect = lut != null && strength > 0f || !adjustments.isIdentity || hasInput
         val videoEffects = buildList {
             if (hasColorEffect) {
-                add(SingleColorLut.createFromCube(LutBaker.bake(lut, strength, adjustments)))
+                add(
+                    SingleColorLut.createFromCube(
+                        LutBaker.bake(
+                            inputTransform,
+                            inputParams,
+                            hdrToneMapped,
+                            lut,
+                            strength,
+                            adjustments,
+                        ),
+                    ),
+                )
             }
             if (targetHeight > 0) {
                 add(Presentation.createForHeight(targetHeight))
@@ -336,6 +363,9 @@ class VideoExportWorker(
         const val KEY_SHADOWS = "shadows"
         const val KEY_TEMPERATURE = "temperature"
         const val KEY_SATURATION = "saturation"
+        const val KEY_INPUT_TRANSFORM = "inputTransform"
+        const val KEY_INPUT_EXPOSURE = "inputExposure"
+        const val KEY_INPUT_CONTRAST = "inputContrast"
         const val KEY_TRIM_START_MS = "trimStartMs"
         const val KEY_TRIM_END_MS = "trimEndMs"
         const val KEY_TARGET_HEIGHT = "targetHeight"
@@ -350,6 +380,9 @@ class VideoExportWorker(
             lutPath: String?,
             strength: Float,
             adjustments: Adjustments,
+            inputTransformId: String = InputTransform.NONE.id,
+            inputExposureEv: Float = 0f,
+            inputContrast: Float = 0f,
             trimStartMs: Long,
             trimEndMs: Long,
             targetHeight: Int,
@@ -366,6 +399,9 @@ class VideoExportWorker(
                 .putFloat(KEY_SHADOWS, adjustments.shadows)
                 .putFloat(KEY_TEMPERATURE, adjustments.temperature)
                 .putFloat(KEY_SATURATION, adjustments.saturation)
+                .putString(KEY_INPUT_TRANSFORM, inputTransformId)
+                .putFloat(KEY_INPUT_EXPOSURE, inputExposureEv)
+                .putFloat(KEY_INPUT_CONTRAST, inputContrast)
                 .putLong(KEY_TRIM_START_MS, trimStartMs)
                 .putLong(KEY_TRIM_END_MS, trimEndMs)
                 .putInt(KEY_TARGET_HEIGHT, targetHeight)
