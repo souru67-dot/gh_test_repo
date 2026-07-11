@@ -17,7 +17,15 @@
     <string name="delete">削除</string>
     <string name="close">閉じる</string>
     <string name="delete_confirm_title">この予定を削除しますか?</string>
-    <string name="delete_confirm_message">「%1$s」をカレンダーから削除します。繰り返しの予定はすべての回がまとめて削除されます。</string>
+    <string name="delete_confirm_message">「%1$s」をカレンダーから削除します。</string>
+    <string name="delete_recurring_title">繰り返しの予定を削除</string>
+    <string name="delete_recurring_message">「%1$s」は繰り返しの予定です。削除する範囲を選んでください。</string>
+    <string name="delete_this_occurrence">この予定のみ</string>
+    <string name="delete_all_occurrences">すべての予定</string>
+    <string name="save_scope_title">繰り返しの予定を保存</string>
+    <string name="save_scope_message">この予定は繰り返しです。変更を適用する範囲を選んでください。</string>
+    <string name="save_this_occurrence">この予定のみ</string>
+    <string name="save_all_occurrences">すべての予定</string>
     <string name="cancel">キャンセル</string>
     <string name="untitled">(タイトルなし)</string>
 
@@ -49,6 +57,9 @@
     <string name="repeat_monthly">毎月</string>
     <string name="repeat_yearly">毎年</string>
     <string name="repeat_custom">カスタム</string>
+    <string name="repeat_until">繰り返しの終了</string>
+    <string name="repeat_until_none">なし</string>
+    <string name="repeat_until_clear">終了日をクリア</string>
 
     <!-- Views & settings -->
     <string name="switch_view">表示切替</string>

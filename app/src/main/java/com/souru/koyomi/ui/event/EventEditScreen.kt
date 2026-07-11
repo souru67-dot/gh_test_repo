@@ -1,6 +1,7 @@
 package com.souru.koyomi.ui.event
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,11 +59,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
+import com.souru.koyomi.util.RepeatFreq
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
 
 private val ReminderChoices: List<Int?> = listOf(null, 0, 5, 10, 15, 30, 60, 1440)
@@ -71,6 +75,7 @@ private val ReminderChoices: List<Int?> = listOf(null, 0, 5, 10, 15, 30, 60, 144
 fun EventEditScreen(onClose: () -> Unit) {
     val viewModel: EventEditViewModel = viewModel(factory = EventEditViewModel.Factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showScopeDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.saved) {
         if (state.saved) onClose()
@@ -95,7 +100,14 @@ fun EventEditScreen(onClose: () -> Unit) {
             // The main action sits at the bottom, in thumb reach.
             Surface {
                 Button(
-                    onClick = { viewModel.save() },
+                    onClick = {
+                        // Editing a recurring event: ask how far the change reaches.
+                        if (state.isRecurring && !state.isNew) {
+                            showScopeDialog = true
+                        } else {
+                            viewModel.save()
+                        }
+                    },
                     enabled = !state.loading && !state.saving && state.calendarId != null,
                     modifier = Modifier
                         .navigationBarsPadding()
@@ -231,18 +243,36 @@ fun EventEditScreen(onClose: () -> Unit) {
             PickerRow(
                 icon = { Icon(Icons.Outlined.Repeat, null, Modifier.size(20.dp)) },
                 label = stringResource(R.string.repeat),
-                value = repeatLabel(state.repeat),
+                value = repeatLabel(state.repeat.freq),
             ) { close ->
-                listOf(Repeat.NONE, Repeat.DAILY, Repeat.WEEKLY, Repeat.MONTHLY, Repeat.YEARLY)
-                    .forEach { repeat ->
-                        DropdownMenuItem(
-                            text = { Text(repeatLabel(repeat)) },
-                            onClick = {
-                                viewModel.setRepeat(repeat)
-                                close()
-                            },
-                        )
-                    }
+                listOf(
+                    RepeatFreq.NONE, RepeatFreq.DAILY, RepeatFreq.WEEKLY,
+                    RepeatFreq.MONTHLY, RepeatFreq.YEARLY,
+                ).forEach { freq ->
+                    DropdownMenuItem(
+                        text = { Text(repeatLabel(freq)) },
+                        onClick = {
+                            viewModel.setRepeatFreq(freq)
+                            close()
+                        },
+                    )
+                }
+            }
+
+            if (state.repeat.freq == RepeatFreq.WEEKLY) {
+                WeekdayChipsRow(
+                    selected = state.repeat.byDays,
+                    onToggle = viewModel::toggleRepeatDay,
+                )
+            }
+            if (state.repeat.freq in setOf(
+                    RepeatFreq.DAILY, RepeatFreq.WEEKLY, RepeatFreq.MONTHLY, RepeatFreq.YEARLY,
+                )
+            ) {
+                RepeatUntilRow(
+                    until = state.repeat.until,
+                    onChange = viewModel::setRepeatUntil,
+                )
             }
 
             // Memo
@@ -254,6 +284,131 @@ fun EventEditScreen(onClose: () -> Unit) {
                 singleLine = false,
             )
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+
+    if (showScopeDialog) {
+        AlertDialog(
+            onDismissRequest = { showScopeDialog = false },
+            title = { Text(stringResource(R.string.save_scope_title)) },
+            text = { Text(stringResource(R.string.save_scope_message)) },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(
+                        onClick = {
+                            showScopeDialog = false
+                            viewModel.save(SaveScope.THIS_ONLY)
+                        },
+                    ) { Text(stringResource(R.string.save_this_occurrence)) }
+                    TextButton(
+                        onClick = {
+                            showScopeDialog = false
+                            viewModel.save(SaveScope.ALL)
+                        },
+                    ) { Text(stringResource(R.string.save_all_occurrences)) }
+                    TextButton(onClick = { showScopeDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun WeekdayChipsRow(
+    selected: Set<java.time.DayOfWeek>,
+    onToggle: (java.time.DayOfWeek) -> Unit,
+) {
+    val locale = Locale.getDefault()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 56.dp, end = 20.dp, top = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        for (day in java.time.DayOfWeek.entries) {
+            FilterChip(
+                selected = day in selected,
+                onClick = { onToggle(day) },
+                label = {
+                    Text(
+                        day.getDisplayName(TextStyle.NARROW, locale),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RepeatUntilRow(
+    until: LocalDate?,
+    onChange: (LocalDate?) -> Unit,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val locale = Locale.getDefault()
+    val formatter = remember(locale) {
+        DateTimeFormatter.ofPattern(
+            if (locale.language == "ja") "yyyy年M月d日" else "MMM d, yyyy",
+            locale,
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 56.dp, end = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.repeat_until),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = { showPicker = true }) {
+            Text(until?.format(formatter) ?: stringResource(R.string.repeat_until_none))
+        }
+        if (until != null) {
+            IconButton(onClick = { onChange(null) }) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.repeat_until_clear),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = (until ?: LocalDate.now().plusMonths(1))
+                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            onChange(
+                                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
+                            )
+                        }
+                        showPicker = false
+                    },
+                ) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        ) {
+            DatePicker(state = pickerState)
         }
     }
 }
@@ -442,11 +597,11 @@ private fun reminderLabel(minutes: Int?): String = when {
 }
 
 @Composable
-private fun repeatLabel(repeat: Repeat): String = when (repeat) {
-    Repeat.NONE -> stringResource(R.string.repeat_none)
-    Repeat.DAILY -> stringResource(R.string.repeat_daily)
-    Repeat.WEEKLY -> stringResource(R.string.repeat_weekly)
-    Repeat.MONTHLY -> stringResource(R.string.repeat_monthly)
-    Repeat.YEARLY -> stringResource(R.string.repeat_yearly)
-    Repeat.CUSTOM -> stringResource(R.string.repeat_custom)
+private fun repeatLabel(freq: RepeatFreq): String = when (freq) {
+    RepeatFreq.NONE -> stringResource(R.string.repeat_none)
+    RepeatFreq.DAILY -> stringResource(R.string.repeat_daily)
+    RepeatFreq.WEEKLY -> stringResource(R.string.repeat_weekly)
+    RepeatFreq.MONTHLY -> stringResource(R.string.repeat_monthly)
+    RepeatFreq.YEARLY -> stringResource(R.string.repeat_yearly)
+    RepeatFreq.CUSTOM -> stringResource(R.string.repeat_custom)
 }

@@ -87,7 +87,7 @@ fun MonthScreen(
 
     var detailInstance by remember { mutableStateOf<EventInstance?>(null) }
     var detail by remember { mutableStateOf<EventDetails?>(null) }
-    var pendingDelete by remember { mutableStateOf<EventInstance?>(null) }
+    var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -188,7 +188,14 @@ fun MonthScreen(
                     viewModel.duplicateEvent(event.eventId)
                     closeDetail()
                 },
-                onDeleteRequest = { event -> pendingDelete = event },
+                onDeleteRequest = { event ->
+                    // `detail` belongs to the event shown in the sheet, so its
+                    // RRULE tells us whether this is a recurring series.
+                    pendingDelete = PendingDelete(
+                        event = event,
+                        isRecurring = !detail?.rrule.isNullOrBlank(),
+                    )
+                },
                 modifier = Modifier
                     .fillMaxHeight(0.88f)
                     .navigationBarsPadding(),
@@ -258,40 +265,71 @@ fun MonthScreen(
         }
     }
 
-    pendingDelete?.let { event ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.delete_confirm_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        R.string.delete_confirm_message,
-                        event.title.ifBlank { stringResource(R.string.untitled) },
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteEvent(event.eventId)
-                        pendingDelete = null
-                        closeDetail()
-                    },
-                ) {
-                    Text(
-                        stringResource(R.string.delete),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
+    pendingDelete?.let { pending ->
+        val event = pending.event
+        val title = event.title.ifBlank { stringResource(R.string.untitled) }
+        if (pending.isRecurring) {
+            AlertDialog(
+                onDismissRequest = { pendingDelete = null },
+                title = { Text(stringResource(R.string.delete_recurring_title)) },
+                text = { Text(stringResource(R.string.delete_recurring_message, title)) },
+                confirmButton = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteEventInstance(event.eventId, event.begin)
+                                pendingDelete = null
+                                closeDetail()
+                            },
+                        ) { Text(stringResource(R.string.delete_this_occurrence)) }
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteEvent(event.eventId)
+                                pendingDelete = null
+                                closeDetail()
+                            },
+                        ) {
+                            Text(
+                                stringResource(R.string.delete_all_occurrences),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        TextButton(onClick = { pendingDelete = null }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    }
+                },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { pendingDelete = null },
+                title = { Text(stringResource(R.string.delete_confirm_title)) },
+                text = { Text(stringResource(R.string.delete_confirm_message, title)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteEvent(event.eventId)
+                            pendingDelete = null
+                            closeDetail()
+                        },
+                    ) {
+                        Text(
+                            stringResource(R.string.delete),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingDelete = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
     }
 }
+
+private data class PendingDelete(val event: EventInstance, val isRecurring: Boolean)
 
 /** Seamless vertically scrolling months (settings option). */
 @Composable

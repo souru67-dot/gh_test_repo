@@ -99,6 +99,13 @@ class MonthViewModel(
         viewModelScope.launch { calendarRepository.deleteEvent(eventId) }
     }
 
+    /** Removes a single occurrence of a recurring event. */
+    fun deleteEventInstance(eventId: Long, instanceBeginMs: Long) {
+        viewModelScope.launch {
+            calendarRepository.deleteEventInstance(eventId, instanceBeginMs)
+        }
+    }
+
     fun duplicateEvent(eventId: Long) {
         viewModelScope.launch { calendarRepository.duplicateEvent(eventId) }
     }

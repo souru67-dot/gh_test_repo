@@ -18,7 +18,15 @@
     <string name="delete">Delete</string>
     <string name="close">Close</string>
     <string name="delete_confirm_title">Delete this event?</string>
-    <string name="delete_confirm_message">"%1$s" will be removed from your calendar. Recurring events are deleted with all occurrences.</string>
+    <string name="delete_confirm_message">"%1$s" will be removed from your calendar.</string>
+    <string name="delete_recurring_title">Delete recurring event</string>
+    <string name="delete_recurring_message">"%1$s" repeats. What should be deleted?</string>
+    <string name="delete_this_occurrence">This event only</string>
+    <string name="delete_all_occurrences">All events in the series</string>
+    <string name="save_scope_title">Save recurring event</string>
+    <string name="save_scope_message">This event repeats. Where should the changes apply?</string>
+    <string name="save_this_occurrence">This event only</string>
+    <string name="save_all_occurrences">All events in the series</string>
     <string name="cancel">Cancel</string>
     <string name="untitled">(No title)</string>
 
@@ -50,6 +58,9 @@
     <string name="repeat_monthly">Every month</string>
     <string name="repeat_yearly">Every year</string>
     <string name="repeat_custom">Custom</string>
+    <string name="repeat_until">Ends on</string>
+    <string name="repeat_until_none">Never</string>
+    <string name="repeat_until_clear">Clear end date</string>
 
     <!-- Views & settings -->
     <string name="switch_view">Switch view</string>

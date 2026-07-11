@@ -11,6 +11,9 @@ import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.data.CalendarRepository
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDraft
+import com.souru.koyomi.util.RepeatFreq
+import com.souru.koyomi.util.RepeatRule
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -24,19 +27,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class Repeat(val rrule: String?) {
-    NONE(null),
-    DAILY("FREQ=DAILY"),
-    WEEKLY("FREQ=WEEKLY"),
-    MONTHLY("FREQ=MONTHLY"),
-    YEARLY("FREQ=YEARLY"),
-    /** An RRULE we don't model; preserved untouched on save. */
-    CUSTOM(null),
-}
+/** How a save applies to a recurring event. */
+enum class SaveScope { ALL, THIS_ONLY }
 
 data class EditorUiState(
     val loading: Boolean = true,
     val isNew: Boolean = true,
+    /** The event being edited already repeats (drives the save-scope dialog). */
+    val isRecurring: Boolean = false,
     val title: String = "",
     val allDay: Boolean = false,
     val start: LocalDateTime = LocalDateTime.now(),
@@ -46,7 +44,7 @@ data class EditorUiState(
     val location: String = "",
     val description: String = "",
     val reminderMinutes: Int? = null,
-    val repeat: Repeat = Repeat.NONE,
+    val repeat: RepeatRule = RepeatRule(),
     val saving: Boolean = false,
     val saved: Boolean = false,
 )
@@ -64,8 +62,8 @@ class EventEditViewModel(
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
-    /** RRULE carried through unmodified when repeat == CUSTOM. */
-    private var customRrule: String? = null
+    /** BEGIN of the instance being edited; identifies the exception occurrence. */
+    private var originalInstanceBegin: Long = -1L
 
     init {
         viewModelScope.launch { load() }
@@ -95,19 +93,12 @@ class EventEditViewModel(
                     start = Instant.ofEpochMilli(b).atZone(zone).toLocalDateTime()
                     end = Instant.ofEpochMilli(e).atZone(zone).toLocalDateTime()
                 }
-                val repeat = when (details.rrule?.substringBefore(";")) {
-                    null, "" -> Repeat.NONE
-                    "FREQ=DAILY" -> if (details.rrule == "FREQ=DAILY") Repeat.DAILY else Repeat.CUSTOM
-                    "FREQ=WEEKLY" -> if (details.rrule == "FREQ=WEEKLY") Repeat.WEEKLY else Repeat.CUSTOM
-                    "FREQ=MONTHLY" -> if (details.rrule == "FREQ=MONTHLY") Repeat.MONTHLY else Repeat.CUSTOM
-                    "FREQ=YEARLY" -> if (details.rrule == "FREQ=YEARLY") Repeat.YEARLY else Repeat.CUSTOM
-                    else -> Repeat.CUSTOM
-                }
-                if (repeat == Repeat.CUSTOM) customRrule = details.rrule
+                originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
 
                 _uiState.value = EditorUiState(
                     loading = false,
                     isNew = false,
+                    isRecurring = !details.rrule.isNullOrBlank(),
                     title = details.title,
                     allDay = details.allDay,
                     start = start,
@@ -117,7 +108,7 @@ class EventEditViewModel(
                     location = details.location.orEmpty(),
                     description = details.description.orEmpty(),
                     reminderMinutes = details.reminderMinutes,
-                    repeat = repeat,
+                    repeat = RepeatRule.parse(details.rrule),
                 )
                 return
             }
@@ -148,9 +139,30 @@ class EventEditViewModel(
     fun setCalendar(id: Long) = _uiState.update { it.copy(calendarId = id) }
     fun setReminder(minutes: Int?) = _uiState.update { it.copy(reminderMinutes = minutes) }
 
-    fun setRepeat(repeat: Repeat) {
-        if (repeat != Repeat.CUSTOM) customRrule = null
-        _uiState.update { it.copy(repeat = repeat) }
+    fun setRepeatFreq(freq: RepeatFreq) = _uiState.update { state ->
+        val byDays = if (freq == RepeatFreq.WEEKLY && state.repeat.byDays.isEmpty()) {
+            setOf(state.start.dayOfWeek)
+        } else {
+            state.repeat.byDays
+        }
+        state.copy(
+            repeat = state.repeat.copy(freq = freq, byDays = byDays, raw = null),
+        )
+    }
+
+    fun toggleRepeatDay(day: DayOfWeek) = _uiState.update { state ->
+        val current = state.repeat.byDays
+        val next = if (day in current) current - day else current + day
+        // Keep at least one day selected for a weekly rule.
+        state.copy(
+            repeat = state.repeat.copy(
+                byDays = if (next.isEmpty()) setOf(state.start.dayOfWeek) else next,
+            ),
+        )
+    }
+
+    fun setRepeatUntil(date: LocalDate?) = _uiState.update { state ->
+        state.copy(repeat = state.repeat.copy(until = date))
     }
 
     /** Moving the start keeps the event duration; the end follows. */
@@ -167,13 +179,14 @@ class EventEditViewModel(
         }
     }
 
-    fun save() {
+    fun save(scope: SaveScope = SaveScope.ALL) {
         val state = _uiState.value
         val calendarId = state.calendarId ?: return
         if (state.saving) return
         _uiState.update { it.copy(saving = true) }
 
         val zone = ZoneId.systemDefault()
+        val thisOnly = scope == SaveScope.THIS_ONLY && state.isRecurring && eventId >= 0
         val draft = EventDraft(
             id = if (eventId >= 0) eventId else null,
             calendarId = calendarId,
@@ -192,14 +205,14 @@ class EventEditViewModel(
             },
             location = state.location.trim(),
             description = state.description.trim(),
-            rrule = if (state.repeat == Repeat.CUSTOM) customRrule else state.repeat.rrule,
+            rrule = if (thisOnly) null else state.repeat.toRRule(),
             reminderMinutes = state.reminderMinutes,
         )
         viewModelScope.launch {
-            val ok = if (draft.id == null) {
-                repository.createEvent(draft) != null
-            } else {
-                repository.updateEvent(draft)
+            val ok = when {
+                draft.id == null -> repository.createEvent(draft) != null
+                thisOnly -> repository.updateEventInstance(eventId, originalInstanceBegin, draft)
+                else -> repository.updateEvent(draft)
             }
             _uiState.update { it.copy(saving = false, saved = ok) }
         }

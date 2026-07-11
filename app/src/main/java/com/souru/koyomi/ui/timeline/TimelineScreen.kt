@@ -270,6 +270,18 @@ private fun DayTimelineColumn(
             }
         }
 
+        // Current-time indicator on today's column.
+        if (day == LocalDate.now()) {
+            val now = java.time.LocalTime.now()
+            Box(
+                modifier = Modifier
+                    .offset(y = HourHeight * ((now.hour * 60 + now.minute) / 60f))
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(LocalCalendarColors.current.sunday),
+            )
+        }
+
         for (positioned in assignLanes(events, day, zone)) {
             val event = positioned.event
             val heightMinutes =

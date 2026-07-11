@@ -240,6 +240,54 @@ class CalendarRepository(private val context: Context) {
     }
 
     /**
+     * Deletes a single occurrence of a recurring event by inserting a
+     * cancelled exception at the instance's original time.
+     */
+    suspend fun deleteEventInstance(
+        eventId: Long,
+        instanceBeginMs: Long,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (!hasWritePermission()) return@withContext false
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceBeginMs)
+            put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CANCELED)
+        }
+        val uri = android.net.Uri.withAppendedPath(
+            CalendarContract.Events.CONTENT_EXCEPTION_URI,
+            eventId.toString(),
+        )
+        resolver.insert(uri, values) != null
+    }
+
+    /**
+     * Edits a single occurrence of a recurring event: inserts an exception
+     * event carrying the modified fields. [draft] must not repeat.
+     */
+    suspend fun updateEventInstance(
+        eventId: Long,
+        instanceBeginMs: Long,
+        draft: EventDraft,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (!hasWritePermission()) return@withContext false
+        val values = draft.copy(rrule = null).toContentValues().apply {
+            // Exceptions inherit the calendar and recurrence of their parent.
+            remove(CalendarContract.Events.CALENDAR_ID)
+            remove(CalendarContract.Events.RRULE)
+            remove(CalendarContract.Events.DURATION)
+            put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceBeginMs)
+            put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
+        }
+        val uri = android.net.Uri.withAppendedPath(
+            CalendarContract.Events.CONTENT_EXCEPTION_URI,
+            eventId.toString(),
+        )
+        val inserted = resolver.insert(uri, values) ?: return@withContext false
+        val exceptionId = ContentUris.parseId(inserted)
+        draft.reminderMinutes?.let { minutes -> insertReminder(exceptionId, minutes) }
+        true
+    }
+
+    /**
      * Shifts an event by whole days (month-view drag & drop). Recurring events
      * move the entire series; DURATION-based events only need DTSTART shifted.
      */
