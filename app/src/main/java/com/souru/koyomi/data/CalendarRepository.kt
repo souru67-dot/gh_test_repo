@@ -321,6 +321,24 @@ class CalendarRepository(private val context: Context) {
         resolver.delete(uri, null, null) > 0
     }
 
+    /**
+     * Asks the sync framework to sync every calendar account now. The system
+     * throttles this, so calling it on every app resume is fine.
+     */
+    fun requestSync() {
+        val extras = android.os.Bundle().apply {
+            putBoolean(android.content.ContentResolver.SYNC_EXTRAS_MANUAL, true)
+            putBoolean(android.content.ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
+        }
+        android.content.ContentResolver.requestSync(null, CalendarContract.AUTHORITY, extras)
+    }
+
+    /** Drag & drop copy: duplicates an event, shifted by [days] whole days. */
+    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean {
+        val newId = duplicateEvent(eventId) ?: return false
+        return if (days == 0L) true else moveEventByDays(newId, days)
+    }
+
     /** Copies an event (single copy at the same time; the copy does not repeat). */
     suspend fun duplicateEvent(eventId: Long): Long? {
         val source = loadEventDetails(eventId) ?: return null

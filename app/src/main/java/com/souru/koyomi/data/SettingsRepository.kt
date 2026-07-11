@@ -25,6 +25,7 @@ class SettingsRepository(private val context: Context) {
         val VERTICAL_MONTH_SCROLL = booleanPreferencesKey("vertical_month_scroll")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIDDEN_CALENDAR_IDS = stringSetPreferencesKey("hidden_calendar_ids")
+        val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -67,6 +68,15 @@ class SettingsRepository(private val context: Context) {
     /** Calendars the user switched off in settings; their events are not shown. */
     val hiddenCalendarIds: Flow<Set<Long>> = context.dataStore.data.map { prefs ->
         prefs[Keys.HIDDEN_CALENDAR_IDS].orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+    }
+
+    /** Minutes between background sync requests; 0 = rely on system auto-sync only. */
+    val syncIntervalMinutes: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SYNC_INTERVAL_MINUTES]?.toIntOrNull() ?: 30
+    }
+
+    suspend fun setSyncIntervalMinutes(minutes: Int) {
+        context.dataStore.edit { it[Keys.SYNC_INTERVAL_MINUTES] = minutes.toString() }
     }
 
     suspend fun setCalendarHidden(calendarId: Long, hidden: Boolean) {

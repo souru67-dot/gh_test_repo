@@ -350,7 +350,8 @@ private fun assignLanes(
 
 @Composable
 private fun TimelineChip(event: EventInstance, modifier: Modifier = Modifier) {
-    val background = if (event.color != 0) Color(event.color) else MaterialTheme.colorScheme.primary
+    val background = com.souru.koyomi.util.providerColor(event.color)
+        ?: MaterialTheme.colorScheme.primary
     val textColor = if (background.luminance() > 0.5f) {
         Color.Black.copy(alpha = 0.8f)
     } else {

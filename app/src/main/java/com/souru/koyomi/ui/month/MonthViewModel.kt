@@ -11,6 +11,8 @@ import com.souru.koyomi.data.SettingsRepository
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.task.Task
+import com.souru.koyomi.data.task.TaskRepository
 import com.souru.koyomi.util.monthGridDays
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -23,18 +25,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class MonthUiState(
     val hasPermission: Boolean = true,
     val eventsByDay: Map<LocalDate, List<EventInstance>> = emptyMap(),
+    val tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
     val calendars: List<CalendarInfo> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonthViewModel(
     private val calendarRepository: CalendarRepository,
+    private val taskRepository: TaskRepository,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
@@ -54,14 +59,17 @@ class MonthViewModel(
 
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
-    private val calendarChanges = permissionTick.flatMapLatest { calendarRepository.changes }
+    private val dataChanges = merge(
+        permissionTick.flatMapLatest { calendarRepository.changes },
+        taskRepository.changes,
+    )
 
     val uiState: StateFlow<MonthUiState> =
         combine(
             _visibleMonth,
             weekStart,
             settingsRepository.hiddenCalendarIds,
-            calendarChanges,
+            dataChanges,
         ) { month, weekStart, hidden, _ ->
             Triple(month, weekStart, hidden)
         }.mapLatest { (month, weekStart, hidden) ->
@@ -71,6 +79,7 @@ class MonthViewModel(
             MonthUiState(
                 hasPermission = calendarRepository.hasReadPermission(),
                 eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),
+                tasksByDay = taskRepository.loadTasksByDay(gridStart, gridEnd),
                 calendars = calendarRepository.loadCalendars(),
             )
         }.stateIn(
@@ -116,6 +125,28 @@ class MonthViewModel(
         viewModelScope.launch { calendarRepository.moveEventByDays(eventId, days) }
     }
 
+    /** Month-view drag & drop: copy an event onto another day. */
+    fun duplicateEventTo(eventId: Long, days: Long) {
+        viewModelScope.launch { calendarRepository.duplicateEventTo(eventId, days) }
+    }
+
+    /** Nudge the sync framework so remote Google Calendar changes come in. */
+    fun syncNow() {
+        if (calendarRepository.hasReadPermission()) calendarRepository.requestSync()
+    }
+
+    fun addTask(title: String, dueDate: LocalDate) {
+        viewModelScope.launch { taskRepository.addTask(title, dueDate) }
+    }
+
+    fun setTaskDone(taskId: Long, done: Boolean) {
+        viewModelScope.launch { taskRepository.setDone(taskId, done) }
+    }
+
+    fun deleteTask(taskId: Long) {
+        viewModelScope.launch { taskRepository.deleteTask(taskId) }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -123,6 +154,7 @@ class MonthViewModel(
                     as KoyomiApplication
                 MonthViewModel(
                     calendarRepository = app.container.calendarRepository,
+                    taskRepository = app.container.taskRepository,
                     settingsRepository = app.container.settingsRepository,
                 )
             }

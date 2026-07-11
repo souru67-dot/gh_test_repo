@@ -29,16 +29,28 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.souru.koyomi.R
@@ -46,6 +58,7 @@ import com.souru.koyomi.data.holiday.JapaneseHolidays
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import java.time.Instant
 import java.time.LocalDate
@@ -62,6 +75,7 @@ import java.util.Locale
 fun DaySheetContent(
     date: LocalDate,
     events: List<EventInstance>,
+    tasks: List<Task>,
     calendars: List<CalendarInfo>,
     detailInstance: EventInstance?,
     detail: EventDetails?,
@@ -71,6 +85,9 @@ fun DaySheetContent(
     onEdit: (EventInstance) -> Unit,
     onDuplicate: (EventInstance) -> Unit,
     onDeleteRequest: (EventInstance) -> Unit,
+    onAddTask: (String) -> Unit,
+    onToggleTask: (Task) -> Unit,
+    onDeleteTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
@@ -82,8 +99,12 @@ fun DaySheetContent(
             DayEventList(
                 date = date,
                 events = events,
+                tasks = tasks,
                 onEventClick = onEventClick,
                 onAdd = onAdd,
+                onAddTask = onAddTask,
+                onToggleTask = onToggleTask,
+                onDeleteTask = onDeleteTask,
             )
         } else {
             EventDetailPane(
@@ -103,8 +124,12 @@ fun DaySheetContent(
 private fun DayEventList(
     date: LocalDate,
     events: List<EventInstance>,
+    tasks: List<Task>,
     onEventClick: (EventInstance) -> Unit,
     onAdd: () -> Unit,
+    onAddTask: (String) -> Unit,
+    onToggleTask: (Task) -> Unit,
+    onDeleteTask: (Task) -> Unit,
 ) {
     val calendarColors = LocalCalendarColors.current
     val dateFormatter = rememberPatternFormatter(R.string.sheet_date_pattern)
@@ -138,25 +163,119 @@ private fun DayEventList(
             }
         }
 
-        if (events.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 40.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.no_events),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (events.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.no_events),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
                 items(events, key = { "${it.eventId}-${it.begin}" }) { event ->
                     EventRow(date = date, event = event, onClick = { onEventClick(event) })
                 }
             }
+
+            item(key = "task-header") {
+                Text(
+                    text = stringResource(R.string.tasks),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 2.dp),
+                )
+            }
+            items(tasks, key = { "task-${it.id}" }) { task ->
+                TaskRow(
+                    task = task,
+                    onToggle = { onToggleTask(task) },
+                    onDelete = { onDeleteTask(task) },
+                )
+            }
+            item(key = "task-add") {
+                AddTaskRow(onAddTask = onAddTask)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskRow(task: Task, onToggle: () -> Unit, onDelete: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = task.done, onCheckedChange = { onToggle() })
+        Text(
+            text = task.title,
+            style = MaterialTheme.typography.bodyLarge,
+            textDecoration = if (task.done) TextDecoration.LineThrough else null,
+            color = if (task.done) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.delete),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddTaskRow(onAddTask: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    fun submit() {
+        if (text.isNotBlank()) {
+            onAddTask(text)
+            text = ""
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = { Text(stringResource(R.string.add_task_hint)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = ::submit, enabled = text.isNotBlank()) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.add_task_hint),
+            )
         }
     }
 }

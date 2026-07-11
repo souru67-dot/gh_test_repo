@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -112,6 +113,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
             )
 
+            SectionLabel(stringResource(R.string.settings_sync))
+            for ((minutes, labelRes) in listOf(
+                15 to R.string.sync_15min,
+                30 to R.string.sync_30min,
+                60 to R.string.sync_1hour,
+                0 to R.string.sync_system_only,
+            )) {
+                RadioRow(
+                    label = stringResource(labelRes),
+                    selected = state.syncIntervalMinutes == minutes,
+                    onClick = { viewModel.setSyncInterval(minutes) },
+                )
+            }
+
+            NotificationPermissionSection()
+
             SectionLabel(stringResource(R.string.settings_calendars))
             for (calendar in state.calendars) {
                 Row(
@@ -129,7 +146,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Box(
                         modifier = Modifier
                             .size(12.dp)
-                            .background(Color(calendar.color), CircleShape),
+                            .background(
+                                com.souru.koyomi.util.providerColor(calendar.color)
+                                    ?: MaterialTheme.colorScheme.primary,
+                                CircleShape,
+                            ),
                     )
                     Column(
                         modifier = Modifier
@@ -155,6 +176,58 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.padding(bottom = 24.dp))
+        }
+    }
+}
+
+/** Reminder notifications need POST_NOTIFICATIONS on Android 13+. */
+@Composable
+private fun NotificationPermissionSection() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var granted by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(
+            androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled(),
+        )
+    }
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { result -> granted = result }
+
+    SectionLabel(stringResource(R.string.settings_notifications))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (granted) {
+                stringResource(R.string.notifications_enabled)
+            } else {
+                stringResource(R.string.notifications_disabled)
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        if (!granted) {
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    if (android.os.Build.VERSION.SDK_INT >= 33) {
+                        launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        // Below 13 notifications are on by default; the state can
+                        // only be changed from the system settings.
+                        context.startActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS,
+                            ).putExtra(
+                                android.provider.Settings.EXTRA_APP_PACKAGE,
+                                context.packageName,
+                            ),
+                        )
+                    }
+                },
+            ) { Text(stringResource(R.string.notifications_allow)) }
         }
     }
 }

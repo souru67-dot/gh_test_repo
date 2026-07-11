@@ -77,6 +77,28 @@
     <string name="theme_dark">ダーク</string>
     <string name="settings_calendars">表示するカレンダー</string>
 
+    <!-- Sync & notifications -->
+    <string name="settings_sync">Googleカレンダーの同期</string>
+    <string name="sync_15min">15分ごと</string>
+    <string name="sync_30min">30分ごと</string>
+    <string name="sync_1hour">1時間ごと</string>
+    <string name="sync_system_only">システムの自動同期のみ</string>
+    <string name="settings_notifications">通知</string>
+    <string name="notifications_enabled">リマインダー通知は有効です</string>
+    <string name="notifications_disabled">リマインダー通知は無効です</string>
+    <string name="notifications_allow">許可する</string>
+    <string name="notification_channel_reminders">予定のリマインダー</string>
+
+    <!-- Tasks -->
+    <string name="tasks">タスク</string>
+    <string name="add_task_hint">タスクを追加</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">移動しますか、複製しますか?</string>
+    <string name="drop_message">「%1$s」をどうしますか?</string>
+    <string name="drop_move">ここに移動</string>
+    <string name="drop_copy">ここに複製</string>
+
     <!-- Widgets -->
     <string name="widget_month_label">月カレンダー</string>
     <string name="widget_month_description">今月をひと目で。予定のある日にドットを表示します。</string>

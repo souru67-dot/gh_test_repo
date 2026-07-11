@@ -52,7 +52,17 @@ app/src/main/java/com/souru/koyomi/
 - 今日の予定リスト(4x2):今日〜明日の予定を時刻付き表示、予定なしの日は「予定はありません」
 - どちらもタップでアプリの該当日を開く。日付変更(深夜0時)と予定変更(WorkManagerのContentUriTrigger)で自動更新、システムテーマ/Dynamic Color追従
 
+**タスク(ToDo)**
+- 日付に紐づくローカルタスク。日別シートで追加・完了・削除、月グリッドに未完了数を表示
+- ※Google Tasksは公開ContentProviderがないため端末ローカル保存(同期にはGoogle Tasks API+OAuthが必要)
+
+**同期と通知**
+- WorkManagerによる定期同期リクエスト(15分/30分/1時間/自動のみを設定で選択)+アプリ復帰時の即時同期
+- CalendarProviderの`EVENT_REMINDER`を受信して自前のリマインダー通知を表示(Android 13+は`POST_NOTIFICATIONS`をオンボーディング/設定から許可)
+
 **その他**
+- 予定チップのドラッグ&ドロップ:ドロップ先で「移動 / 複製」を選択
+- Googleカレンダーで設定したユーザー色に対応(プロバイダ色のアルファ欠落を正規化)
 - 権限オンボーディング(拒否時も空のカレンダー+設定への導線)
 - 日本語 / 英語ロケール、ライト / ダークテーマ、Dynamic Color
 

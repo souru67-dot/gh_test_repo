@@ -24,6 +24,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val calendars: List<CalendarInfo> = emptyList(),
     val hiddenCalendarIds: Set<Long> = emptySet(),
+    val syncIntervalMinutes: Int = 30,
 )
 
 class SettingsViewModel(
@@ -38,18 +39,22 @@ class SettingsViewModel(
     }
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        settingsRepository.weekStart,
-        settingsRepository.verticalMonthScroll,
-        settingsRepository.themeMode,
+        combine(
+            settingsRepository.weekStart,
+            settingsRepository.verticalMonthScroll,
+            settingsRepository.themeMode,
+        ) { weekStart, vertical, theme -> Triple(weekStart, vertical, theme) },
         settingsRepository.hiddenCalendarIds,
+        settingsRepository.syncIntervalMinutes,
         calendars,
-    ) { weekStart, vertical, theme, hidden, calendars ->
+    ) { (weekStart, vertical, theme), hidden, syncMinutes, calendars ->
         SettingsUiState(
             weekStart = weekStart,
             verticalScroll = vertical,
             themeMode = theme,
             calendars = calendars,
             hiddenCalendarIds = hidden,
+            syncIntervalMinutes = syncMinutes,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -67,6 +72,10 @@ class SettingsViewModel(
 
     fun setCalendarHidden(calendarId: Long, hidden: Boolean) {
         viewModelScope.launch { settingsRepository.setCalendarHidden(calendarId, hidden) }
+    }
+
+    fun setSyncInterval(minutes: Int) {
+        viewModelScope.launch { settingsRepository.setSyncIntervalMinutes(minutes) }
     }
 
     companion object {

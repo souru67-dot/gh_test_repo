@@ -200,7 +200,7 @@ fun EventEditScreen(onClose: () -> Unit) {
                     icon = { Icon(Icons.Outlined.CalendarMonth, null, Modifier.size(20.dp)) },
                     label = stringResource(R.string.calendar),
                     value = selected?.displayName.orEmpty(),
-                    valueTint = selected?.let { Color(it.color) },
+                    valueTint = selected?.let { com.souru.koyomi.util.providerColor(it.color) },
                 ) { close ->
                     state.calendars.forEach { calendar ->
                         DropdownMenuItem(

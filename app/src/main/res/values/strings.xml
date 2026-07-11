@@ -78,6 +78,28 @@
     <string name="theme_dark">Dark</string>
     <string name="settings_calendars">Calendars to show</string>
 
+    <!-- Sync & notifications -->
+    <string name="settings_sync">Google Calendar sync</string>
+    <string name="sync_15min">Every 15 minutes</string>
+    <string name="sync_30min">Every 30 minutes</string>
+    <string name="sync_1hour">Every hour</string>
+    <string name="sync_system_only">System auto-sync only</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="notifications_enabled">Reminder notifications are on</string>
+    <string name="notifications_disabled">Reminder notifications are off</string>
+    <string name="notifications_allow">Allow</string>
+    <string name="notification_channel_reminders">Event reminders</string>
+
+    <!-- Tasks -->
+    <string name="tasks">Tasks</string>
+    <string name="add_task_hint">Add a task</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">Move or copy?</string>
+    <string name="drop_message">What should happen to "%1$s"?</string>
+    <string name="drop_move">Move here</string>
+    <string name="drop_copy">Copy here</string>
+
     <!-- Widgets -->
     <string name="widget_month_label">Month calendar</string>
     <string name="widget_month_description">This month at a glance, with dots on busy days.</string>

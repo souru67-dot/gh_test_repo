@@ -43,6 +43,7 @@ import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import com.souru.koyomi.util.monthGridDays
 import com.souru.koyomi.util.orderedWeekDays
+import com.souru.koyomi.util.providerColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -100,6 +101,7 @@ fun MonthGrid(
     onLongPress: (LocalDate) -> Unit,
     onMoveEvent: (event: EventInstance, days: Long) -> Unit,
     modifier: Modifier = Modifier,
+    taskCounts: Map<LocalDate, Int> = emptyMap(),
 ) {
     val days = monthGridDays(month, weekStart)
     val today = LocalDate.now()
@@ -138,6 +140,7 @@ fun MonthGrid(
                             isSelected = date == selectedDate,
                             isDropTarget = date == dropTarget,
                             events = eventsByDay[date].orEmpty(),
+                            taskCount = taskCounts[date] ?: 0,
                             onSelect = onSelect,
                             onLongPress = onLongPress,
                             dragState = dragState,
@@ -180,6 +183,7 @@ private fun DayCell(
     isSelected: Boolean,
     isDropTarget: Boolean,
     events: List<EventInstance>,
+    taskCount: Int,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
     dragState: EventDragState,
@@ -259,6 +263,15 @@ private fun DayCell(
             if (overflow > 0) {
                 Text(
                     text = "+$overflow",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 3.dp),
+                    fontSize = 9.sp,
+                )
+            }
+            if (taskCount > 0) {
+                Text(
+                    text = "☑$taskCount",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 3.dp),
@@ -376,4 +389,4 @@ private fun DragGhostChip(event: EventInstance) {
 
 @Composable
 fun eventColor(event: EventInstance): Color =
-    if (event.color != 0) Color(event.color) else MaterialTheme.colorScheme.primary
+    providerColor(event.color) ?: MaterialTheme.colorScheme.primary

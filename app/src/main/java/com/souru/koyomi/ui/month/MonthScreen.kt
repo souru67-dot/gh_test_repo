@@ -88,9 +88,12 @@ fun MonthScreen(
     var detailInstance by remember { mutableStateOf<EventInstance?>(null) }
     var detail by remember { mutableStateOf<EventDetails?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
+    var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
+        // Pull in changes made on Google Calendar since the app was last open.
+        viewModel.syncNow()
         onPauseOrDispose { }
     }
 
@@ -170,6 +173,7 @@ fun MonthScreen(
             DaySheetContent(
                 date = selectedDate,
                 events = state.eventsByDay[selectedDate].orEmpty(),
+                tasks = state.tasksByDay[selectedDate].orEmpty(),
                 calendars = state.calendars,
                 detailInstance = detailInstance,
                 detail = detail,
@@ -196,6 +200,9 @@ fun MonthScreen(
                         isRecurring = !detail?.rrule.isNullOrBlank(),
                     )
                 },
+                onAddTask = { title -> viewModel.addTask(title, selectedDate) },
+                onToggleTask = { task -> viewModel.setTaskDone(task.id, !task.done) },
+                onDeleteTask = { task -> viewModel.deleteTask(task.id) },
                 modifier = Modifier
                     .fillMaxHeight(0.88f)
                     .navigationBarsPadding(),
@@ -223,15 +230,23 @@ fun MonthScreen(
                 weekStart = weekStart,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
+            val taskCounts = remember(state.tasksByDay) {
+                state.tasksByDay.mapValues { (_, tasks) -> tasks.count { !it.done } }
+                    .filterValues { it > 0 }
+            }
             if (verticalScroll) {
                 VerticalMonthList(
                     listState = listState,
                     weekStart = weekStart,
                     state = state,
+                    taskCounts = taskCounts,
                     selectedDate = selectedDate,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
+                    onDropEvent = { event, days ->
+                        if (days != 0L) pendingDrop = PendingDrop(event, days)
+                    },
                 )
             } else {
                 HorizontalPager(
@@ -244,6 +259,7 @@ fun MonthScreen(
                         month = MonthPages.monthAt(page),
                         weekStart = weekStart,
                         eventsByDay = state.eventsByDay,
+                        taskCounts = taskCounts,
                         selectedDate = selectedDate,
                         onSelect = { date ->
                             viewModel.select(date)
@@ -254,7 +270,7 @@ fun MonthScreen(
                             onCreateEvent(date)
                         },
                         onMoveEvent = { event, days ->
-                            viewModel.moveEvent(event.eventId, days)
+                            if (days != 0L) pendingDrop = PendingDrop(event, days)
                         },
                         modifier = Modifier
                             .fillMaxSize()
@@ -263,6 +279,40 @@ fun MonthScreen(
                 }
             }
         }
+    }
+
+    pendingDrop?.let { drop ->
+        AlertDialog(
+            onDismissRequest = { pendingDrop = null },
+            title = { Text(stringResource(R.string.drop_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.drop_message,
+                        drop.event.title.ifBlank { stringResource(R.string.untitled) },
+                    ),
+                )
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(
+                        onClick = {
+                            viewModel.moveEvent(drop.event.eventId, drop.days)
+                            pendingDrop = null
+                        },
+                    ) { Text(stringResource(R.string.drop_move)) }
+                    TextButton(
+                        onClick = {
+                            viewModel.duplicateEventTo(drop.event.eventId, drop.days)
+                            pendingDrop = null
+                        },
+                    ) { Text(stringResource(R.string.drop_copy)) }
+                    TextButton(onClick = { pendingDrop = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
     }
 
     pendingDelete?.let { pending ->
@@ -331,16 +381,20 @@ fun MonthScreen(
 
 private data class PendingDelete(val event: EventInstance, val isRecurring: Boolean)
 
+private data class PendingDrop(val event: EventInstance, val days: Long)
+
 /** Seamless vertically scrolling months (settings option). */
 @Composable
 private fun VerticalMonthList(
     listState: LazyListState,
     weekStart: DayOfWeek,
     state: MonthUiState,
+    taskCounts: Map<LocalDate, Int>,
     selectedDate: LocalDate,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
+    onDropEvent: (EventInstance, Long) -> Unit,
 ) {
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(count = MonthPages.COUNT, key = { it }) { page ->
@@ -349,6 +403,7 @@ private fun VerticalMonthList(
                 month = month,
                 weekStart = weekStart,
                 eventsByDay = state.eventsByDay,
+                taskCounts = taskCounts,
                 selectedDate = selectedDate,
                 onSelect = { date ->
                     viewModel.select(date)
@@ -358,9 +413,7 @@ private fun VerticalMonthList(
                     viewModel.select(date)
                     onCreateEvent(date)
                 },
-                onMoveEvent = { event, days ->
-                    viewModel.moveEvent(event.eventId, days)
-                },
+                onMoveEvent = onDropEvent,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(288.dp)
@@ -378,50 +431,83 @@ private fun MonthTopBar(
     onOpenSettings: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(56.dp)
-            .padding(start = 20.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // BottomSheetScaffold does not wrap its topBar slot in a themed Surface,
+    // so without one the content color falls back to plain black.
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Text(text = title, style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onTodayClick) {
-            Icon(
-                imageVector = Icons.Outlined.Today,
-                contentDescription = stringResource(R.string.back_to_today),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(start = 20.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonthTopBarContent(
+                title = title,
+                onTodayClick = onTodayClick,
+                onOpenTimeline = onOpenTimeline,
+                onOpenSettings = onOpenSettings,
+                viewMenuOpen = viewMenuOpen,
+                onViewMenuChange = { viewMenuOpen = it },
             )
         }
-        IconButton(onClick = { viewMenuOpen = true }) {
-            Icon(
-                imageVector = Icons.Outlined.CalendarViewMonth,
-                contentDescription = stringResource(R.string.switch_view),
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
+    title: String,
+    onTodayClick: () -> Unit,
+    onOpenTimeline: (mode: String) -> Unit,
+    onOpenSettings: () -> Unit,
+    viewMenuOpen: Boolean,
+    onViewMenuChange: (Boolean) -> Unit,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(modifier = Modifier.weight(1f))
+    IconButton(onClick = onTodayClick) {
+        Icon(
+            imageVector = Icons.Outlined.Today,
+            contentDescription = stringResource(R.string.back_to_today),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    IconButton(onClick = { onViewMenuChange(true) }) {
+        Icon(
+            imageVector = Icons.Outlined.CalendarViewMonth,
+            contentDescription = stringResource(R.string.switch_view),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        DropdownMenu(expanded = viewMenuOpen, onDismissRequest = { onViewMenuChange(false) }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.view_week)) },
+                onClick = {
+                    onViewMenuChange(false)
+                    onOpenTimeline("week")
+                },
             )
-            DropdownMenu(expanded = viewMenuOpen, onDismissRequest = { viewMenuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.view_week)) },
-                    onClick = {
-                        viewMenuOpen = false
-                        onOpenTimeline("week")
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.view_day)) },
-                    onClick = {
-                        viewMenuOpen = false
-                        onOpenTimeline("day")
-                    },
-                )
-            }
-        }
-        IconButton(onClick = onOpenSettings) {
-            Icon(
-                imageVector = Icons.Outlined.Settings,
-                contentDescription = stringResource(R.string.settings),
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.view_day)) },
+                onClick = {
+                    onViewMenuChange(false)
+                    onOpenTimeline("day")
+                },
             )
         }
+    }
+    IconButton(onClick = onOpenSettings) {
+        Icon(
+            imageVector = Icons.Outlined.Settings,
+            contentDescription = stringResource(R.string.settings),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

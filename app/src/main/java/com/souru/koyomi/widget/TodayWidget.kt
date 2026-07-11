@@ -156,7 +156,8 @@ class TodayWidget : GlanceAppWidget() {
                     .size(width = 3.dp, height = 22.dp)
                     .background(
                         ColorProvider(
-                            if (event.color != 0) Color(event.color) else Color(0xFF3D4A3D),
+                            com.souru.koyomi.util.providerColor(event.color)
+                                ?: Color(0xFF3D4A3D),
                         ),
                     )
                     .cornerRadius(2.dp),
