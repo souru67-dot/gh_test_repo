@@ -1,21 +1,20 @@
 package com.souru.koyomi.widget
 
 import android.content.Context
-import android.os.Build
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.action.clickable
+import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
-import java.time.LocalDate
 
 class MonthWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = MonthWidget()
@@ -26,34 +25,40 @@ class MonthWidgetReceiver : GlanceAppWidgetReceiver() {
     }
 }
 
-/** 4x4 widget: this month's grid with a dot on days that have events. */
+/**
+ * Month calendar widget: big month name, one-letter weekday header and up to
+ * three calendar-color dots per day. Responsive from 4x3 to 5x5.
+ */
 class MonthWidget : GlanceAppWidget() {
+
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        setOf(SIZE_COMPACT, SIZE_FULL),
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = loadMonthGridData(context)
-        val opacity = widgetOpacity(context)
+        val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(
-                colors = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    GlanceTheme.colors
-                } else {
-                    KoyomiWidgetColors
-                },
-            ) {
+            GlanceTheme(colors = widgetColors(look.theme)) {
+                val size = LocalSize.current
+                val compact = size.height < 230.dp
                 GlanceMonthCalendar(
                     context = context,
                     data = data,
+                    compact = compact,
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .background(widgetBackground(opacity))
-                        .cornerRadius(16.dp)
-                        .padding(10.dp)
-                        .clickable(
-                            actionStartActivity(openDayIntent(context, LocalDate.now())),
-                        ),
+                        .background(widgetBackground(look))
+                        .cornerRadius(28.dp)
+                        .padding(if (compact) 10.dp else 14.dp),
                 )
             }
         }
+    }
+
+    private companion object {
+        val SIZE_COMPACT = DpSize(180.dp, 180.dp)
+        val SIZE_FULL = DpSize(250.dp, 250.dp)
     }
 }

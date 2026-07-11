@@ -1,7 +1,6 @@
 package com.souru.koyomi.widget
 
 import android.content.Context
-import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,17 +40,11 @@ class MonthTodayWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = loadMonthGridData(context)
         val sections = loadDaySections(context, days = 1)
-        val opacity = widgetOpacity(context)
+        val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(
-                colors = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    GlanceTheme.colors
-                } else {
-                    KoyomiWidgetColors
-                },
-            ) {
-                Content(context, data, sections.first(), opacity)
+            GlanceTheme(colors = widgetColors(look.theme)) {
+                Content(context, data, sections.first(), look)
             }
         }
     }
@@ -61,18 +54,19 @@ class MonthTodayWidget : GlanceAppWidget() {
         context: Context,
         data: MonthGridData,
         today: WidgetDaySection,
-        opacity: Int,
+        look: WidgetLook,
     ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(widgetBackground(opacity))
-                .cornerRadius(16.dp)
-                .padding(10.dp),
+                .background(widgetBackground(look))
+                .cornerRadius(28.dp)
+                .padding(14.dp),
         ) {
             GlanceMonthCalendar(
                 context = context,
                 data = data,
+                compact = true,
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .defaultWeight(),
@@ -88,7 +82,7 @@ class MonthTodayWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.padding(start = 4.dp, bottom = 2.dp),
             )
             if (today.events.isEmpty()) {
-                WidgetNoEventsText(context)
+                WidgetCenteredMessage(context.getString(R.string.no_events))
             } else {
                 for (event in today.events.take(MAX_EVENTS)) {
                     WidgetEventRow(context, today.date, event)

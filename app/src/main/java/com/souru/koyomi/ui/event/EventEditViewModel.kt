@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.data.CalendarRepository
+import com.souru.koyomi.data.SettingsRepository
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDraft
@@ -25,6 +26,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -62,6 +64,7 @@ private val FALLBACK_EVENT_COLORS = listOf(
 
 class EventEditViewModel(
     private val repository: CalendarRepository,
+    private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -147,7 +150,10 @@ class EventEditViewModel(
             LocalTime.of(9, 0)
         }
         val start = LocalDateTime.of(date, startTime)
-        val defaultCalendar = writableCalendars.firstOrNull()
+        // Preselect the calendar the user last saved to, if it still exists.
+        val lastUsedId = settingsRepository.lastUsedCalendarId.first()
+        val defaultCalendar = writableCalendars.find { it.id == lastUsedId }
+            ?: writableCalendars.firstOrNull()
         _uiState.value = EditorUiState(
             loading = false,
             isNew = true,
@@ -265,6 +271,7 @@ class EventEditViewModel(
                 thisOnly -> repository.updateEventInstance(eventId, originalInstanceBegin, draft)
                 else -> repository.updateEvent(draft)
             }
+            if (ok) settingsRepository.setLastUsedCalendarId(calendarId)
             _uiState.update { it.copy(saving = false, saved = ok) }
         }
     }
@@ -276,6 +283,7 @@ class EventEditViewModel(
                     as KoyomiApplication
                 EventEditViewModel(
                     repository = app.container.calendarRepository,
+                    settingsRepository = app.container.settingsRepository,
                     savedStateHandle = createSavedStateHandle(),
                 )
             }

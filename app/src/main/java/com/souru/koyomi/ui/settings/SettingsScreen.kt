@@ -137,15 +137,11 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SectionLabel(stringResource(R.string.settings_calendars))
             for (calendar in state.calendars) {
+                val shown = calendar.isVisible && calendar.id !in state.hiddenCalendarIds
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            viewModel.setCalendarHidden(
-                                calendar.id,
-                                hidden = calendar.id !in state.hiddenCalendarIds,
-                            )
-                        }
+                        .clickable { viewModel.setCalendarShown(calendar, shown = !shown) }
                         .padding(horizontal = 20.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -174,9 +170,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                         )
                     }
                     Checkbox(
-                        checked = calendar.id !in state.hiddenCalendarIds,
+                        checked = shown,
                         onCheckedChange = { checked ->
-                            viewModel.setCalendarHidden(calendar.id, hidden = !checked)
+                            viewModel.setCalendarShown(calendar, shown = checked)
                         },
                     )
                 }

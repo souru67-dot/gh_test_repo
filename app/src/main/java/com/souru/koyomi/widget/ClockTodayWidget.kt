@@ -1,7 +1,6 @@
 package com.souru.koyomi.widget
 
 import android.content.Context
-import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
@@ -21,6 +20,7 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import com.souru.koyomi.R
 
 class ClockTodayWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ClockTodayWidget()
@@ -36,29 +36,23 @@ class ClockTodayWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sections = loadDaySections(context, days = 1)
-        val opacity = widgetOpacity(context)
+        val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(
-                colors = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    GlanceTheme.colors
-                } else {
-                    KoyomiWidgetColors
-                },
-            ) {
-                Content(context, sections.first(), opacity)
+            GlanceTheme(colors = widgetColors(look.theme)) {
+                Content(context, sections.first(), look)
             }
         }
     }
 
     @Composable
-    private fun Content(context: Context, today: WidgetDaySection, opacity: Int) {
+    private fun Content(context: Context, today: WidgetDaySection, look: WidgetLook) {
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(widgetBackground(opacity))
-                .cornerRadius(16.dp)
-                .padding(14.dp),
+                .background(widgetBackground(look))
+                .cornerRadius(28.dp)
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             WidgetClock(
@@ -72,7 +66,7 @@ class ClockTodayWidget : GlanceAppWidget() {
                     .fillMaxHeight(),
             ) {
                 if (today.events.isEmpty()) {
-                    item { WidgetNoEventsText(context) }
+                    item { WidgetCenteredMessage(context.getString(R.string.no_events)) }
                 } else {
                     items(today.events) { event ->
                         WidgetEventRow(context, today.date, event)

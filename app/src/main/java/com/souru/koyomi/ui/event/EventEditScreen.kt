@@ -209,7 +209,27 @@ fun EventEditScreen(onClose: () -> Unit) {
                 ) { close ->
                     state.calendars.forEach { calendar ->
                         DropdownMenuItem(
-                            text = { Text(calendar.displayName) },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(
+                                            com.souru.koyomi.util.providerColor(calendar.color)
+                                                ?: MaterialTheme.colorScheme.primary,
+                                            androidx.compose.foundation.shape.CircleShape,
+                                        ),
+                                )
+                            },
+                            text = {
+                                Column {
+                                    Text(calendar.displayName)
+                                    Text(
+                                        text = calendar.accountName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
                             onClick = {
                                 viewModel.setCalendar(calendar.id)
                                 close()

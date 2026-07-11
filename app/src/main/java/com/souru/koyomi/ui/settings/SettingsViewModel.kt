@@ -30,13 +30,18 @@ data class SettingsUiState(
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    calendarRepository: CalendarRepository,
+    private val calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     private val calendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
 
     init {
-        viewModelScope.launch { calendars.value = calendarRepository.loadCalendars() }
+        // Fresh from the provider on every screen open — never cached, so
+        // calendars newly created on the Google side show up after a sync.
+        viewModelScope.launch {
+            calendarRepository.requestSync()
+            calendars.value = calendarRepository.loadCalendars()
+        }
     }
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -73,8 +78,19 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
-    fun setCalendarHidden(calendarId: Long, hidden: Boolean) {
-        viewModelScope.launch { settingsRepository.setCalendarHidden(calendarId, hidden) }
+    /**
+     * Checkbox = "show this calendar in the app". Enabling a calendar the
+     * provider marks invisible also flips provider-level VISIBLE/SYNC_EVENTS
+     * so its events start syncing.
+     */
+    fun setCalendarShown(calendar: CalendarInfo, shown: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setCalendarHidden(calendar.id, hidden = !shown)
+            if (shown && !calendar.isVisible) {
+                calendarRepository.setCalendarVisible(calendar.id, true)
+                calendars.value = calendarRepository.loadCalendars()
+            }
+        }
     }
 
     fun setSyncInterval(minutes: Int) {

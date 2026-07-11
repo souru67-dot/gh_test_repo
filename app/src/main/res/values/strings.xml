@@ -110,6 +110,10 @@
     <string name="widget_month_today_label">Calendar + today</string>
     <string name="widget_month_today_description">This month\'s calendar with today\'s events underneath.</string>
     <string name="settings_widget_opacity">Widget background opacity</string>
+    <string name="widget_config_title">Widget settings</string>
+    <string name="events_count">%1$d events</string>
+    <string name="no_more_today">That\'s all for today</string>
+    <string name="tomorrow_label">Tomorrow</string>
 
     <!-- Event color -->
     <string name="event_color">Color</string>

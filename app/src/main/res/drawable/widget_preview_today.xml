@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="120dp"
+    android:viewportWidth="250"
+    android:viewportHeight="120">
+    <!-- Card -->
+    <path
+        android:fillColor="#FBF9F6"
+        android:pathData="M28,0h194a28,28 0 0 1 28,28v64a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Big date number -->
+    <path
+        android:fillColor="#1C1B18"
+        android:pathData="M20,16h30v26H20z" />
+    <!-- Month / weekday + count labels -->
+    <path android:fillColor="#B0ACA3" android:pathData="M58,18h56v6H58z" />
+    <path android:fillColor="#3D4A3D" android:pathData="M58,30h40v6H58z" />
+    <!-- Event row 1 -->
+    <path android:fillColor="#4A6FA5" android:pathData="M20,54h4v18h-4z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M32,60h26v6H32z" />
+    <path android:fillColor="#1C1B18" android:pathData="M66,60h120v6H66z" />
+    <!-- Event row 2 -->
+    <path android:fillColor="#E67C73" android:pathData="M20,80h4v18h-4z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M32,86h26v6H32z" />
+    <path android:fillColor="#1C1B18" android:pathData="M66,86h96v6H66z" />
+</vector>

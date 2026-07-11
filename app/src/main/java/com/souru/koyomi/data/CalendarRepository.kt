@@ -87,6 +87,11 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Instances.EVENT_LOCATION,
         )
 
+        // DISPLAY_COLOR already prefers EVENT_COLOR over the calendar color,
+        // but some sync adapters leave it 0 — fall back to the owning
+        // calendar's color so every chip is tinted by its calendar.
+        val calendarColors = loadCalendars().associate { it.id to it.color }
+
         val result = mutableMapOf<LocalDate, MutableList<EventInstance>>()
         resolver.query(
             uriBuilder.build(),
@@ -106,14 +111,20 @@ class CalendarRepository(private val context: Context) {
                 val lastMs = maxOf(begin, end - 1) // end is exclusive; empty events count as 1ms
                 val endDate = Instant.ofEpochMilli(lastMs).atZone(instanceZone).toLocalDate()
 
+                val calendarId = cursor.getLong(6)
+                val displayColor = cursor.getInt(5)
                 val instance = EventInstance(
                     eventId = cursor.getLong(0),
                     title = cursor.getString(1).orEmpty(),
                     begin = begin,
                     end = end,
                     allDay = allDay,
-                    color = cursor.getInt(5),
-                    calendarId = cursor.getLong(6),
+                    color = if (displayColor != 0) {
+                        displayColor
+                    } else {
+                        calendarColors[calendarId] ?: 0
+                    },
+                    calendarId = calendarId,
                     location = cursor.getString(7),
                     startDate = startDate,
                     endDate = endDate,
@@ -132,6 +143,12 @@ class CalendarRepository(private val context: Context) {
         result
     }
 
+    /**
+     * Every calendar the provider knows for all accounts — Google sub-calendars
+     * ("仕事", "Instagram"...), subscribed/holiday calendars and local ones.
+     * Always queried fresh so calendars created on the Google side appear as
+     * soon as the device sync has pulled them; never cached.
+     */
     suspend fun loadCalendars(): List<CalendarInfo> = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext emptyList()
         val projection = arrayOf(
@@ -140,14 +157,16 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Calendars.ACCOUNT_NAME,
             CalendarContract.Calendars.CALENDAR_COLOR,
             CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            CalendarContract.Calendars.VISIBLE,
         )
         val list = mutableListOf<CalendarInfo>()
         resolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
-            "${CalendarContract.Calendars.VISIBLE} = 1",
             null,
-            "${CalendarContract.Calendars.CALENDAR_DISPLAY_NAME} ASC",
+            null,
+            "${CalendarContract.Calendars.ACCOUNT_NAME} ASC, " +
+                "${CalendarContract.Calendars.CALENDAR_DISPLAY_NAME} ASC",
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 list += CalendarInfo(
@@ -157,11 +176,30 @@ class CalendarRepository(private val context: Context) {
                     color = cursor.getInt(3),
                     isWritable = cursor.getInt(4) >=
                         CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR,
+                    isVisible = cursor.getInt(5) != 0,
                 )
             }
         }
         list
     }
+
+    /**
+     * Flips a calendar's provider-level visibility. Enabling also turns on
+     * event sync so a freshly subscribed calendar starts pulling events.
+     */
+    suspend fun setCalendarVisible(calendarId: Long, visible: Boolean): Boolean =
+        withContext(Dispatchers.IO) {
+            if (!hasWritePermission()) return@withContext false
+            val values = ContentValues().apply {
+                put(CalendarContract.Calendars.VISIBLE, if (visible) 1 else 0)
+                if (visible) put(CalendarContract.Calendars.SYNC_EVENTS, 1)
+            }
+            val uri = ContentUris.withAppendedId(
+                CalendarContract.Calendars.CONTENT_URI,
+                calendarId,
+            )
+            runCatching { resolver.update(uri, values, null, null) > 0 }.getOrDefault(false)
+        }
 
     suspend fun loadEventDetails(eventId: Long): EventDetails? = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext null

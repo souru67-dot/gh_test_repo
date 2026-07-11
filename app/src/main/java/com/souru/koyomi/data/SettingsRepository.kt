@@ -27,6 +27,7 @@ class SettingsRepository(private val context: Context) {
         val HIDDEN_CALENDAR_IDS = stringSetPreferencesKey("hidden_calendar_ids")
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
+        val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -80,14 +81,53 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.SYNC_INTERVAL_MINUTES] = minutes.toString() }
     }
 
-    /** Widget background opacity, 20..100 (%). */
+    /** The calendar last saved to; the editor preselects it for new events. */
+    val lastUsedCalendarId: Flow<Long?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.LAST_USED_CALENDAR_ID]?.toLongOrNull()
+    }
+
+    suspend fun setLastUsedCalendarId(calendarId: Long) {
+        context.dataStore.edit { it[Keys.LAST_USED_CALENDAR_ID] = calendarId.toString() }
+    }
+
+    /** Widget background opacity, 0..100 (%), app-wide default. */
     val widgetOpacityPercent: Flow<Int> = context.dataStore.data.map { prefs ->
-        (prefs[Keys.WIDGET_OPACITY_PERCENT]?.toIntOrNull() ?: 100).coerceIn(20, 100)
+        (prefs[Keys.WIDGET_OPACITY_PERCENT]?.toIntOrNull() ?: 100).coerceIn(0, 100)
     }
 
     suspend fun setWidgetOpacityPercent(percent: Int) {
         context.dataStore.edit {
-            it[Keys.WIDGET_OPACITY_PERCENT] = percent.coerceIn(20, 100).toString()
+            it[Keys.WIDGET_OPACITY_PERCENT] = percent.coerceIn(0, 100).toString()
+        }
+    }
+
+    // ---- Per-widget overrides (keyed by appWidgetId) ----
+
+    private fun widgetThemeKey(appWidgetId: Int) =
+        stringPreferencesKey("widget_theme_$appWidgetId")
+
+    private fun widgetOpacityKey(appWidgetId: Int) =
+        stringPreferencesKey("widget_opacity_$appWidgetId")
+
+    /** Per-widget theme; SYSTEM follows the device (with Dynamic Color). */
+    fun widgetTheme(appWidgetId: Int): Flow<ThemeMode> = context.dataStore.data.map { prefs ->
+        prefs[widgetThemeKey(appWidgetId)]?.let { name ->
+            ThemeMode.entries.find { it.name == name }
+        } ?: ThemeMode.SYSTEM
+    }
+
+    suspend fun setWidgetTheme(appWidgetId: Int, mode: ThemeMode) {
+        context.dataStore.edit { it[widgetThemeKey(appWidgetId)] = mode.name }
+    }
+
+    /** Per-widget opacity; null = use the app-wide default. */
+    fun widgetOpacity(appWidgetId: Int): Flow<Int?> = context.dataStore.data.map { prefs ->
+        prefs[widgetOpacityKey(appWidgetId)]?.toIntOrNull()?.coerceIn(0, 100)
+    }
+
+    suspend fun setWidgetOpacity(appWidgetId: Int, percent: Int) {
+        context.dataStore.edit {
+            it[widgetOpacityKey(appWidgetId)] = percent.coerceIn(0, 100).toString()
         }
     }
 

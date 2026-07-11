@@ -2,13 +2,15 @@ package com.souru.koyomi.data.model
 
 import java.time.LocalDate
 
-/** A calendar account row from CalendarContract.Calendars. */
+/** A calendar row from CalendarContract.Calendars. */
 data class CalendarInfo(
     val id: Long,
     val displayName: String,
     val accountName: String,
     val color: Int,
     val isWritable: Boolean,
+    /** Provider-level visibility (Calendars.VISIBLE). */
+    val isVisible: Boolean = true,
 )
 
 /**
