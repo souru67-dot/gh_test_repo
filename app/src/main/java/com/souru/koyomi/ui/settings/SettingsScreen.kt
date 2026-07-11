@@ -95,6 +95,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = viewModel::setVerticalScroll,
                 )
             }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_multi_day_bars),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = state.multiDayBars,
+                    onCheckedChange = viewModel::setMultiDayBars,
+                )
+            }
 
             SectionLabel(stringResource(R.string.settings_theme))
             RadioRow(

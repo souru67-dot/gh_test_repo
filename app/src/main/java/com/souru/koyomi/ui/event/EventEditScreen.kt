@@ -260,6 +260,8 @@ fun EventEditScreen(onClose: () -> Unit) {
             EventColorRow(
                 colors = state.eventColors,
                 selected = state.eventColor,
+                calendarColor = state.calendars.find { it.id == state.calendarId }
+                    ?.let { com.souru.koyomi.util.providerColor(it.color) },
                 onSelect = viewModel::setEventColor,
             )
 
@@ -561,6 +563,7 @@ private fun DateTimeRow(
 private fun EventColorRow(
     colors: List<com.souru.koyomi.data.model.EventColor>,
     selected: com.souru.koyomi.data.model.EventColor?,
+    calendarColor: Color?,
     onSelect: (com.souru.koyomi.data.model.EventColor?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -585,22 +588,37 @@ private fun EventColorRow(
         )
         Column {
             TextButton(onClick = { expanded = true }) {
+                // No explicit event color: preview the calendar's own color so
+                // "仕事=青" is visible at a glance, matching Google Calendar.
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            selected?.let { com.souru.koyomi.util.providerColor(it.color) }
+                                ?: calendarColor
+                                ?: MaterialTheme.colorScheme.primary,
+                            androidx.compose.foundation.shape.CircleShape,
+                        ),
+                )
                 if (selected == null) {
-                    Text(stringResource(R.string.event_color_default))
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .background(
-                                com.souru.koyomi.util.providerColor(selected.color)
-                                    ?: MaterialTheme.colorScheme.primary,
-                                androidx.compose.foundation.shape.CircleShape,
-                            ),
+                    Text(
+                        stringResource(R.string.event_color_default),
+                        modifier = Modifier.padding(start = 8.dp),
                     )
                 }
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(
+                                    calendarColor ?: MaterialTheme.colorScheme.primary,
+                                    androidx.compose.foundation.shape.CircleShape,
+                                ),
+                        )
+                    },
                     text = { Text(stringResource(R.string.event_color_default)) },
                     onClick = {
                         onSelect(null)

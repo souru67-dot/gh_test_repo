@@ -3,17 +3,22 @@ package com.souru.koyomi.ui.month
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -91,6 +96,57 @@ private class EventDragState {
  * Long-press a chip to drag the event onto another day; long-press an empty
  * area of a cell to quick-create an event.
  */
+/** A multi-day event's stripe within one week row. */
+private data class BarSegment(
+    val event: EventInstance,
+    val startCol: Int,
+    val endCol: Int,
+    val lane: Int,
+    val startsHere: Boolean,
+    val endsHere: Boolean,
+)
+
+private const val MAX_BAR_LANES = 2
+
+/** Greedy lane assignment for the week's multi-day events. */
+private fun weekBarSegments(
+    weekDays: List<LocalDate>,
+    eventsByDay: Map<LocalDate, List<EventInstance>>,
+): List<BarSegment> {
+    val weekStart = weekDays.first()
+    val weekEnd = weekDays.last()
+    val spanning = weekDays
+        .flatMap { eventsByDay[it].orEmpty() }
+        .filter { it.startDate != it.endDate }
+        .distinctBy { "${it.eventId}-${it.begin}" }
+        .sortedWith(compareBy({ it.startDate }, { it.endDate.toEpochDay() * -1 }))
+
+    val laneEnds = mutableListOf<Int>() // last occupied column per lane
+    val segments = mutableListOf<BarSegment>()
+    for (event in spanning) {
+        val startCol = ChronoUnit.DAYS
+            .between(weekStart, maxOf(event.startDate, weekStart)).toInt()
+        val endCol = ChronoUnit.DAYS
+            .between(weekStart, minOf(event.endDate, weekEnd)).toInt()
+        var lane = laneEnds.indexOfFirst { it < startCol }
+        if (lane == -1) {
+            laneEnds.add(endCol)
+            lane = laneEnds.size - 1
+        } else {
+            laneEnds[lane] = endCol
+        }
+        segments += BarSegment(
+            event = event,
+            startCol = startCol,
+            endCol = endCol,
+            lane = lane,
+            startsHere = event.startDate >= weekStart,
+            endsHere = event.endDate <= weekEnd,
+        )
+    }
+    return segments
+}
+
 @Composable
 fun MonthGrid(
     month: YearMonth,
@@ -102,6 +158,7 @@ fun MonthGrid(
     onMoveEvent: (event: EventInstance, days: Long) -> Unit,
     modifier: Modifier = Modifier,
     taskCounts: Map<LocalDate, Int> = emptyMap(),
+    multiDayBars: Boolean = true,
 ) {
     val days = monthGridDays(month, weekStart)
     val today = LocalDate.now()
@@ -126,32 +183,63 @@ fun MonthGrid(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             for (week in 0 until 6) {
-                Row(
+                val weekDays = days.subList(week * 7, week * 7 + 7)
+                val segments = if (multiDayBars) {
+                    weekBarSegments(weekDays, eventsByDay)
+                } else {
+                    emptyList()
+                }
+                val shownSegments = segments.filter { it.lane < MAX_BAR_LANES }
+                val barLanes = (shownSegments.maxOfOrNull { it.lane } ?: -1) + 1
+                val barEventKeys = shownSegments
+                    .map { "${it.event.eventId}-${it.event.begin}" }
+                    .toSet()
+
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
                 ) {
-                    for (i in 0 until 7) {
-                        val date = days[week * 7 + i]
-                        DayCell(
-                            date = date,
-                            inCurrentMonth = YearMonth.from(date) == month,
-                            isToday = date == today,
-                            isSelected = date == selectedDate,
-                            isDropTarget = date == dropTarget,
-                            events = eventsByDay[date].orEmpty(),
-                            taskCount = taskCounts[date] ?: 0,
+                    val cellWidth = maxWidth / 7
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        for (i in 0 until 7) {
+                            val date = weekDays[i]
+                            DayCell(
+                                date = date,
+                                inCurrentMonth = YearMonth.from(date) == month,
+                                isToday = date == today,
+                                isSelected = date == selectedDate,
+                                isDropTarget = date == dropTarget,
+                                events = eventsByDay[date].orEmpty().filter {
+                                    "${it.eventId}-${it.begin}" !in barEventKeys
+                                },
+                                barLanes = barLanes,
+                                taskCount = taskCounts[date] ?: 0,
+                                onSelect = onSelect,
+                                onLongPress = onLongPress,
+                                dragState = dragState,
+                                gridCoords = { gridCoords },
+                                onDrop = { event, source, target ->
+                                    onMoveEvent(event, ChronoUnit.DAYS.between(source, target))
+                                },
+                                dropTargetOf = ::dateAt,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxSize(),
+                            )
+                        }
+                    }
+                    // Continuous stripes for multi-day events, over the cells.
+                    for (segment in shownSegments) {
+                        MultiDayBar(
+                            segment = segment,
+                            date = weekDays[segment.startCol],
+                            cellWidth = cellWidth,
                             onSelect = onSelect,
-                            onLongPress = onLongPress,
-                            dragState = dragState,
-                            gridCoords = { gridCoords },
-                            onDrop = { event, source, target ->
-                                onMoveEvent(event, ChronoUnit.DAYS.between(source, target))
-                            },
-                            dropTargetOf = ::dateAt,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxSize(),
+                            modifier = Modifier.offset(
+                                x = cellWidth * segment.startCol,
+                                y = 27.dp + (segment.lane * 14).dp,
+                            ),
                         )
                     }
                 }
@@ -183,6 +271,7 @@ private fun DayCell(
     isSelected: Boolean,
     isDropTarget: Boolean,
     events: List<EventInstance>,
+    barLanes: Int,
     taskCount: Int,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
@@ -247,7 +336,12 @@ private fun DayCell(
             )
         }
 
-        val shown = events.take(MAX_EVENT_CHIPS)
+        // Space reserved for the week's multi-day bars drawn above the cells.
+        if (barLanes > 0) {
+            Spacer(modifier = Modifier.height((barLanes * 14).dp))
+        }
+
+        val shown = events.take((MAX_EVENT_CHIPS - barLanes).coerceAtLeast(1))
         val overflow = events.size - shown.size
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -282,6 +376,51 @@ private fun DayCell(
                     fontSize = 9.sp,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MultiDayBar(
+    segment: BarSegment,
+    date: LocalDate,
+    cellWidth: androidx.compose.ui.unit.Dp,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val solid = eventColor(segment.event)
+    val textColor = if (solid.luminance() > 0.5f) {
+        Color.Black.copy(alpha = 0.8f)
+    } else {
+        Color.White
+    }
+    val shape = RoundedCornerShape(
+        topStart = if (segment.startsHere) 4.dp else 0.dp,
+        bottomStart = if (segment.startsHere) 4.dp else 0.dp,
+        topEnd = if (segment.endsHere) 4.dp else 0.dp,
+        bottomEnd = if (segment.endsHere) 4.dp else 0.dp,
+    )
+    Box(
+        modifier = modifier
+            .width(cellWidth * (segment.endCol - segment.startCol + 1))
+            .height(13.dp)
+            .padding(horizontal = 1.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(solid, shape)
+                .clickable { onSelect(date) },
+        ) {
+            Text(
+                text = segment.event.title.ifBlank { " " },
+                modifier = Modifier.padding(horizontal = 4.dp),
+                fontSize = 9.sp,
+                lineHeight = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                color = textColor,
+            )
         }
     }
 }

@@ -82,6 +82,7 @@ fun MonthScreen(
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val visibleMonth by viewModel.visibleMonth.collectAsStateWithLifecycle()
     val verticalScroll by viewModel.verticalScroll.collectAsStateWithLifecycle()
+    val multiDayBars by viewModel.multiDayBars.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -241,6 +242,7 @@ fun MonthScreen(
                     state = state,
                     taskCounts = taskCounts,
                     selectedDate = selectedDate,
+                    multiDayBars = multiDayBars,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
@@ -272,6 +274,7 @@ fun MonthScreen(
                         onMoveEvent = { event, days ->
                             if (days != 0L) pendingDrop = PendingDrop(event, days)
                         },
+                        multiDayBars = multiDayBars,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),
@@ -391,6 +394,7 @@ private fun VerticalMonthList(
     state: MonthUiState,
     taskCounts: Map<LocalDate, Int>,
     selectedDate: LocalDate,
+    multiDayBars: Boolean,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
@@ -414,6 +418,7 @@ private fun VerticalMonthList(
                     onCreateEvent(date)
                 },
                 onMoveEvent = onDropEvent,
+                multiDayBars = multiDayBars,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(288.dp)

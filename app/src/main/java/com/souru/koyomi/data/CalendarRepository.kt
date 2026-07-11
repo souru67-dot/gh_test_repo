@@ -275,6 +275,19 @@ class CalendarRepository(private val context: Context) {
             colors.values.toList()
         }
 
+    private fun queryCalendarId(eventId: Long): Long? {
+        resolver.query(
+            ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
+            arrayOf(CalendarContract.Events.CALENDAR_ID),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) return cursor.getLong(0)
+        }
+        return null
+    }
+
     private fun loadFirstReminderMinutes(eventId: Long): Int? {
         resolver.query(
             CalendarContract.Reminders.CONTENT_URI,
@@ -303,7 +316,17 @@ class CalendarRepository(private val context: Context) {
         val id = draft.id ?: return@withContext false
         if (!hasWritePermission()) return@withContext false
         val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
-        val updated = resolver.update(uri, draft.toContentValues(), null, null) > 0
+        val values = draft.toContentValues().apply {
+            // Never rewrite CALENDAR_ID unless the user actually moved the
+            // event — unconditionally writing it can detach a synced event
+            // from its Google sub-calendar (name AND color then fall back to
+            // the primary calendar).
+            val currentCalendarId = queryCalendarId(id)
+            if (currentCalendarId == draft.calendarId) {
+                remove(CalendarContract.Events.CALENDAR_ID)
+            }
+        }
+        val updated = resolver.update(uri, values, null, null) > 0
         if (updated) {
             resolver.delete(
                 CalendarContract.Reminders.CONTENT_URI,

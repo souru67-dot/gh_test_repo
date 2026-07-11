@@ -26,6 +26,7 @@ data class SettingsUiState(
     val hiddenCalendarIds: Set<Long> = emptySet(),
     val syncIntervalMinutes: Int = 30,
     val widgetOpacityPercent: Int = 100,
+    val multiDayBars: Boolean = true,
 )
 
 class SettingsViewModel(
@@ -49,16 +50,21 @@ class SettingsViewModel(
             settingsRepository.weekStart,
             settingsRepository.verticalMonthScroll,
             settingsRepository.themeMode,
-        ) { weekStart, vertical, theme -> Triple(weekStart, vertical, theme) },
+            settingsRepository.multiDayBars,
+        ) { weekStart, vertical, theme, bars ->
+            SettingsUiState(
+                weekStart = weekStart,
+                verticalScroll = vertical,
+                themeMode = theme,
+                multiDayBars = bars,
+            )
+        },
         settingsRepository.hiddenCalendarIds,
         settingsRepository.syncIntervalMinutes,
         settingsRepository.widgetOpacityPercent,
         calendars,
-    ) { (weekStart, vertical, theme), hidden, syncMinutes, opacity, calendars ->
-        SettingsUiState(
-            weekStart = weekStart,
-            verticalScroll = vertical,
-            themeMode = theme,
+    ) { base, hidden, syncMinutes, opacity, calendars ->
+        base.copy(
             calendars = calendars,
             hiddenCalendarIds = hidden,
             syncIntervalMinutes = syncMinutes,
@@ -72,6 +78,10 @@ class SettingsViewModel(
 
     fun setVerticalScroll(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setVerticalMonthScroll(enabled) }
+    }
+
+    fun setMultiDayBars(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setMultiDayBars(enabled) }
     }
 
     fun setThemeMode(mode: ThemeMode) {

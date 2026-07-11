@@ -57,6 +57,9 @@ class MonthViewModel(
     val verticalScroll: StateFlow<Boolean> = settingsRepository.verticalMonthScroll
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val multiDayBars: StateFlow<Boolean> = settingsRepository.multiDayBars
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
     private val dataChanges = merge(

@@ -23,6 +23,7 @@ class SettingsRepository(private val context: Context) {
         val WEEK_START = stringPreferencesKey("week_start")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val VERTICAL_MONTH_SCROLL = booleanPreferencesKey("vertical_month_scroll")
+        val MULTI_DAY_BARS = booleanPreferencesKey("multi_day_bars")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIDDEN_CALENDAR_IDS = stringSetPreferencesKey("hidden_calendar_ids")
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
@@ -55,6 +56,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setVerticalMonthScroll(enabled: Boolean) {
         context.dataStore.edit { it[Keys.VERTICAL_MONTH_SCROLL] = enabled }
+    }
+
+    /** Month view: draw multi-day events as one continuous bar across days. */
+    val multiDayBars: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.MULTI_DAY_BARS] ?: true
+    }
+
+    suspend fun setMultiDayBars(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.MULTI_DAY_BARS] = enabled }
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
