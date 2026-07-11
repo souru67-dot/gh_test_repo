@@ -451,12 +451,12 @@ class CalendarRepository(private val context: Context) {
                 values.put(CalendarContract.Events.EVENT_COLOR_KEY, eventColor.key)
             }
             eventColor != null -> {
-                values.put(CalendarContract.Events.EVENT_COLOR_KEY, null as String?)
+                values.putNull(CalendarContract.Events.EVENT_COLOR_KEY)
                 values.put(CalendarContract.Events.EVENT_COLOR, eventColor.color)
             }
             else -> {
-                values.put(CalendarContract.Events.EVENT_COLOR_KEY, null as String?)
-                values.put(CalendarContract.Events.EVENT_COLOR, null as Integer?)
+                values.putNull(CalendarContract.Events.EVENT_COLOR_KEY)
+                values.putNull(CalendarContract.Events.EVENT_COLOR)
             }
         }
 
