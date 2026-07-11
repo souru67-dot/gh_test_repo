@@ -1,58 +1,58 @@
-# Koyomi(こよみ)
+# Lumina
 
-FirstSeed Calendar にインスパイアされた、月表示中心・片手操作のミニマルな Android カレンダーアプリ。
+Xperia 1 VIII 向けギャラリーアプリ。旧Xperia「アルバム」の快適な操作感を、Material 3 ベースの黒基調ミニマルデザインで再構築する。RAW(DNG)+JPEG 同時撮影と S-Cinetone for Mobile 撮影の映像ワークフローを前提にした、写真・映像クリエイターのためのライブラリ。
 
 ## 技術スタック
 
-- Kotlin / Jetpack Compose / Material 3(Dynamic Color 対応)
-- MVVM + 単方向データフロー(ViewModel + StateFlow)
-- データは Android **CalendarProvider** に直結(Google カレンダー / Exchange と同期)。独自 DB は持たず、設定のみ DataStore
-- minSdk 26 / targetSdk 35
+- Kotlin / Jetpack Compose + Material 3(常時ダークテーマ・黒背景)
+- MediaStore API(READ_MEDIA_IMAGES / READ_MEDIA_VIDEO、Android 14+ の一部許可対応)
+- Coil 3(MediaStore サムネイルキャッシュ利用の高速フェッチャー)
+- Media3(ExoPlayer / Transformer / effect)
+- MVVM + StateFlow、編集は非破壊(別名保存)
+- minSdk 33 / targetSdk 35
 
 ## モジュール構成
 
 ```
-app/src/main/java/com/souru/koyomi/
-├── KoyomiApplication.kt      # AppContainer(手動DI)
+app/src/main/java/com/souru/lumina/
+├── LuminaApplication.kt      # AppContainer(手動DI)+ Coil ImageLoader 構成
 ├── MainActivity.kt
 ├── data/
-│   ├── model/                # CalendarInfo / EventInstance / EventDetails / EventDraft
-│   ├── CalendarRepository.kt # CalendarProvider の読み書き + ContentObserver Flow
-│   ├── SettingsRepository.kt # DataStore(週の開始曜日など)
-│   └── holiday/JapaneseHolidays.kt # 日本の祝日をアルゴリズム計算(1980–2099)
+│   ├── model/Models.kt       # MediaItem / GalleryEntry / GridSlot / RawFilterMode
+│   ├── MediaRepository.kt    # MediaStore クエリ + ContentObserver Flow
+│   ├── SettingsRepository.kt # DataStore(列数・表示モード)
+│   ├── coil/                 # MediaStore サムネイル / DNG 埋め込みプレビューの Coil Fetcher
+│   ├── pairing/              # RAW+JPEG ペアリング(純Kotlin・テスト付き)
+│   ├── edit/                 # AGSL 調整シェーダー / 非破壊 JPEG 書き出し(Exif引き継ぎ)
+│   └── luts/                 # .cube パーサー / LUTベイク / LUTライブラリ管理
 ├── ui/
-│   ├── theme/                # M3 テーマ + 曜日カラー(CompositionLocal)
-│   ├── AppNavHost.kt         # onboarding / month / editor
-│   ├── month/                # 月表示(HorizontalPager + 6週固定グリッド + 常設ボトムシート)
-│   ├── event/                # 予定の作成・編集
-│   └── onboarding/           # 権限の説明とリクエスト
-└── util/Dates.kt             # 月グリッド計算・ページ⇔月の変換
+│   ├── theme/                # 黒基調 M3 テーマ
+│   ├── AppNavHost.kt
+│   ├── onboarding/           # 権限の説明とリクエスト
+│   ├── gallery/              # 日付グルーピングのグリッド、ピンチで列数変更、スクラバー
+│   ├── viewer/               # 没入ビューア(ズーム・下スワイプで閉じる・RAW⇔JPEG切替・動画再生)
+│   ├── photoedit/            # 写真簡易編集(GPUリアルタイム調整・トリミング・回転)
+│   └── videoedit/            # 動画編集(LUT+強度・A/B比較・簡易調整・トリム・書き出し)
+├── work/                     # Transformer 書き出しの WorkManager Worker(進捗通知)
+└── util/                     # 日付フォーマット・権限・Lightroom 連携ヘルパー
 ```
 
-## 機能
+## 主な機能
 
-**月表示(メイン)**
-- 横スワイプページング(設定で縦の連続スクロールに切替可)、6週固定グリッド、予定チップ+「+N」表示、今日ハイライト、日本の祝日・土日の色分け
-- 常設ボトムシート:選択日の予定リスト → 詳細 → 編集 / 複製 / 削除(カレンダー本体を隠さない)
-- 日付セル長押しで新規予定のクイック作成、予定チップ長押しでドラッグ&ドロップ移動
+- **グリッド**: 日付ヘッダーでグルーピング、ピンチイン/アウトで 5⇔4⇔3⇔2 列を滑らかに変更(旧Xperiaアルバム風)、右端に日付バブル付き高速スクラバー
+- **RAW+JPEG**: ファイル名+撮影日時近接でペアリング。JPEG / RAW / すべて の表示モードを常設、RAW+J / RAW バッジ、DNGは埋め込みプレビューで高速表示
+- **ビューア**: 共有要素トランジションで没入表示。ピンチ/ダブルタップズーム、下スワイプで閉じる、同一構図のまま RAW⇔JPEG 切替、UI非表示時はシステムバーも隠す
+- **Lightroom連携**: 「Lrで現像」でペアのRAW側を ACTION_EDIT 起動(SENDフォールバック)。複数選択の一括送信、未インストール時はPlayストア誘導
+- **写真編集**: AGSL RuntimeShader による11項目のリアルタイムGPU調整+トリミング/回転。保存は常に別名(Pictures/Lumina)で非破壊、Exif引き継ぎ
+- **動画編集**: S-Cinetone for Mobile などLog素材向けに .cube 3D LUT を ExoPlayer プレビューへリアルタイム適用。強度スライダー(0〜100%)、A/B比較、簡易調整、トリム。Transformer + WorkManager でバックグラウンド書き出し(解像度/ビットレート選択、進捗通知、Movies/Lumina へ保存)
 
-**予定の作成・編集**
-- タイトル・終日・開始/終了(M3 DatePicker / TimePicker)・カレンダー選択・場所・通知・繰り返し(RRULE)・メモ。タイトル+日時だけで即保存可
+## 実装フェーズ
 
-**週 / 日表示**
-- シンプルなタイムライン形式(重なりはレーン分割)。終日行・祝日色対応
-
-**設定**
-- 週の開始曜日(日/月)、月表示のスクロール方向、表示するカレンダーの選択、テーマ(システム/ライト/ダーク)
-
-**ウィジェット(Glance)**
-- 月カレンダー(4x4):当月グリッド+予定のある日にドット、今日ハイライト
-- 今日の予定リスト(4x2):今日〜明日の予定を時刻付き表示、予定なしの日は「予定はありません」
-- どちらもタップでアプリの該当日を開く。日付変更(深夜0時)と予定変更(WorkManagerのContentUriTrigger)で自動更新、システムテーマ/Dynamic Color追従
-
-**その他**
-- 権限オンボーディング(拒否時も空のカレンダー+設定への導線)
-- 日本語 / 英語ロケール、ライト / ダークテーマ、Dynamic Color
+- [x] フェーズ1: MediaStore 読み込み、日付グルーピングのグリッド(ピンチで 5⇔4⇔3⇔2 列)、高速スクラバー、没入ビューア(写真ズーム・動画再生)、権限オンボーディング
+- [x] フェーズ2: RAW+JPEG ペアリング、JPEG/RAW/すべて表示切替、RAW+J バッジ、DNG 埋め込みプレビュー高速表示、ビューアの RAW⇔JPEG 切替
+- [x] フェーズ3: Lightroom Mobile 連携(単体・複数選択)、写真の簡易編集(AGSL)と非破壊保存
+- [x] フェーズ4: 動画への 3D LUT(.cube)リアルタイム適用+強度スライダー、簡易調整、Transformer 書き出し、トリム
+- [x] フェーズ5: 共有要素トランジション、没入システムバー制御、スクロール/再構成の最適化
 
 ## ビルド
 
@@ -60,4 +60,29 @@ app/src/main/java/com/souru/koyomi/
 ./gradlew assembleDebug
 ```
 
-JDK 17 と Android SDK(compileSdk 35)が必要です。CI(GitHub Actions)でユニットテストと debug APK のビルドを行います。
+JDK 17 と Android SDK(compileSdk 35)が必要。CI(GitHub Actions)でユニットテストと debug APK のビルドを行う。
+
+## 収益化(無料 + Pro 買い切り)
+
+無料でも「良質なギャラリー」として完結。Pro(非消費型・1回購入)で全LUT・
+.cube インポート・投稿プレビュー・SNSセーフ書き出し・動画フレーム書き出し・
+位置情報除去共有をアンロックする。無料LUTは Clean Contrast と Mono Cinema のみ。
+
+購入状態は Google Play Billing で照会し、直近の権利をローカル(DataStore)へ
+キャッシュしてオフラインでも維持する(端末内完結アプリのためサーバでのレシート
+検証は行わない)。
+
+### 課金のテスト手順(Play Console)
+
+1. Play Console でアプリを作成し、**アプリ内アイテム(管理対象/非消費)**を
+   商品ID `lumina_pro` で登録・有効化する(ID は
+   `BillingRepository.PRODUCT_ID` と一致させる。変更する場合は両方を揃える)。
+2. **ライセンステスター**を登録: Play Console → 設定 → ライセンステスト に
+   テスターの Google アカウントを追加(テスト購入は実課金されない)。
+3. 署名付き AAB を**内部テスト**トラックにアップロードし、テスターアカウントで
+   Play からインストールする(Billing は Play 経由配信でないと動作しない)。
+4. アプリ内「設定 → Proを購入」で購入フローを確認。購入後に全 Pro 機能が
+   解放されること、アンインストール→再インストール後に「購入を復元」または
+   起動時照会で復元されることを確認する。
+5. 開発中は **デバッグビルドの「設定 → [DEBUG] Proを有効化」**で Play を介さず
+   Pro 状態を擬似的に切り替えて UI/ゲートを検証できる(リリースでは無効)。

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 位置情報を除去した共有用の一時ファイル(cacheDir/share/) -->
+    <cache-path name="share" path="share/" />
+</paths>

@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    namespace = "com.souru.koyomi"
+    namespace = "com.souru.lumina"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.souru.koyomi"
-        minSdk = 26
+        applicationId = "com.souru.lumina"
+        minSdk = 33
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
@@ -35,6 +35,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // デバッグ限定のPro状態トグル(BuildConfig.DEBUG)で使用
+        buildConfig = true
     }
 }
 
@@ -46,9 +48,15 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.effect)
+    implementation(libs.media3.transformer)
+    implementation(libs.billing.ktx)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
