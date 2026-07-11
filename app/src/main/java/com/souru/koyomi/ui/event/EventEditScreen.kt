@@ -113,7 +113,8 @@ fun EventEditScreen(onClose: () -> Unit) {
                             viewModel.save()
                         }
                     },
-                    enabled = !state.loading && !state.saving && state.calendarId != null,
+                    enabled = !state.loading && !state.saving &&
+                        state.calendars.find { it.id == state.calendarId }?.isWritable == true,
                     modifier = Modifier
                         .navigationBarsPadding()
                         .fillMaxWidth()
@@ -191,15 +192,17 @@ fun EventEditScreen(onClose: () -> Unit) {
                 modifier = Modifier.padding(vertical = 4.dp),
             )
 
-            // Calendar picker
-            if (state.calendars.isEmpty()) {
+            // Calendar picker — every calendar the device knows; read-only
+            // ones (e.g. holiday subscriptions) are visible but disabled.
+            if (state.calendars.none { it.isWritable }) {
                 Text(
                     text = stringResource(R.string.no_writable_calendar),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
-            } else {
+            }
+            if (state.calendars.isNotEmpty()) {
                 val selected = state.calendars.find { it.id == state.calendarId }
                 PickerRow(
                     icon = { Icon(Icons.Outlined.CalendarMonth, null, Modifier.size(20.dp)) },
@@ -209,6 +212,7 @@ fun EventEditScreen(onClose: () -> Unit) {
                 ) { close ->
                     state.calendars.forEach { calendar ->
                         DropdownMenuItem(
+                            enabled = calendar.isWritable,
                             leadingIcon = {
                                 Box(
                                     modifier = Modifier
@@ -224,7 +228,12 @@ fun EventEditScreen(onClose: () -> Unit) {
                                 Column {
                                     Text(calendar.displayName)
                                     Text(
-                                        text = calendar.accountName,
+                                        text = if (calendar.isWritable) {
+                                            calendar.accountName
+                                        } else {
+                                            calendar.accountName + " · " +
+                                                stringResource(R.string.read_only)
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

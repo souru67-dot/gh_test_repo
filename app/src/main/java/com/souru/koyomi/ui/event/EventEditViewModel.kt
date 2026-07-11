@@ -85,7 +85,11 @@ class EventEditViewModel(
 
     private suspend fun load() {
         val zone = ZoneId.systemDefault()
-        val writableCalendars = repository.loadCalendars().filter { it.isWritable }
+        // Show every calendar the provider knows (Google sub-calendars like
+        // 仕事/Instagram included). Read-only ones are listed but not selectable,
+        // so a missing calendar clearly means "not synced to this device yet".
+        val allCalendars = repository.loadCalendars()
+        val writableCalendars = allCalendars.filter { it.isWritable }
 
         if (eventId >= 0) {
             val details = repository.loadEventDetails(eventId)
@@ -110,7 +114,7 @@ class EventEditViewModel(
                 originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
 
                 val palette = loadPalette(
-                    writableCalendars.find { it.id == details.calendarId },
+                    allCalendars.find { it.id == details.calendarId },
                 )
                 val currentColor = when {
                     !details.eventColorKey.isNullOrBlank() ->
@@ -129,7 +133,7 @@ class EventEditViewModel(
                     allDay = details.allDay,
                     start = start,
                     end = end,
-                    calendars = writableCalendars,
+                    calendars = allCalendars,
                     calendarId = details.calendarId,
                     location = details.location.orEmpty(),
                     description = details.description.orEmpty(),
@@ -159,7 +163,7 @@ class EventEditViewModel(
             isNew = true,
             start = start,
             end = start.plusHours(1),
-            calendars = writableCalendars,
+            calendars = allCalendars,
             calendarId = defaultCalendar?.id,
             eventColors = loadPalette(defaultCalendar),
         )
@@ -179,6 +183,8 @@ class EventEditViewModel(
     fun setEventColor(color: EventColor?) = _uiState.update { it.copy(eventColor = color) }
 
     fun setCalendar(id: Long) {
+        val calendar = _uiState.value.calendars.find { it.id == id } ?: return
+        if (!calendar.isWritable) return
         _uiState.update { it.copy(calendarId = id) }
         // The palette (and the validity of a picked color key) is per-account.
         viewModelScope.launch {

@@ -44,6 +44,7 @@
     <string name="ok">OK</string>
     <string name="select_time">時刻を選択</string>
     <string name="no_writable_calendar">書き込み可能なカレンダーが見つかりません。端末にカレンダーアカウントを追加してください。</string>
+    <string name="read_only">読み取り専用</string>
 
     <string name="reminder_none">なし</string>
     <string name="reminder_at_time">予定の時刻</string>

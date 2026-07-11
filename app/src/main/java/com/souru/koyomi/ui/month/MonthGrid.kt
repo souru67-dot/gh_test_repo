@@ -342,17 +342,21 @@ private fun DraggableEventChip(
 
 @Composable
 private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolean = false) {
-    val alpha = when {
+    val solid = eventColor(event)
+    val backgroundAlpha = when {
         ghosted -> 0.25f
-        dimmed -> 0.35f
+        dimmed -> 0.45f
         else -> 1f
     }
-    val background = eventColor(event).copy(alpha = alpha)
-    val textColor = if (background.luminance() > 0.5f) {
+    val background = solid.copy(alpha = backgroundAlpha)
+    // Contrast must be judged against the SOLID color — the alpha'd value has
+    // a misleading luminance and produced unreadable chips on adjacent months.
+    val baseText = if (solid.luminance() > 0.5f) {
         Color.Black.copy(alpha = 0.8f)
     } else {
         Color.White
     }
+    val textColor = if (dimmed || ghosted) baseText.copy(alpha = 0.7f) else baseText
     Box(
         modifier = Modifier
             .fillMaxWidth()

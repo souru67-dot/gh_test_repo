@@ -3,6 +3,7 @@ package com.souru.koyomi.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -20,6 +21,9 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
 import com.souru.koyomi.R
 
 class ClockTodayWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -31,22 +35,29 @@ class ClockTodayWidgetReceiver : GlanceAppWidgetReceiver() {
     }
 }
 
-/** 4x2 widget: a live clock next to today's events. */
+/**
+ * A live clock next to the upcoming agenda: the next few days that actually
+ * have events (up to 3), scrollable, each under a 今日/明日/date header.
+ */
 class ClockTodayWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sections = loadDaySections(context, days = 1)
+        val sections = loadUpcomingDaySections(context, maxDays = 3, lookaheadDays = 14)
         val look = resolveWidgetLook(context, id)
 
         provideContent {
             GlanceTheme(colors = widgetColors(look.theme)) {
-                Content(context, sections.first(), look)
+                Content(context, sections, look)
             }
         }
     }
 
     @Composable
-    private fun Content(context: Context, today: WidgetDaySection, look: WidgetLook) {
+    private fun Content(
+        context: Context,
+        sections: List<WidgetDaySection>,
+        look: WidgetLook,
+    ) {
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -57,19 +68,33 @@ class ClockTodayWidget : GlanceAppWidget() {
         ) {
             WidgetClock(
                 context = context,
-                modifier = GlanceModifier.width(120.dp),
+                modifier = GlanceModifier.width(128.dp),
             )
-            Spacer(modifier = GlanceModifier.width(12.dp))
+            Spacer(modifier = GlanceModifier.width(14.dp))
             LazyColumn(
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxHeight(),
             ) {
-                if (today.events.isEmpty()) {
+                if (sections.all { it.events.isEmpty() }) {
                     item { WidgetCenteredMessage(context.getString(R.string.no_events)) }
                 } else {
-                    items(today.events) { event ->
-                        WidgetEventRow(context, today.date, event)
+                    for (section in sections) {
+                        if (section.events.isEmpty()) continue
+                        item {
+                            Text(
+                                text = relativeDayLabel(context, section.date),
+                                style = TextStyle(
+                                    color = GlanceTheme.colors.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                modifier = GlanceModifier.padding(top = 4.dp, bottom = 2.dp),
+                            )
+                        }
+                        items(section.events) { event ->
+                            WidgetEventRow(context, section.date, event)
+                        }
                     }
                 }
             }

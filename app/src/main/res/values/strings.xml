@@ -45,6 +45,7 @@
     <string name="ok">OK</string>
     <string name="select_time">Select time</string>
     <string name="no_writable_calendar">No writable calendar was found. Add a calendar account to the device first.</string>
+    <string name="read_only">Read-only</string>
 
     <string name="reminder_none">None</string>
     <string name="reminder_at_time">At time of event</string>

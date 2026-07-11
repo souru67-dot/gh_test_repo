@@ -73,9 +73,11 @@ class MonthViewModel(
         ) { month, weekStart, hidden, _ ->
             Triple(month, weekStart, hidden)
         }.mapLatest { (month, weekStart, hidden) ->
-            // Load the visible month plus one on each side so paging feels instant.
-            val gridStart = monthGridDays(month.minusMonths(1), weekStart).first()
-            val gridEnd = monthGridDays(month.plusMonths(1), weekStart).last().plusDays(1)
+            // Load the visible month plus two on each side: the horizontal pager
+            // only needs ±1, but the vertical scroll mode shows several months
+            // at once and ±1 left the neighbours' outer weeks looking empty.
+            val gridStart = monthGridDays(month.minusMonths(2), weekStart).first()
+            val gridEnd = monthGridDays(month.plusMonths(2), weekStart).last().plusDays(1)
             MonthUiState(
                 hasPermission = calendarRepository.hasReadPermission(),
                 eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),

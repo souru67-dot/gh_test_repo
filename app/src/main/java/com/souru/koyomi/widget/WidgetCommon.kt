@@ -311,6 +311,51 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
 
 data class WidgetDaySection(val date: LocalDate, val events: List<EventInstance>)
 
+/**
+ * The next [maxDays] days that actually HAVE events, searched within
+ * [lookaheadDays] from today. Today is included even when empty so the
+ * clock widget can lead with "予定はありません".
+ */
+suspend fun loadUpcomingDaySections(
+    context: Context,
+    maxDays: Int = 3,
+    lookaheadDays: Long = 14,
+): List<WidgetDaySection> {
+    val app = context.applicationContext as KoyomiApplication
+    val today = LocalDate.now()
+    val hidden = app.container.settingsRepository.hiddenCalendarIds.first()
+    val eventsByDay = app.container.calendarRepository.loadEventsByDay(
+        today,
+        today.plusDays(lookaheadDays),
+        hidden,
+    )
+    val sections = mutableListOf<WidgetDaySection>()
+    var date = today
+    while (date.isBefore(today.plusDays(lookaheadDays)) && sections.size < maxDays) {
+        val events = eventsByDay[date].orEmpty()
+        if (events.isNotEmpty() || date == today) {
+            sections += WidgetDaySection(date, events)
+        }
+        date = date.plusDays(1)
+    }
+    return sections
+}
+
+/** 今日 / 明日 / "7月14日(火)" — for section headers in list widgets. */
+fun relativeDayLabel(context: Context, date: LocalDate): String {
+    val today = LocalDate.now()
+    return when (date) {
+        today -> context.getString(R.string.back_to_today)
+        today.plusDays(1) -> context.getString(R.string.tomorrow_label)
+        else -> date.format(
+            DateTimeFormatter.ofPattern(
+                context.getString(R.string.sheet_date_pattern),
+                Locale.getDefault(),
+            ),
+        )
+    }
+}
+
 suspend fun loadDaySections(context: Context, days: Int): List<WidgetDaySection> {
     val app = context.applicationContext as KoyomiApplication
     val today = LocalDate.now()
