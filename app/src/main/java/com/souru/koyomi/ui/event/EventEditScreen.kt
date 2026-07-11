@@ -1,7 +1,10 @@
 package com.souru.koyomi.ui.event
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Repeat
@@ -220,6 +225,13 @@ fun EventEditScreen(onClose: () -> Unit) {
                 value = state.location,
                 onValueChange = viewModel::setLocation,
                 placeholder = stringResource(R.string.location),
+            )
+
+            // Event color (Google user palette or standard fallback)
+            EventColorRow(
+                colors = state.eventColors,
+                selected = state.eventColor,
+                onSelect = viewModel::setEventColor,
             )
 
             // Reminder
@@ -512,6 +524,93 @@ private fun DateTimeRow(
                 }
             },
         )
+    }
+}
+
+/** Color picker: swatch grid in a dropdown, first entry = calendar default. */
+@Composable
+private fun EventColorRow(
+    colors: List<com.souru.koyomi.data.model.EventColor>,
+    selected: com.souru.koyomi.data.model.EventColor?,
+    onSelect: (com.souru.koyomi.data.model.EventColor?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Palette,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.event_color),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .weight(1f),
+        )
+        Column {
+            TextButton(onClick = { expanded = true }) {
+                if (selected == null) {
+                    Text(stringResource(R.string.event_color_default))
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(
+                                com.souru.koyomi.util.providerColor(selected.color)
+                                    ?: MaterialTheme.colorScheme.primary,
+                                androidx.compose.foundation.shape.CircleShape,
+                            ),
+                    )
+                }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.event_color_default)) },
+                    onClick = {
+                        onSelect(null)
+                        expanded = false
+                    },
+                )
+                colors.chunked(4).forEach { rowColors ->
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        rowColors.forEach { color ->
+                            val isSelected = selected?.color == color.color
+                            Box(
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .size(32.dp)
+                                    .background(
+                                        com.souru.koyomi.util.providerColor(color.color)
+                                            ?: MaterialTheme.colorScheme.primary,
+                                        androidx.compose.foundation.shape.CircleShape,
+                                    )
+                                    .clickable {
+                                        onSelect(color)
+                                        expanded = false
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

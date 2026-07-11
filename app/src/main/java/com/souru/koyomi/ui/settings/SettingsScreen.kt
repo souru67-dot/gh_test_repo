@@ -129,6 +129,12 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             NotificationPermissionSection()
 
+            SectionLabel(stringResource(R.string.settings_widget_opacity))
+            WidgetOpacitySlider(
+                percent = state.widgetOpacityPercent,
+                onChange = viewModel::setWidgetOpacity,
+            )
+
             SectionLabel(stringResource(R.string.settings_calendars))
             for (calendar in state.calendars) {
                 Row(
@@ -177,6 +183,35 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
             Spacer(modifier = Modifier.padding(bottom = 24.dp))
         }
+    }
+}
+
+@Composable
+private fun WidgetOpacitySlider(percent: Int, onChange: (Int) -> Unit) {
+    // Local value while dragging; persisted (and widgets redrawn) on release.
+    var sliderValue by androidx.compose.runtime.remember(percent) {
+        androidx.compose.runtime.mutableFloatStateOf(percent / 100f)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.Slider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = {
+                onChange((sliderValue * 100).toInt().coerceIn(20, 100))
+            },
+            valueRange = 0.2f..1f,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "${(sliderValue * 100).toInt()}%",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 12.dp),
+        )
     }
 }
 

@@ -105,6 +105,15 @@
     <string name="widget_month_description">This month at a glance, with dots on busy days.</string>
     <string name="widget_today_label">Today\'s events</string>
     <string name="widget_today_description">Today\'s and tomorrow\'s events with times.</string>
+    <string name="widget_clock_today_label">Clock + today</string>
+    <string name="widget_clock_today_description">A live clock next to today\'s events.</string>
+    <string name="widget_month_today_label">Calendar + today</string>
+    <string name="widget_month_today_description">This month\'s calendar with today\'s events underneath.</string>
+    <string name="settings_widget_opacity">Widget background opacity</string>
+
+    <!-- Event color -->
+    <string name="event_color">Color</string>
+    <string name="event_color_default">Calendar default</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">Your calendars, at a glance</string>

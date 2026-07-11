@@ -11,6 +11,7 @@ import android.os.Looper
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
 import com.souru.koyomi.data.model.CalendarInfo
+import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventDraft
 import com.souru.koyomi.data.model.EventInstance
@@ -176,6 +177,8 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Events.EVENT_LOCATION,
             CalendarContract.Events.DESCRIPTION,
             CalendarContract.Events.RRULE,
+            CalendarContract.Events.EVENT_COLOR_KEY,
+            CalendarContract.Events.EVENT_COLOR,
         )
         var details: EventDetails? = null
         resolver.query(uri, projection, null, null, null)?.use { cursor ->
@@ -193,11 +196,46 @@ class CalendarRepository(private val context: Context) {
                     description = cursor.getString(8),
                     rrule = cursor.getString(9),
                     reminderMinutes = loadFirstReminderMinutes(eventId),
+                    eventColorKey = cursor.getString(10),
+                    eventColor = if (cursor.isNull(11)) 0 else cursor.getInt(11),
                 )
             }
         }
         details
     }
+
+    /**
+     * The event color palette the account's sync adapter published to
+     * CalendarContract.Colors — for Google accounts this is the same set the
+     * Google Calendar app offers (Tomato, Sage...). Empty for local calendars.
+     */
+    suspend fun loadEventColors(accountName: String): List<EventColor> =
+        withContext(Dispatchers.IO) {
+            if (!hasReadPermission()) return@withContext emptyList()
+            val colors = linkedMapOf<String, EventColor>()
+            runCatching {
+                resolver.query(
+                    CalendarContract.Colors.CONTENT_URI,
+                    arrayOf(
+                        CalendarContract.Colors.COLOR_KEY,
+                        CalendarContract.Colors.COLOR,
+                    ),
+                    "${CalendarContract.Colors.COLOR_TYPE} = ? AND " +
+                        "${CalendarContract.Colors.ACCOUNT_NAME} = ?",
+                    arrayOf(
+                        CalendarContract.Colors.TYPE_EVENT.toString(),
+                        accountName,
+                    ),
+                    CalendarContract.Colors.COLOR_KEY + " ASC",
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val key = cursor.getString(0) ?: continue
+                        colors[key] = EventColor(key = key, color = cursor.getInt(1))
+                    }
+                }
+            }
+            colors.values.toList()
+        }
 
     private fun loadFirstReminderMinutes(eventId: Long): Int? {
         resolver.query(
@@ -270,10 +308,13 @@ class CalendarRepository(private val context: Context) {
     ): Boolean = withContext(Dispatchers.IO) {
         if (!hasWritePermission()) return@withContext false
         val values = draft.copy(rrule = null).toContentValues().apply {
-            // Exceptions inherit the calendar and recurrence of their parent.
+            // Exceptions inherit calendar, recurrence and color from the parent;
+            // the exception URI accepts only a limited set of columns.
             remove(CalendarContract.Events.CALENDAR_ID)
             remove(CalendarContract.Events.RRULE)
             remove(CalendarContract.Events.DURATION)
+            remove(CalendarContract.Events.EVENT_COLOR_KEY)
+            remove(CalendarContract.Events.EVENT_COLOR)
             put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceBeginMs)
             put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
         }
@@ -359,6 +400,7 @@ class CalendarRepository(private val context: Context) {
                 location = source.location.orEmpty(),
                 description = source.description.orEmpty(),
                 reminderMinutes = source.reminderMinutes,
+                eventColor = source.pickedColor(),
             )
         } else {
             EventDraft(
@@ -370,9 +412,17 @@ class CalendarRepository(private val context: Context) {
                 location = source.location.orEmpty(),
                 description = source.description.orEmpty(),
                 reminderMinutes = source.reminderMinutes,
+                eventColor = source.pickedColor(),
             )
         }
         return createEvent(draft)
+    }
+
+    /** The user-picked event color of an existing event, if any. */
+    private fun EventDetails.pickedColor(): EventColor? = when {
+        !eventColorKey.isNullOrBlank() -> EventColor(eventColorKey, eventColor)
+        eventColor != 0 -> EventColor(null, eventColor)
+        else -> null
     }
 
     private fun insertReminder(eventId: Long, minutes: Int) {
@@ -392,6 +442,23 @@ class CalendarRepository(private val context: Context) {
         values.put(CalendarContract.Events.EVENT_LOCATION, location)
         values.put(CalendarContract.Events.DESCRIPTION, description)
         values.put(CalendarContract.Events.ALL_DAY, if (allDay) 1 else 0)
+
+        // User-picked event color: prefer the synced palette key (kept in sync
+        // with Google Calendar); fall back to a raw ARGB for local calendars.
+        // Null clears both so the calendar's default color shows again.
+        when {
+            eventColor?.key != null -> {
+                values.put(CalendarContract.Events.EVENT_COLOR_KEY, eventColor.key)
+            }
+            eventColor != null -> {
+                values.put(CalendarContract.Events.EVENT_COLOR_KEY, null as String?)
+                values.put(CalendarContract.Events.EVENT_COLOR, eventColor.color)
+            }
+            else -> {
+                values.put(CalendarContract.Events.EVENT_COLOR_KEY, null as String?)
+                values.put(CalendarContract.Events.EVENT_COLOR, null as Integer?)
+            }
+        }
 
         val startUtc: Long
         val endUtc: Long

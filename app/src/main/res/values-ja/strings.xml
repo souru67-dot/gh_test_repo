@@ -104,6 +104,15 @@
     <string name="widget_month_description">今月をひと目で。予定のある日にドットを表示します。</string>
     <string name="widget_today_label">今日の予定</string>
     <string name="widget_today_description">今日と明日の予定を時刻付きで一覧表示します。</string>
+    <string name="widget_clock_today_label">時計+今日の予定</string>
+    <string name="widget_clock_today_description">時計と今日の予定をひと目で確認できます。</string>
+    <string name="widget_month_today_label">カレンダー+今日の予定</string>
+    <string name="widget_month_today_description">今月のカレンダーの下に今日の予定を表示します。</string>
+    <string name="settings_widget_opacity">ウィジェットの背景の透明度</string>
+
+    <!-- Event color -->
+    <string name="event_color">色</string>
+    <string name="event_color_default">カレンダーの色</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">端末のカレンダーを、そのまま</string>

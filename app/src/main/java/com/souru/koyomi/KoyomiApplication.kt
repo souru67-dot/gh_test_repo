@@ -40,6 +40,12 @@ class KoyomiApplication : Application() {
                 CalendarSyncWorker.schedule(this@KoyomiApplication, minutes)
             }
         }
+        // Redraw widgets when their opacity setting changes.
+        appScope.launch {
+            container.settingsRepository.widgetOpacityPercent.collect {
+                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+            }
+        }
     }
 
     private fun createNotificationChannel() {

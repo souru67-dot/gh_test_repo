@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.data.CalendarRepository
 import com.souru.koyomi.data.model.CalendarInfo
+import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDraft
 import com.souru.koyomi.util.RepeatFreq
 import com.souru.koyomi.util.RepeatRule
@@ -45,9 +46,19 @@ data class EditorUiState(
     val description: String = "",
     val reminderMinutes: Int? = null,
     val repeat: RepeatRule = RepeatRule(),
+    /** Selectable palette for the current calendar's account. */
+    val eventColors: List<EventColor> = emptyList(),
+    /** null = calendar default color. */
+    val eventColor: EventColor? = null,
     val saving: Boolean = false,
     val saved: Boolean = false,
 )
+
+/** Google's standard event palette, used when an account has no synced Colors. */
+private val FALLBACK_EVENT_COLORS = listOf(
+    0xFF7986CB, 0xFF33B679, 0xFF8E24AA, 0xFFE67C73, 0xFFF6BF26, 0xFFF4511E,
+    0xFF039BE5, 0xFF616161, 0xFF3F51B5, 0xFF0B8043, 0xFFD50000,
+).map { EventColor(key = null, color = it.toInt()) }
 
 class EventEditViewModel(
     private val repository: CalendarRepository,
@@ -95,6 +106,18 @@ class EventEditViewModel(
                 }
                 originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
 
+                val palette = loadPalette(
+                    writableCalendars.find { it.id == details.calendarId },
+                )
+                val currentColor = when {
+                    !details.eventColorKey.isNullOrBlank() ->
+                        palette.find { it.key == details.eventColorKey }
+                            ?: EventColor(details.eventColorKey, details.eventColor)
+                    details.eventColor != 0 ->
+                        EventColor(null, details.eventColor)
+                    else -> null
+                }
+
                 _uiState.value = EditorUiState(
                     loading = false,
                     isNew = false,
@@ -109,6 +132,8 @@ class EventEditViewModel(
                     description = details.description.orEmpty(),
                     reminderMinutes = details.reminderMinutes,
                     repeat = RepeatRule.parse(details.rrule),
+                    eventColors = palette,
+                    eventColor = currentColor,
                 )
                 return
             }
@@ -122,22 +147,47 @@ class EventEditViewModel(
             LocalTime.of(9, 0)
         }
         val start = LocalDateTime.of(date, startTime)
+        val defaultCalendar = writableCalendars.firstOrNull()
         _uiState.value = EditorUiState(
             loading = false,
             isNew = true,
             start = start,
             end = start.plusHours(1),
             calendars = writableCalendars,
-            calendarId = writableCalendars.firstOrNull()?.id,
+            calendarId = defaultCalendar?.id,
+            eventColors = loadPalette(defaultCalendar),
         )
+    }
+
+    /** Synced palette for the calendar's account, or Google's standard 11 colors. */
+    private suspend fun loadPalette(calendar: CalendarInfo?): List<EventColor> {
+        val synced = calendar?.let { repository.loadEventColors(it.accountName) }.orEmpty()
+        return synced.ifEmpty { FALLBACK_EVENT_COLORS }
     }
 
     fun setTitle(value: String) = _uiState.update { it.copy(title = value) }
     fun setLocation(value: String) = _uiState.update { it.copy(location = value) }
     fun setDescription(value: String) = _uiState.update { it.copy(description = value) }
     fun setAllDay(value: Boolean) = _uiState.update { it.copy(allDay = value) }
-    fun setCalendar(id: Long) = _uiState.update { it.copy(calendarId = id) }
     fun setReminder(minutes: Int?) = _uiState.update { it.copy(reminderMinutes = minutes) }
+    fun setEventColor(color: EventColor?) = _uiState.update { it.copy(eventColor = color) }
+
+    fun setCalendar(id: Long) {
+        _uiState.update { it.copy(calendarId = id) }
+        // The palette (and the validity of a picked color key) is per-account.
+        viewModelScope.launch {
+            val calendar = _uiState.value.calendars.find { it.id == id }
+            val palette = loadPalette(calendar)
+            _uiState.update { state ->
+                state.copy(
+                    eventColors = palette,
+                    eventColor = state.eventColor?.let { current ->
+                        palette.find { it.color == current.color } // best-effort remap
+                    },
+                )
+            }
+        }
+    }
 
     fun setRepeatFreq(freq: RepeatFreq) = _uiState.update { state ->
         val byDays = if (freq == RepeatFreq.WEEKLY && state.repeat.byDays.isEmpty()) {
@@ -207,6 +257,7 @@ class EventEditViewModel(
             description = state.description.trim(),
             rrule = if (thisOnly) null else state.repeat.toRRule(),
             reminderMinutes = state.reminderMinutes,
+            eventColor = state.eventColor,
         )
         viewModelScope.launch {
             val ok = when {

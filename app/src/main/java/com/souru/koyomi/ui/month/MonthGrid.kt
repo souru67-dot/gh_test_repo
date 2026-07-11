@@ -203,13 +203,17 @@ private fun DayCell(
     Column(
         modifier = modifier
             .then(
-                if (isDropTarget) {
-                    Modifier.background(
+                when {
+                    isDropTarget -> Modifier.background(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                         RoundedCornerShape(6.dp),
                     )
-                } else {
-                    Modifier
+                    // Light grey wash so the selected day reads at a glance.
+                    isSelected -> Modifier.background(
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        RoundedCornerShape(6.dp),
+                    )
+                    else -> Modifier
                 },
             )
             .combinedClickable(

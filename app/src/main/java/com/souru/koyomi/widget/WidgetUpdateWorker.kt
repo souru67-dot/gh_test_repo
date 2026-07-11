@@ -24,8 +24,7 @@ class WidgetUpdateWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        MonthWidget().updateAll(applicationContext)
-        TodayWidget().updateAll(applicationContext)
+        updateAllWidgets(applicationContext)
         schedule(applicationContext)
         return Result.success()
     }
@@ -33,6 +32,13 @@ class WidgetUpdateWorker(
     companion object {
         private const val WORK_CALENDAR_CHANGES = "koyomi_widget_calendar_changes"
         private const val WORK_MIDNIGHT = "koyomi_widget_midnight"
+
+        suspend fun updateAllWidgets(context: Context) {
+            MonthWidget().updateAll(context)
+            TodayWidget().updateAll(context)
+            ClockTodayWidget().updateAll(context)
+            MonthTodayWidget().updateAll(context)
+        }
 
         fun schedule(context: Context) {
             val workManager = WorkManager.getInstance(context)

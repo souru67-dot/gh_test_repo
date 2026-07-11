@@ -26,6 +26,7 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIDDEN_CALENDAR_IDS = stringSetPreferencesKey("hidden_calendar_ids")
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
+        val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -77,6 +78,17 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSyncIntervalMinutes(minutes: Int) {
         context.dataStore.edit { it[Keys.SYNC_INTERVAL_MINUTES] = minutes.toString() }
+    }
+
+    /** Widget background opacity, 20..100 (%). */
+    val widgetOpacityPercent: Flow<Int> = context.dataStore.data.map { prefs ->
+        (prefs[Keys.WIDGET_OPACITY_PERCENT]?.toIntOrNull() ?: 100).coerceIn(20, 100)
+    }
+
+    suspend fun setWidgetOpacityPercent(percent: Int) {
+        context.dataStore.edit {
+            it[Keys.WIDGET_OPACITY_PERCENT] = percent.coerceIn(20, 100).toString()
+        }
     }
 
     suspend fun setCalendarHidden(calendarId: Long, hidden: Boolean) {

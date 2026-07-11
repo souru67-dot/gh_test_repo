@@ -25,6 +25,7 @@ data class SettingsUiState(
     val calendars: List<CalendarInfo> = emptyList(),
     val hiddenCalendarIds: Set<Long> = emptySet(),
     val syncIntervalMinutes: Int = 30,
+    val widgetOpacityPercent: Int = 100,
 )
 
 class SettingsViewModel(
@@ -46,8 +47,9 @@ class SettingsViewModel(
         ) { weekStart, vertical, theme -> Triple(weekStart, vertical, theme) },
         settingsRepository.hiddenCalendarIds,
         settingsRepository.syncIntervalMinutes,
+        settingsRepository.widgetOpacityPercent,
         calendars,
-    ) { (weekStart, vertical, theme), hidden, syncMinutes, calendars ->
+    ) { (weekStart, vertical, theme), hidden, syncMinutes, opacity, calendars ->
         SettingsUiState(
             weekStart = weekStart,
             verticalScroll = vertical,
@@ -55,6 +57,7 @@ class SettingsViewModel(
             calendars = calendars,
             hiddenCalendarIds = hidden,
             syncIntervalMinutes = syncMinutes,
+            widgetOpacityPercent = opacity,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -76,6 +79,10 @@ class SettingsViewModel(
 
     fun setSyncInterval(minutes: Int) {
         viewModelScope.launch { settingsRepository.setSyncIntervalMinutes(minutes) }
+    }
+
+    fun setWidgetOpacity(percent: Int) {
+        viewModelScope.launch { settingsRepository.setWidgetOpacityPercent(percent) }
     }
 
     companion object {
