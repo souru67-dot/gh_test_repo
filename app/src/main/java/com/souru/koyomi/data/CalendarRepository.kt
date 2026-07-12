@@ -15,6 +15,7 @@ import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventDraft
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.model.TaskMarker
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
