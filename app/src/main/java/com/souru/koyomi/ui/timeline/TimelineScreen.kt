@@ -350,9 +350,7 @@ private fun assignLanes(
 
 @Composable
 private fun TimelineChip(event: EventInstance, modifier: Modifier = Modifier) {
-    val background = com.souru.koyomi.util.providerColor(event.color)
-        ?.let { com.souru.koyomi.util.mutedColor(it) }
-        ?: MaterialTheme.colorScheme.primary
+    val background = com.souru.koyomi.ui.month.eventColor(event)
     val textColor = if (background.luminance() > 0.5f) {
         Color.Black.copy(alpha = 0.8f)
     } else {

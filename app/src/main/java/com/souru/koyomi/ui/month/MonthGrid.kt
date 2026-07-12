@@ -539,6 +539,9 @@ private fun DragGhostChip(event: EventInstance) {
 }
 
 @Composable
-fun eventColor(event: EventInstance): Color =
-    providerColor(event.color)?.let { com.souru.koyomi.util.mutedColor(it) }
+fun eventColor(event: EventInstance): Color {
+    // Follow the ACTIVE theme (the user can force light/dark in settings).
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    return providerColor(event.color)?.let { com.souru.koyomi.util.mutedColor(it, darkTheme) }
         ?: MaterialTheme.colorScheme.primary
+}

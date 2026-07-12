@@ -114,6 +114,19 @@ fun widgetBackground(look: WidgetLook): androidx.glance.unit.ColorProvider {
     }
 }
 
+/** Calendar color tuned for readability on light/dark widget backgrounds. */
+fun eventColorProvider(
+    colorInt: Int,
+    alpha: Float = 1f,
+): androidx.glance.unit.ColorProvider {
+    val base = com.souru.koyomi.util.providerColor(colorInt)
+        ?: return androidx.glance.unit.ColorProvider(Color(0xFF8A8A8A).copy(alpha = alpha))
+    return ColorProvider(
+        com.souru.koyomi.util.mutedColor(base, darkTheme = false).copy(alpha = alpha),
+        com.souru.koyomi.util.mutedColor(base, darkTheme = true).copy(alpha = alpha),
+    )
+}
+
 // ---------- Month grid ----------
 
 data class MonthGridData(
@@ -291,11 +304,7 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
             Text(
                 text = title.ifBlank { "·" },
                 style = TextStyle(
-                    color = androidx.glance.unit.ColorProvider(
-                        com.souru.koyomi.util.providerColor(colorInt)
-                            ?.let { com.souru.koyomi.util.mutedColor(it) }
-                            ?: Color(0xFF8A8A8A),
-                    ),
+                    color = eventColorProvider(colorInt),
                     fontSize = 8.sp,
                 ),
                 maxLines = 1,
@@ -407,15 +416,7 @@ fun WidgetEventRow(
         Box(
             modifier = GlanceModifier
                 .size(width = 3.dp, height = 24.dp)
-                .background(
-                    androidx.glance.unit.ColorProvider(
-                        (
-                            com.souru.koyomi.util.providerColor(event.color)
-                                ?.let { com.souru.koyomi.util.mutedColor(it) }
-                                ?: Color(0xFF8A8A8A)
-                            ).copy(alpha = if (dimmed) 0.45f else 1f),
-                    ),
-                )
+                .background(eventColorProvider(event.color, alpha = if (dimmed) 0.45f else 1f))
                 .cornerRadius(2.dp),
         ) {}
         Text(
