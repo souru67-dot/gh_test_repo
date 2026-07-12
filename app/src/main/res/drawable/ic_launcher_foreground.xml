@@ -3,26 +3,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Minimal calendar glyph -->
+    <!-- こよみ brand mark: an ink circle (円相) with a vermilion day-dot. -->
     <path
-        android:fillColor="#3D4A3D"
-        android:pathData="M36,32h36a6,6 0 0 1 6,6v34a6,6 0 0 1 -6,6H36a6,6 0 0 1 -6,-6V38a6,6 0 0 1 6,-6z"
-        android:fillAlpha="0.12" />
-    <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
-        android:fillColor="#00000000"
-        android:pathData="M36,32h36a6,6 0 0 1 6,6v34a6,6 0 0 1 -6,6H36a6,6 0 0 1 -6,-6V38a6,6 0 0 1 6,-6z" />
-    <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
-        android:pathData="M30,44h48" />
-    <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
+        android:strokeColor="#26241F"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
-        android:pathData="M42,28v8M66,28v8" />
+        android:fillColor="#00000000"
+        android:pathData="M54,31 A23,23 0 1 0 77,54" />
     <path
-        android:fillColor="#C4574E"
-        android:pathData="M54,58m-5,0a5,5 0 1 1 10,0a5,5 0 1 1 -10,0" />
+        android:fillColor="#A8503C"
+        android:pathData="M70,36m-6.5,0a6.5,6.5 0 1 1 13,0a6.5,6.5 0 1 1 -13,0" />
 </vector>

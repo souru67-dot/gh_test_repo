@@ -27,6 +27,7 @@ data class SettingsUiState(
     val syncIntervalMinutes: Int = 30,
     val widgetOpacityPercent: Int = 100,
     val multiDayBars: Boolean = true,
+    val dynamicColor: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -51,12 +52,14 @@ class SettingsViewModel(
             settingsRepository.verticalMonthScroll,
             settingsRepository.themeMode,
             settingsRepository.multiDayBars,
-        ) { weekStart, vertical, theme, bars ->
+            settingsRepository.dynamicColor,
+        ) { weekStart, vertical, theme, bars, dynamic ->
             SettingsUiState(
                 weekStart = weekStart,
                 verticalScroll = vertical,
                 themeMode = theme,
                 multiDayBars = bars,
+                dynamicColor = dynamic,
             )
         },
         settingsRepository.hiddenCalendarIds,
@@ -82,6 +85,10 @@ class SettingsViewModel(
 
     fun setMultiDayBars(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setMultiDayBars(enabled) }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setDynamicColor(enabled) }
     }
 
     fun setThemeMode(mode: ThemeMode) {

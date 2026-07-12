@@ -22,41 +22,51 @@ data class CalendarColors(
 )
 
 val LocalCalendarColors = staticCompositionLocalOf {
-    CalendarColors(sunday = Color(0xFFC4574E), saturday = Color(0xFF4A6FA5))
+    CalendarColors(sunday = Color(0xFFB4635A), saturday = Color(0xFF5C7490))
 }
 
+/**
+ * こよみ brand palette — 墨 (ink), 和紙 (warm paper), 朱 (vermilion accent).
+ * Dynamic Color is opt-in from settings; this palette IS the identity.
+ */
 internal val KoyomiLightColors = lightColorScheme(
-    primary = Color(0xFF3D4A3D),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFDDE5DB),
-    onPrimaryContainer = Color(0xFF1A211A),
-    secondaryContainer = Color(0xFFE8E4DC),
-    onSecondaryContainer = Color(0xFF2E2B25),
-    surface = Color(0xFFFBF9F6),
-    onSurface = Color(0xFF1C1B18),
-    surfaceVariant = Color(0xFFEFECE6),
-    onSurfaceVariant = Color(0xFF57544D),
-    outlineVariant = Color(0xFFE0DDD6),
+    primary = Color(0xFF343B46),            // 藍墨 — ink with a blue undertone
+    onPrimary = Color(0xFFF8F3EA),
+    primaryContainer = Color(0xFFDFE3E8),
+    onPrimaryContainer = Color(0xFF1D232B),
+    secondary = Color(0xFF6D6152),
+    secondaryContainer = Color(0xFFEDE4D3),  // 生成り
+    onSecondaryContainer = Color(0xFF33291A),
+    tertiary = Color(0xFFA8503C),            // 朱 — small accents only
+    surface = Color(0xFFF8F3EA),             // 和紙
+    onSurface = Color(0xFF26241F),
+    surfaceVariant = Color(0xFFEFE8DA),
+    onSurfaceVariant = Color(0xFF5D584D),
+    outline = Color(0xFF8A8474),
+    outlineVariant = Color(0xFFE2DAC8),
 )
 
 internal val KoyomiDarkColors = darkColorScheme(
-    primary = Color(0xFFB6C4B3),
-    onPrimary = Color(0xFF232B22),
-    primaryContainer = Color(0xFF394639),
-    onPrimaryContainer = Color(0xFFD6E0D3),
-    secondaryContainer = Color(0xFF3A3731),
-    onSecondaryContainer = Color(0xFFE3DFD6),
-    surface = Color(0xFF15140F),
-    onSurface = Color(0xFFE5E2DC),
-    surfaceVariant = Color(0xFF2A2823),
-    onSurfaceVariant = Color(0xFFB0ACA3),
-    outlineVariant = Color(0xFF39362F),
+    primary = Color(0xFFB6C2D0),
+    onPrimary = Color(0xFF20272F),
+    primaryContainer = Color(0xFF3A4450),
+    onPrimaryContainer = Color(0xFFDBE2EA),
+    secondary = Color(0xFFC9BCA5),
+    secondaryContainer = Color(0xFF413A2E),
+    onSecondaryContainer = Color(0xFFEAE0CC),
+    tertiary = Color(0xFFD08A77),
+    surface = Color(0xFF191817),             // 夜の墨
+    onSurface = Color(0xFFEAE4D8),
+    surfaceVariant = Color(0xFF2B2924),
+    onSurfaceVariant = Color(0xFFB3AC9D),
+    outline = Color(0xFF837D6E),
+    outlineVariant = Color(0xFF3B3830),
 )
 
 @Composable
 fun KoyomiTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -68,9 +78,9 @@ fun KoyomiTheme(
         else -> KoyomiLightColors
     }
     val calendarColors = if (darkTheme) {
-        CalendarColors(sunday = Color(0xFFE2867E), saturday = Color(0xFF8FAEDC))
+        CalendarColors(sunday = Color(0xFFD08E85), saturday = Color(0xFF93A8C4))
     } else {
-        CalendarColors(sunday = Color(0xFFC4574E), saturday = Color(0xFF4A6FA5))
+        CalendarColors(sunday = Color(0xFFB4635A), saturday = Color(0xFF5C7490))
     }
     androidx.compose.runtime.CompositionLocalProvider(
         LocalCalendarColors provides calendarColors,

@@ -27,13 +27,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by settings.themeMode
                 .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val dynamicColor by settings.dynamicColor
+                .collectAsStateWithLifecycle(initialValue = false)
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
             val epochDay by deepLinkEpochDay.collectAsStateWithLifecycle()
-            KoyomiTheme(darkTheme = darkTheme) {
+            KoyomiTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 AppNavHost(
                     deepLinkEpochDay = epochDay,
                     onDeepLinkConsumed = { deepLinkEpochDay.value = null },

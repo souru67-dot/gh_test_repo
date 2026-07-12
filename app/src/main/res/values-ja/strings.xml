@@ -77,6 +77,7 @@
     <string name="theme_system">システムに合わせる</string>
     <string name="theme_light">ライト</string>
     <string name="theme_dark">ダーク</string>
+    <string name="settings_dynamic_color">壁紙の色を使う(Material You)</string>
     <string name="settings_calendars">表示するカレンダー</string>
 
     <!-- Sync & notifications -->

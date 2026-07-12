@@ -78,6 +78,7 @@
     <string name="theme_system">Follow system</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Wallpaper colors (Material You)</string>
     <string name="settings_calendars">Calendars to show</string>
 
     <!-- Sync & notifications -->

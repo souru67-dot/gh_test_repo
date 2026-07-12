@@ -24,6 +24,7 @@ class SettingsRepository(private val context: Context) {
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val VERTICAL_MONTH_SCROLL = booleanPreferencesKey("vertical_month_scroll")
         val MULTI_DAY_BARS = booleanPreferencesKey("multi_day_bars")
+        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIDDEN_CALENDAR_IDS = stringSetPreferencesKey("hidden_calendar_ids")
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
@@ -66,6 +67,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setMultiDayBars(enabled: Boolean) {
         context.dataStore.edit { it[Keys.MULTI_DAY_BARS] = enabled }
+    }
+
+    /** Material You wallpaper colors; OFF keeps the こよみ brand palette. */
+    val dynamicColor: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.DYNAMIC_COLOR] ?: false
+    }
+
+    suspend fun setDynamicColor(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.DYNAMIC_COLOR] = enabled }
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->

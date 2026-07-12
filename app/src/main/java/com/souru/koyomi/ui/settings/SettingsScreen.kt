@@ -128,6 +128,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                 selected = state.themeMode == ThemeMode.DARK,
                 onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_dynamic_color),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = state.dynamicColor,
+                    onCheckedChange = viewModel::setDynamicColor,
+                )
+            }
 
             SectionLabel(stringResource(R.string.settings_sync))
             for ((minutes, labelRes) in listOf(

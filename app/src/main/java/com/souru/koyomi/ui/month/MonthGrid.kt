@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -295,12 +296,13 @@ private fun DayCell(
                 when {
                     isDropTarget -> Modifier.background(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                        RoundedCornerShape(6.dp),
+                        RoundedCornerShape(8.dp),
                     )
-                    // Light grey wash so the selected day reads at a glance.
+                    // Selection = rounded square wash; today = filled circle.
+                    // Two distinct shapes so the states never get confused.
                     isSelected -> Modifier.background(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                        RoundedCornerShape(6.dp),
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(8.dp),
                     )
                     else -> Modifier
                 },
@@ -316,14 +318,10 @@ private fun DayCell(
             modifier = Modifier
                 .size(24.dp)
                 .let {
-                    when {
-                        isToday -> it.background(MaterialTheme.colorScheme.primary, CircleShape)
-                        isSelected -> it.border(
-                            width = 1.5.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape,
-                        )
-                        else -> it
+                    if (isToday) {
+                        it.background(MaterialTheme.colorScheme.primary, CircleShape)
+                    } else {
+                        it
                     }
                 },
             contentAlignment = Alignment.Center,
@@ -483,36 +481,46 @@ private fun DraggableEventChip(
     }
 }
 
+/**
+ * こよみの chip language: a left color notch on a lightly tinted body, with
+ * theme-colored text — legible in both themes and visually our own.
+ */
 @Composable
 private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolean = false) {
     val solid = eventColor(event)
-    val backgroundAlpha = when {
-        ghosted -> 0.25f
-        dimmed -> 0.45f
+    val strength = when {
+        ghosted -> 0.30f
+        dimmed -> 0.55f
         else -> 1f
     }
-    val background = solid.copy(alpha = backgroundAlpha)
-    // Contrast must be judged against the SOLID color — the alpha'd value has
-    // a misleading luminance and produced unreadable chips on adjacent months.
-    val baseText = if (solid.luminance() > 0.5f) {
-        Color.Black.copy(alpha = 0.8f)
-    } else {
-        Color.White
-    }
-    val textColor = if (dimmed || ghosted) baseText.copy(alpha = 0.7f) else baseText
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(background, RoundedCornerShape(3.dp)),
+            .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
+            .background(
+                solid.copy(alpha = 0.15f * strength),
+                RoundedCornerShape(3.dp),
+            ),
     ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(
+                    solid.copy(alpha = strength),
+                    RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp),
+                ),
+        )
         Text(
             text = event.title.ifBlank { " " },
-            modifier = Modifier.padding(horizontal = 3.dp, vertical = 0.5.dp),
+            modifier = Modifier.padding(start = 4.dp, end = 3.dp, top = 0.5.dp, bottom = 0.5.dp),
             fontSize = 9.sp,
             lineHeight = 11.sp,
             maxLines = 1,
             overflow = TextOverflow.Clip,
-            color = textColor,
+            color = MaterialTheme.colorScheme.onSurface.copy(
+                alpha = if (dimmed || ghosted) 0.55f else 0.92f,
+            ),
         )
     }
 }

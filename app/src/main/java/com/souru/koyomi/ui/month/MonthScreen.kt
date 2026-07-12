@@ -3,6 +3,8 @@ package com.souru.koyomi.ui.month
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -147,11 +151,6 @@ fun MonthScreen(
         onDeepLinkConsumed()
     }
 
-    val monthPattern = stringResource(R.string.month_title_pattern)
-    val monthFormatter = remember(monthPattern) {
-        DateTimeFormatter.ofPattern(monthPattern, Locale.getDefault())
-    }
-
     fun closeDetail() {
         detailInstance = null
         detail = null
@@ -160,9 +159,21 @@ fun MonthScreen(
     BottomSheetScaffold(
         scaffoldState = rememberBottomSheetScaffoldState(),
         sheetPeekHeight = SheetPeekHeight,
+        sheetDragHandle = {
+            // Slim brand handle instead of the stock Material pill.
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .size(width = 36.dp, height = 4.dp)
+                    .background(
+                        MaterialTheme.colorScheme.outlineVariant,
+                        CircleShape,
+                    ),
+            )
+        },
         topBar = {
             MonthTopBar(
-                title = visibleMonth.format(monthFormatter),
+                month = visibleMonth,
                 onTodayClick = {
                     viewModel.select(LocalDate.now())
                     scope.launch { scrollToMonth(YearMonth.now()) }
@@ -435,7 +446,7 @@ private fun VerticalMonthList(
 
 @Composable
 private fun MonthTopBar(
-    title: String,
+    month: YearMonth,
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -451,12 +462,12 @@ private fun MonthTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(64.dp)
                 .padding(start = 20.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             MonthTopBarContent(
-                title = title,
+                month = month,
                 onTodayClick = onTodayClick,
                 onOpenTimeline = onOpenTimeline,
                 onOpenSettings = onOpenSettings,
@@ -469,18 +480,34 @@ private fun MonthTopBar(
 
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
-    title: String,
+    month: YearMonth,
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
 ) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onSurface,
-    )
+    // Typography-led header: the month is the hero, the year whispers.
+    val locale = Locale.getDefault()
+    val monthLabel = if (locale.language == "ja") {
+        "${month.monthValue}月"
+    } else {
+        month.format(DateTimeFormatter.ofPattern("MMMM", locale))
+    }
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = monthLabel,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = month.year.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp, bottom = 5.dp),
+        )
+    }
     Spacer(modifier = Modifier.weight(1f))
     IconButton(onClick = onTodayClick) {
         Icon(

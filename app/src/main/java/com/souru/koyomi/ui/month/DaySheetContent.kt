@@ -142,13 +142,21 @@ private fun DayEventList(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 8.dp),
+                .padding(start = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = date.format(dateFormatter),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            // Date as a tab-like pill — the sheet's own identity.
+            androidx.compose.material3.Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(50),
+            ) {
+                Text(
+                    text = date.format(dateFormatter),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+            }
             if (holidayName != null) {
                 Text(
                     text = holidayName,
