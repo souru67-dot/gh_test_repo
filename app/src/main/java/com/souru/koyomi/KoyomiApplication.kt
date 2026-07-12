@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 class AppContainer(context: Context) {
     val calendarRepository = CalendarRepository(context)
     val settingsRepository = SettingsRepository(context)
-    val taskRepository = TaskRepository(context)
+    val taskRepository = TaskRepository(calendarRepository, settingsRepository)
 }
 
 class KoyomiApplication : Application() {

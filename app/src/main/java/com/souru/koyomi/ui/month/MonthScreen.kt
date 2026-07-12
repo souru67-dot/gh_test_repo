@@ -204,6 +204,10 @@ fun MonthScreen(
                 onAddTask = { title -> viewModel.addTask(title, selectedDate) },
                 onToggleTask = { task -> viewModel.setTaskDone(task.id, !task.done) },
                 onDeleteTask = { task -> viewModel.deleteTask(task.id) },
+                onEditTask = { task ->
+                    closeDetail()
+                    onEditEvent(task.id, task.begin, task.end)
+                },
                 modifier = Modifier
                     .fillMaxHeight(0.88f)
                     .navigationBarsPadding(),

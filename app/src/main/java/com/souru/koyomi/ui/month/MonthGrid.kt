@@ -380,6 +380,10 @@ private fun DayCell(
     }
 }
 
+/**
+ * FirstSeed-style multi-day marker: the title sits ON TOP of a thin colored
+ * line that runs continuously across the covered days.
+ */
 @Composable
 private fun MultiDayBar(
     segment: BarSegment,
@@ -388,40 +392,38 @@ private fun MultiDayBar(
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val solid = eventColor(segment.event)
-    val textColor = if (solid.luminance() > 0.5f) {
-        Color.Black.copy(alpha = 0.8f)
-    } else {
-        Color.White
-    }
+    val lineColor = eventColor(segment.event)
     val shape = RoundedCornerShape(
-        topStart = if (segment.startsHere) 4.dp else 0.dp,
-        bottomStart = if (segment.startsHere) 4.dp else 0.dp,
-        topEnd = if (segment.endsHere) 4.dp else 0.dp,
-        bottomEnd = if (segment.endsHere) 4.dp else 0.dp,
+        topStart = if (segment.startsHere) 2.dp else 0.dp,
+        bottomStart = if (segment.startsHere) 2.dp else 0.dp,
+        topEnd = if (segment.endsHere) 2.dp else 0.dp,
+        bottomEnd = if (segment.endsHere) 2.dp else 0.dp,
     )
-    Box(
+    Column(
         modifier = modifier
             .width(cellWidth * (segment.endCol - segment.startCol + 1))
-            .height(13.dp)
-            .padding(horizontal = 1.dp),
+            .height(14.dp)
+            .padding(horizontal = 1.dp)
+            .clickable { onSelect(date) },
     ) {
+        Text(
+            text = segment.event.title.ifBlank { " " },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 3.dp),
+            fontSize = 9.sp,
+            lineHeight = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(solid, shape)
-                .clickable { onSelect(date) },
-        ) {
-            Text(
-                text = segment.event.title.ifBlank { " " },
-                modifier = Modifier.padding(horizontal = 4.dp),
-                fontSize = 9.sp,
-                lineHeight = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                color = textColor,
-            )
-        }
+                .fillMaxWidth()
+                .height(2.5.dp)
+                .background(lineColor, shape),
+        )
     }
 }
 
@@ -536,4 +538,5 @@ private fun DragGhostChip(event: EventInstance) {
 
 @Composable
 fun eventColor(event: EventInstance): Color =
-    providerColor(event.color) ?: MaterialTheme.colorScheme.primary
+    providerColor(event.color)?.let { com.souru.koyomi.util.mutedColor(it) }
+        ?: MaterialTheme.colorScheme.primary

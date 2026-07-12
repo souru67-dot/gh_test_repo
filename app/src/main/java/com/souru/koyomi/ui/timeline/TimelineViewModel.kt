@@ -56,7 +56,7 @@ class TimelineViewModel(
                     anchor.minusDays(8),
                     anchor.plusDays(9),
                     hidden,
-                ),
+                ).mapValues { (_, list) -> list.filter { !it.isTask } },
                 weekStart = weekStart,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TimelineUiState())

@@ -85,6 +85,7 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Instances.DISPLAY_COLOR,
             CalendarContract.Instances.CALENDAR_ID,
             CalendarContract.Instances.EVENT_LOCATION,
+            CalendarContract.Instances.DESCRIPTION,
         )
 
         // DISPLAY_COLOR already prefers EVENT_COLOR over the calendar color,
@@ -113,6 +114,7 @@ class CalendarRepository(private val context: Context) {
 
                 val calendarId = cursor.getLong(6)
                 val displayColor = cursor.getInt(5)
+                val description = cursor.getString(8)
                 val instance = EventInstance(
                     eventId = cursor.getLong(0),
                     title = cursor.getString(1).orEmpty(),
@@ -128,6 +130,8 @@ class CalendarRepository(private val context: Context) {
                     location = cursor.getString(7),
                     startDate = startDate,
                     endDate = endDate,
+                    isTask = TaskMarker.isTask(description),
+                    isDone = TaskMarker.isDone(description),
                 )
                 var day = maxOf(startDate, rangeStart)
                 val lastDay = minOf(endDate, rangeEndExclusive.minusDays(1))
@@ -421,6 +425,32 @@ class CalendarRepository(private val context: Context) {
         if (!hasWritePermission()) return@withContext false
         val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
         resolver.delete(uri, null, null) > 0
+    }
+
+    /** Partial update of just the DESCRIPTION column (task done-marker toggle). */
+    suspend fun updateDescription(eventId: Long, description: String): Boolean =
+        withContext(Dispatchers.IO) {
+            if (!hasWritePermission()) return@withContext false
+            val values = ContentValues().apply {
+                put(CalendarContract.Events.DESCRIPTION, description)
+            }
+            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
+            resolver.update(uri, values, null, null) > 0
+        }
+
+    /** Current DESCRIPTION of an event (for marker toggles). */
+    suspend fun loadDescription(eventId: Long): String? = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext null
+        resolver.query(
+            ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
+            arrayOf(CalendarContract.Events.DESCRIPTION),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) return@withContext cursor.getString(0)
+        }
+        null
     }
 
     /**

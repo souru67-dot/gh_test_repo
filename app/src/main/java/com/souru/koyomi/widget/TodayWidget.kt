@@ -20,6 +20,7 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -99,15 +100,15 @@ class TodayWidget : GlanceAppWidget() {
                 Text(
                     text = today.date.dayOfMonth.toString(),
                     style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 32.sp,
+                        color = GlanceTheme.colors.primary,
+                        fontSize = 34.sp,
                         fontWeight = FontWeight.Bold,
                     ),
                     modifier = GlanceModifier.clickable(
                         actionStartActivity(openDayIntent(context, today.date)),
                     ),
                 )
-                Column(modifier = GlanceModifier.padding(start = 10.dp)) {
+                Column(modifier = GlanceModifier.padding(start = 12.dp)) {
                     Text(
                         text = monthAndWeekday(today.date),
                         style = TextStyle(
@@ -122,14 +123,22 @@ class TodayWidget : GlanceAppWidget() {
                             context.getString(R.string.events_count, today.events.size)
                         },
                         style = TextStyle(
-                            color = GlanceTheme.colors.primary,
+                            color = GlanceTheme.colors.onSurface,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
                         ),
                     )
                 }
             }
+            // Hairline divider between the header and the agenda.
             Spacer(modifier = GlanceModifier.height(6.dp))
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(GlanceTheme.colors.surfaceVariant),
+            ) {}
+            Spacer(modifier = GlanceModifier.height(4.dp))
             LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                 when {
                     today.events.isEmpty() -> item {

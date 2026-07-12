@@ -29,6 +29,7 @@ class SettingsRepository(private val context: Context) {
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
         val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
+        val TASK_CALENDAR_ID = stringPreferencesKey("task_calendar_id")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -98,6 +99,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLastUsedCalendarId(calendarId: Long) {
         context.dataStore.edit { it[Keys.LAST_USED_CALENDAR_ID] = calendarId.toString() }
+    }
+
+    /** Calendar new tasks are created in; null = follow last-used calendar. */
+    val taskCalendarId: Flow<Long?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.TASK_CALENDAR_ID]?.toLongOrNull()
+    }
+
+    suspend fun setTaskCalendarId(calendarId: Long) {
+        context.dataStore.edit { it[Keys.TASK_CALENDAR_ID] = calendarId.toString() }
     }
 
     /** Widget background opacity, 0..100 (%), app-wide default. */

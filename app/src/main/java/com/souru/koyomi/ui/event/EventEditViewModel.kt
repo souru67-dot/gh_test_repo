@@ -79,15 +79,17 @@ class EventEditViewModel(
     /** BEGIN of the instance being edited; identifies the exception occurrence. */
     private var originalInstanceBegin: Long = -1L
 
+    /** Machine markers (task tags) stripped from the memo; re-joined on save. */
+    private var descriptionMarkers: String = ""
+
     init {
         viewModelScope.launch { load() }
     }
 
     private suspend fun load() {
         val zone = ZoneId.systemDefault()
-        // Show every calendar the provider knows (Google sub-calendars like
-        // 仕事/Instagram included). Read-only ones are listed but not selectable,
-        // so a missing calendar clearly means "not synced to this device yet".
+        // The editor only offers calendars the user can actually write to;
+        // read-only ones (holiday subscriptions etc.) stay out of the picker.
         val allCalendars = repository.loadCalendars()
         val writableCalendars = allCalendars.filter { it.isWritable }
 
@@ -113,6 +115,10 @@ class EventEditViewModel(
                 }
                 originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
 
+                val (memo, markers) = com.souru.koyomi.data.model.TaskMarker
+                    .split(details.description)
+                descriptionMarkers = markers
+
                 val palette = loadPalette(
                     allCalendars.find { it.id == details.calendarId },
                 )
@@ -133,10 +139,10 @@ class EventEditViewModel(
                     allDay = details.allDay,
                     start = start,
                     end = end,
-                    calendars = allCalendars,
+                    calendars = writableCalendars,
                     calendarId = details.calendarId,
                     location = details.location.orEmpty(),
-                    description = details.description.orEmpty(),
+                    description = memo,
                     reminderMinutes = details.reminderMinutes,
                     repeat = RepeatRule.parse(details.rrule),
                     eventColors = palette,
@@ -163,7 +169,7 @@ class EventEditViewModel(
             isNew = true,
             start = start,
             end = start.plusHours(1),
-            calendars = allCalendars,
+            calendars = writableCalendars,
             calendarId = defaultCalendar?.id,
             eventColors = loadPalette(defaultCalendar),
         )
@@ -266,7 +272,8 @@ class EventEditViewModel(
                 state.end.atZone(zone).toInstant().toEpochMilli()
             },
             location = state.location.trim(),
-            description = state.description.trim(),
+            description = com.souru.koyomi.data.model.TaskMarker
+                .join(state.description, descriptionMarkers),
             rrule = if (thisOnly) null else state.repeat.toRRule(),
             reminderMinutes = state.reminderMinutes,
             eventColor = state.eventColor,

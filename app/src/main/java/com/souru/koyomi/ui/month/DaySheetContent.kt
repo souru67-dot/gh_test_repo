@@ -88,6 +88,7 @@ fun DaySheetContent(
     onAddTask: (String) -> Unit,
     onToggleTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
+    onEditTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
@@ -105,6 +106,7 @@ fun DaySheetContent(
                 onAddTask = onAddTask,
                 onToggleTask = onToggleTask,
                 onDeleteTask = onDeleteTask,
+                onEditTask = onEditTask,
             )
         } else {
             EventDetailPane(
@@ -130,6 +132,7 @@ private fun DayEventList(
     onAddTask: (String) -> Unit,
     onToggleTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
+    onEditTask: (Task) -> Unit,
 ) {
     val calendarColors = LocalCalendarColors.current
     val dateFormatter = rememberPatternFormatter(R.string.sheet_date_pattern)
@@ -198,6 +201,7 @@ private fun DayEventList(
                     task = task,
                     onToggle = { onToggleTask(task) },
                     onDelete = { onDeleteTask(task) },
+                    onEdit = { onEditTask(task) },
                 )
             }
             item(key = "task-add") {
@@ -208,28 +212,45 @@ private fun DayEventList(
 }
 
 @Composable
-private fun TaskRow(task: Task, onToggle: () -> Unit, onDelete: () -> Unit) {
+private fun TaskRow(
+    task: Task,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    // Tapping the row opens the event editor (time / notification / color);
+    // the checkbox toggles completion.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .clickable(onClick = onEdit)
             .padding(start = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = task.done, onCheckedChange = { onToggle() })
-        Text(
-            text = task.title,
-            style = MaterialTheme.typography.bodyLarge,
-            textDecoration = if (task.done) TextDecoration.LineThrough else null,
-            color = if (task.done) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (task.done) TextDecoration.LineThrough else null,
+                color = if (task.done) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!task.allDay) {
+                Text(
+                    text = rememberTimeFormatter().format(
+                        Instant.ofEpochMilli(task.begin).atZone(ZoneId.systemDefault()),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         IconButton(onClick = onDelete) {
             Icon(
                 imageVector = Icons.Outlined.Delete,

@@ -140,7 +140,7 @@ suspend fun loadMonthGridData(context: Context): MonthGridData {
         weekStart = weekStart,
         days = days,
         dayDots = events.mapValues { (_, list) ->
-            list.map { it.color }.distinct().take(3)
+            list.filter { !it.isTask }.map { it.color }.distinct().take(3)
         }.filterValues { it.isNotEmpty() },
     )
 }
@@ -294,6 +294,7 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
                         .background(
                             androidx.glance.unit.ColorProvider(
                                 com.souru.koyomi.util.providerColor(colorInt)
+                                    ?.let { com.souru.koyomi.util.mutedColor(it) }
                                     ?: Color(0xFF8A8A8A),
                             ),
                         )
@@ -332,7 +333,7 @@ suspend fun loadUpcomingDaySections(
     val sections = mutableListOf<WidgetDaySection>()
     var date = today
     while (date.isBefore(today.plusDays(lookaheadDays)) && sections.size < maxDays) {
-        val events = eventsByDay[date].orEmpty()
+        val events = eventsByDay[date].orEmpty().filter { !it.isTask }
         if (events.isNotEmpty() || date == today) {
             sections += WidgetDaySection(date, events)
         }
@@ -367,7 +368,7 @@ suspend fun loadDaySections(context: Context, days: Int): List<WidgetDaySection>
     )
     return (0 until days).map { offset ->
         val date = today.plusDays(offset.toLong())
-        WidgetDaySection(date, eventsByDay[date].orEmpty())
+        WidgetDaySection(date, eventsByDay[date].orEmpty().filter { !it.isTask })
     }
 }
 
@@ -402,6 +403,7 @@ fun WidgetEventRow(
                     androidx.glance.unit.ColorProvider(
                         (
                             com.souru.koyomi.util.providerColor(event.color)
+                                ?.let { com.souru.koyomi.util.mutedColor(it) }
                                 ?: Color(0xFF8A8A8A)
                             ).copy(alpha = if (dimmed) 0.45f else 1f),
                     ),

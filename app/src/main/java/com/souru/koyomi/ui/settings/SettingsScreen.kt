@@ -129,6 +129,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
             )
 
+            SectionLabel(stringResource(R.string.settings_task_calendar))
+            TaskCalendarPicker(
+                calendars = state.calendars.filter { it.isWritable },
+                selectedId = state.taskCalendarId,
+                onSelect = viewModel::setTaskCalendar,
+            )
+
             SectionLabel(stringResource(R.string.settings_sync))
             for ((minutes, labelRes) in listOf(
                 15 to R.string.sync_15min,
@@ -194,6 +201,68 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.padding(bottom = 24.dp))
+        }
+    }
+}
+
+/** Which writable calendar quick-added tasks are created in. */
+@Composable
+private fun TaskCalendarPicker(
+    calendars: List<com.souru.koyomi.data.model.CalendarInfo>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit,
+) {
+    var expanded by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    val selected = calendars.find { it.id == selectedId } ?: calendars.firstOrNull()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = true }
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(
+                    selected?.let { com.souru.koyomi.util.providerColor(it.color) }
+                        ?: MaterialTheme.colorScheme.primary,
+                    CircleShape,
+                ),
+        )
+        Text(
+            text = selected?.displayName ?: "",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp),
+        )
+        androidx.compose.material3.DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            calendars.forEach { calendar ->
+                androidx.compose.material3.DropdownMenuItem(
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    com.souru.koyomi.util.providerColor(calendar.color)
+                                        ?: MaterialTheme.colorScheme.primary,
+                                    CircleShape,
+                                ),
+                        )
+                    },
+                    text = { Text(calendar.displayName) },
+                    onClick = {
+                        onSelect(calendar.id)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }

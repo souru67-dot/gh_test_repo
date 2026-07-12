@@ -27,6 +27,7 @@ data class SettingsUiState(
     val syncIntervalMinutes: Int = 30,
     val widgetOpacityPercent: Int = 100,
     val multiDayBars: Boolean = true,
+    val taskCalendarId: Long? = null,
 )
 
 class SettingsViewModel(
@@ -60,15 +61,19 @@ class SettingsViewModel(
             )
         },
         settingsRepository.hiddenCalendarIds,
-        settingsRepository.syncIntervalMinutes,
-        settingsRepository.widgetOpacityPercent,
+        combine(
+            settingsRepository.syncIntervalMinutes,
+            settingsRepository.widgetOpacityPercent,
+            settingsRepository.taskCalendarId,
+        ) { sync, opacity, taskCal -> Triple(sync, opacity, taskCal) },
         calendars,
-    ) { base, hidden, syncMinutes, opacity, calendars ->
+    ) { base, hidden, (syncMinutes, opacity, taskCal), calendars ->
         base.copy(
             calendars = calendars,
             hiddenCalendarIds = hidden,
             syncIntervalMinutes = syncMinutes,
             widgetOpacityPercent = opacity,
+            taskCalendarId = taskCal,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -109,6 +114,10 @@ class SettingsViewModel(
 
     fun setWidgetOpacity(percent: Int) {
         viewModelScope.launch { settingsRepository.setWidgetOpacityPercent(percent) }
+    }
+
+    fun setTaskCalendar(calendarId: Long) {
+        viewModelScope.launch { settingsRepository.setTaskCalendarId(calendarId) }
     }
 
     companion object {

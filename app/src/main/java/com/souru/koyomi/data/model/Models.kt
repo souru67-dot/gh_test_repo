@@ -29,7 +29,45 @@ data class EventInstance(
     val location: String?,
     val startDate: LocalDate,
     val endDate: LocalDate,
+    /** Marker-tagged task events (see [TaskMarker]); shown as to-dos, not chips. */
+    val isTask: Boolean = false,
+    val isDone: Boolean = false,
 )
+
+/**
+ * Tasks are ordinary calendar events carrying these markers in DESCRIPTION,
+ * so they sync through Google Calendar like everything else. Completion is
+ * toggled by adding/removing [DONE].
+ */
+object TaskMarker {
+    const val TASK = "#koyomi-task"
+    const val DONE = "#koyomi-done"
+
+    fun isTask(description: String?): Boolean = description?.contains(TASK) == true
+    fun isDone(description: String?): Boolean = description?.contains(DONE) == true
+
+    fun withDone(description: String?, done: Boolean): String {
+        val base = (description.orEmpty()).replace(DONE, "").trimEnd()
+        return if (done) "$base $DONE".trim() else base
+    }
+
+    /**
+     * Splits a description into (visible memo, marker suffix) so the editor
+     * never shows the machine markers — and can't accidentally erase them.
+     */
+    fun split(description: String?): Pair<String, String> {
+        val text = description.orEmpty()
+        val markers = buildList {
+            if (text.contains(TASK)) add(TASK)
+            if (text.contains(DONE)) add(DONE)
+        }.joinToString(" ")
+        val memo = text.replace(TASK, "").replace(DONE, "").trim()
+        return memo to markers
+    }
+
+    fun join(memo: String, markers: String): String =
+        listOf(memo.trim(), markers.trim()).filter { it.isNotEmpty() }.joinToString("\n")
+}
 
 /** Full event row, loaded lazily for the detail view / editor. */
 data class EventDetails(
