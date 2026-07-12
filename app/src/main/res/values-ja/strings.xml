@@ -95,6 +95,9 @@
     <string name="tasks">タスク</string>
     <string name="add_task_hint">タスクを追加</string>
     <string name="settings_task_calendar">タスクの作成先カレンダー</string>
+    <string name="event_label">予定</string>
+    <string name="task_date">日付</string>
+    <string name="task_time">時刻</string>
 
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>

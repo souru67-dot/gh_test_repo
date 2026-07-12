@@ -96,6 +96,9 @@
     <string name="tasks">Tasks</string>
     <string name="add_task_hint">Add a task</string>
     <string name="settings_task_calendar">Calendar for new tasks</string>
+    <string name="event_label">Event</string>
+    <string name="task_date">Date</string>
+    <string name="task_time">Time</string>
 
     <!-- Drag & drop -->
     <string name="drop_title">Move or copy?</string>

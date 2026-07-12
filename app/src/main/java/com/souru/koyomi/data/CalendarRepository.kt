@@ -15,7 +15,6 @@ import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventDraft
 import com.souru.koyomi.data.model.EventInstance
-import com.souru.koyomi.data.model.TaskMarker
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -86,7 +85,6 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Instances.DISPLAY_COLOR,
             CalendarContract.Instances.CALENDAR_ID,
             CalendarContract.Instances.EVENT_LOCATION,
-            CalendarContract.Instances.DESCRIPTION,
         )
 
         // DISPLAY_COLOR already prefers EVENT_COLOR over the calendar color,
@@ -95,10 +93,18 @@ class CalendarRepository(private val context: Context) {
         val calendarColors = loadCalendars().associate { it.id to it.color }
 
         val result = mutableMapOf<LocalDate, MutableList<EventInstance>>()
+        // deleted=0: app-side deletes are soft (the sync adapter purges them
+        // later), and Instances happily keeps returning those rows — that made
+        // deleted events "come back" in the app while Google already dropped
+        // them. STATUS != CANCELED hides cancelled occurrences the same way.
+        val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
+            "${CalendarContract.Events.DELETED} = 0 AND " +
+            "(${CalendarContract.Events.STATUS} IS NULL OR " +
+            "${CalendarContract.Events.STATUS} != ${CalendarContract.Events.STATUS_CANCELED})"
         resolver.query(
             uriBuilder.build(),
             projection,
-            "${CalendarContract.Instances.VISIBLE} = 1",
+            selection,
             null,
             "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { cursor ->
@@ -115,7 +121,6 @@ class CalendarRepository(private val context: Context) {
 
                 val calendarId = cursor.getLong(6)
                 val displayColor = cursor.getInt(5)
-                val description = cursor.getString(8)
                 val instance = EventInstance(
                     eventId = cursor.getLong(0),
                     title = cursor.getString(1).orEmpty(),
@@ -131,8 +136,6 @@ class CalendarRepository(private val context: Context) {
                     location = cursor.getString(7),
                     startDate = startDate,
                     endDate = endDate,
-                    isTask = TaskMarker.isTask(description),
-                    isDone = TaskMarker.isDone(description),
                 )
                 var day = maxOf(startDate, rangeStart)
                 val lastDay = minOf(endDate, rangeEndExclusive.minusDays(1))

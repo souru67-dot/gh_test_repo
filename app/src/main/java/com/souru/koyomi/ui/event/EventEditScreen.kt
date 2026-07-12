@@ -113,8 +113,12 @@ fun EventEditScreen(onClose: () -> Unit) {
                             viewModel.save()
                         }
                     },
-                    enabled = !state.loading && !state.saving &&
-                        state.calendars.find { it.id == state.calendarId }?.isWritable == true,
+                    enabled = !state.loading && !state.saving && when (state.mode) {
+                        EditorMode.TASK -> state.title.isNotBlank()
+                        EditorMode.EVENT ->
+                            state.calendars.find { it.id == state.calendarId }
+                                ?.isWritable == true
+                    },
                     modifier = Modifier
                         .navigationBarsPadding()
                         .fillMaxWidth()
@@ -134,6 +138,23 @@ fun EventEditScreen(onClose: () -> Unit) {
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            // New items can be either an event or a task.
+            if (!state.modeLocked) {
+                androidx.compose.material3.TabRow(
+                    selectedTabIndex = if (state.mode == EditorMode.EVENT) 0 else 1,
+                ) {
+                    androidx.compose.material3.Tab(
+                        selected = state.mode == EditorMode.EVENT,
+                        onClick = { viewModel.setMode(EditorMode.EVENT) },
+                        text = { Text(stringResource(R.string.event_label)) },
+                    )
+                    androidx.compose.material3.Tab(
+                        selected = state.mode == EditorMode.TASK,
+                        onClick = { viewModel.setMode(EditorMode.TASK) },
+                        text = { Text(stringResource(R.string.tasks)) },
+                    )
+                }
+            }
             TextField(
                 value = state.title,
                 onValueChange = viewModel::setTitle,
@@ -151,6 +172,12 @@ fun EventEditScreen(onClose: () -> Unit) {
                     .padding(horizontal = 8.dp),
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            if (state.mode == EditorMode.TASK) {
+                TaskFields(state = state, viewModel = viewModel)
+                Spacer(modifier = Modifier.height(24.dp))
+                return@Column
+            }
 
             // All-day toggle
             Row(
@@ -453,6 +480,119 @@ private fun RepeatUntilRow(
         ) {
             DatePicker(state = pickerState)
         }
+    }
+}
+
+/** Task mode: date, optional time, color and notification. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TaskFields(state: EditorUiState, viewModel: EventEditViewModel) {
+    val context = LocalContext.current
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    // Due date (reuses the date half of DateTimeRow).
+    DateTimeRow(
+        label = stringResource(R.string.task_date),
+        value = state.start,
+        showTime = false,
+        onChange = viewModel::setStart,
+    )
+
+    // Optional time of day.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Schedule,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.task_time),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .weight(1f),
+        )
+        val taskTime = state.taskTime
+        if (taskTime != null) {
+            TextButton(onClick = { showTimePicker = true }) {
+                Text(
+                    taskTime.format(
+                        DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()),
+                    ),
+                )
+            }
+        }
+        Switch(
+            checked = state.taskTime != null,
+            onCheckedChange = { enabled ->
+                if (enabled) {
+                    viewModel.setTaskTime(java.time.LocalTime.of(9, 0))
+                    showTimePicker = true
+                } else {
+                    viewModel.setTaskTime(null)
+                }
+            },
+        )
+    }
+
+    // Color
+    EventColorRow(
+        colors = state.eventColors,
+        selected = state.eventColor,
+        calendarColor = null,
+        onSelect = viewModel::setEventColor,
+    )
+
+    // Notification
+    PickerRow(
+        icon = { Icon(Icons.Outlined.NotificationsNone, null, Modifier.size(20.dp)) },
+        label = stringResource(R.string.notification),
+        value = reminderLabel(state.reminderMinutes),
+    ) { close ->
+        ReminderChoices.forEach { minutes ->
+            DropdownMenuItem(
+                text = { Text(reminderLabel(minutes)) },
+                onClick = {
+                    viewModel.setReminder(minutes)
+                    close()
+                },
+            )
+        }
+    }
+
+    if (showTimePicker) {
+        val current = state.taskTime ?: java.time.LocalTime.of(9, 0)
+        val pickerState = rememberTimePickerState(
+            initialHour = current.hour,
+            initialMinute = current.minute,
+            is24Hour = DateFormat.is24HourFormat(context),
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text(stringResource(R.string.select_time)) },
+            text = { TimePicker(state = pickerState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setTaskTime(
+                            java.time.LocalTime.of(pickerState.hour, pickerState.minute),
+                        )
+                        showTimePicker = false
+                    },
+                ) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

@@ -120,8 +120,8 @@ data class MonthGridData(
     val month: YearMonth,
     val weekStart: DayOfWeek,
     val days: List<LocalDate>,
-    /** Up to 3 distinct calendar colors per day, in start order. */
-    val dayDots: Map<LocalDate, List<Int>>,
+    /** Up to 3 (title, color) entries per day, in start order. */
+    val dayEvents: Map<LocalDate, List<Pair<String, Int>>>,
 )
 
 suspend fun loadMonthGridData(context: Context): MonthGridData {
@@ -139,8 +139,8 @@ suspend fun loadMonthGridData(context: Context): MonthGridData {
         month = month,
         weekStart = weekStart,
         days = days,
-        dayDots = events.mapValues { (_, list) ->
-            list.filter { !it.isTask }.map { it.color }.distinct().take(3)
+        dayEvents = events.mapValues { (_, list) ->
+            list.take(3).map { it.title to it.color }
         }.filterValues { it.isNotEmpty() },
     )
 }
@@ -232,7 +232,7 @@ fun GlanceMonthCalendar(
                         date = date,
                         inMonth = YearMonth.from(date) == data.month,
                         isToday = date == today,
-                        dots = data.dayDots[date].orEmpty(),
+                        events = data.dayEvents[date].orEmpty(),
                         compact = compact,
                     )
                 }
@@ -247,7 +247,7 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
     date: LocalDate,
     inMonth: Boolean,
     isToday: Boolean,
-    dots: List<Int>,
+    events: List<Pair<String, Int>>,
     compact: Boolean,
 ) {
     val dayColor = when {
@@ -285,25 +285,33 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
                 ),
             )
         }
-        Row {
-            for (colorInt in dots) {
-                Box(
-                    modifier = GlanceModifier
-                        .padding(horizontal = 1.dp)
-                        .size(4.dp)
-                        .background(
-                            androidx.glance.unit.ColorProvider(
-                                com.souru.koyomi.util.providerColor(colorInt)
-                                    ?.let { com.souru.koyomi.util.mutedColor(it) }
-                                    ?: Color(0xFF8A8A8A),
-                            ),
-                        )
-                        .cornerRadius(2.dp),
-                ) {}
-            }
-            if (dots.isEmpty()) {
-                Spacer(modifier = GlanceModifier.size(4.dp))
-            }
+        // Event titles, tinted with their calendar color — a miniature of
+        // the app's month view instead of anonymous dots.
+        for ((title, colorInt) in events.take(if (compact) 1 else 2)) {
+            Text(
+                text = title.ifBlank { "·" },
+                style = TextStyle(
+                    color = androidx.glance.unit.ColorProvider(
+                        com.souru.koyomi.util.providerColor(colorInt)
+                            ?.let { com.souru.koyomi.util.mutedColor(it) }
+                            ?: Color(0xFF8A8A8A),
+                    ),
+                    fontSize = 8.sp,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.padding(horizontal = 1.dp),
+            )
+        }
+        val hidden = events.size - events.take(if (compact) 1 else 2).size
+        if (hidden > 0) {
+            Text(
+                text = "+$hidden",
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 7.sp,
+                ),
+                maxLines = 1,
+            )
         }
     }
 }
@@ -333,7 +341,7 @@ suspend fun loadUpcomingDaySections(
     val sections = mutableListOf<WidgetDaySection>()
     var date = today
     while (date.isBefore(today.plusDays(lookaheadDays)) && sections.size < maxDays) {
-        val events = eventsByDay[date].orEmpty().filter { !it.isTask }
+        val events = eventsByDay[date].orEmpty()
         if (events.isNotEmpty() || date == today) {
             sections += WidgetDaySection(date, events)
         }
@@ -368,7 +376,7 @@ suspend fun loadDaySections(context: Context, days: Int): List<WidgetDaySection>
     )
     return (0 until days).map { offset ->
         val date = today.plusDays(offset.toLong())
-        WidgetDaySection(date, eventsByDay[date].orEmpty().filter { !it.isTask })
+        WidgetDaySection(date, eventsByDay[date].orEmpty())
     }
 }
 

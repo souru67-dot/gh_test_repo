@@ -33,9 +33,17 @@ import kotlinx.coroutines.launch
 /** How a save applies to a recurring event. */
 enum class SaveScope { ALL, THIS_ONLY }
 
+/** What the editor is editing: a calendar event or a local task. */
+enum class EditorMode { EVENT, TASK }
+
 data class EditorUiState(
     val loading: Boolean = true,
     val isNew: Boolean = true,
+    val mode: EditorMode = EditorMode.EVENT,
+    /** Existing items cannot switch between event and task. */
+    val modeLocked: Boolean = false,
+    /** Task mode: time of day, or null for a date-only task. */
+    val taskTime: LocalTime? = null,
     /** The event being edited already repeats (drives the save-scope dialog). */
     val isRecurring: Boolean = false,
     val title: String = "",
@@ -65,6 +73,7 @@ private val FALLBACK_EVENT_COLORS = listOf(
 class EventEditViewModel(
     private val repository: CalendarRepository,
     private val settingsRepository: SettingsRepository,
+    private val taskRepository: com.souru.koyomi.data.task.TaskRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -72,15 +81,16 @@ class EventEditViewModel(
     private val beginMs: Long = savedStateHandle["beginMs"] ?: -1L
     private val endMs: Long = savedStateHandle["endMs"] ?: -1L
     private val dateEpochDay: Long = savedStateHandle["dateEpochDay"] ?: -1L
+    private val taskId: Long = savedStateHandle["taskId"] ?: -1L
+
+    /** Preserved when re-saving an existing task. */
+    private var taskDone: Boolean = false
 
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     /** BEGIN of the instance being edited; identifies the exception occurrence. */
     private var originalInstanceBegin: Long = -1L
-
-    /** Machine markers (task tags) stripped from the memo; re-joined on save. */
-    private var descriptionMarkers: String = ""
 
     init {
         viewModelScope.launch { load() }
@@ -92,6 +102,28 @@ class EventEditViewModel(
         // read-only ones (holiday subscriptions etc.) stay out of the picker.
         val allCalendars = repository.loadCalendars()
         val writableCalendars = allCalendars.filter { it.isWritable }
+
+        // Existing local task.
+        if (taskId >= 0) {
+            val task = taskRepository.getTask(taskId)
+            if (task != null) {
+                taskDone = task.done
+                _uiState.value = EditorUiState(
+                    loading = false,
+                    isNew = false,
+                    mode = EditorMode.TASK,
+                    modeLocked = true,
+                    title = task.title,
+                    start = task.dueDate.atStartOfDay(),
+                    end = task.dueDate.atStartOfDay().plusHours(1),
+                    taskTime = task.time,
+                    reminderMinutes = task.reminderMinutes,
+                    eventColors = FALLBACK_EVENT_COLORS,
+                    eventColor = task.color?.let { EventColor(key = null, color = it) },
+                )
+                return
+            }
+        }
 
         if (eventId >= 0) {
             val details = repository.loadEventDetails(eventId)
@@ -115,10 +147,6 @@ class EventEditViewModel(
                 }
                 originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
 
-                val (memo, markers) = com.souru.koyomi.data.model.TaskMarker
-                    .split(details.description)
-                descriptionMarkers = markers
-
                 val palette = loadPalette(
                     allCalendars.find { it.id == details.calendarId },
                 )
@@ -134,6 +162,7 @@ class EventEditViewModel(
                 _uiState.value = EditorUiState(
                     loading = false,
                     isNew = false,
+                    modeLocked = true,
                     isRecurring = !details.rrule.isNullOrBlank(),
                     title = details.title,
                     allDay = details.allDay,
@@ -142,7 +171,7 @@ class EventEditViewModel(
                     calendars = writableCalendars,
                     calendarId = details.calendarId,
                     location = details.location.orEmpty(),
-                    description = memo,
+                    description = details.description.orEmpty(),
                     reminderMinutes = details.reminderMinutes,
                     repeat = RepeatRule.parse(details.rrule),
                     eventColors = palette,
@@ -180,6 +209,19 @@ class EventEditViewModel(
         val synced = calendar?.let { repository.loadEventColors(it.accountName) }.orEmpty()
         return synced.ifEmpty { FALLBACK_EVENT_COLORS }
     }
+
+    /** Switch between event and task (new items only). */
+    fun setMode(mode: EditorMode) = _uiState.update { state ->
+        if (state.modeLocked) state
+        else state.copy(
+            mode = mode,
+            // Tasks use the standalone palette; events use the calendar's.
+            eventColors = if (mode == EditorMode.TASK) FALLBACK_EVENT_COLORS else state.eventColors,
+            eventColor = null,
+        )
+    }
+
+    fun setTaskTime(time: LocalTime?) = _uiState.update { it.copy(taskTime = time) }
 
     fun setTitle(value: String) = _uiState.update { it.copy(title = value) }
     fun setLocation(value: String) = _uiState.update { it.copy(location = value) }
@@ -249,8 +291,12 @@ class EventEditViewModel(
 
     fun save(scope: SaveScope = SaveScope.ALL) {
         val state = _uiState.value
-        val calendarId = state.calendarId ?: return
         if (state.saving) return
+        if (state.mode == EditorMode.TASK) {
+            saveTask(state)
+            return
+        }
+        val calendarId = state.calendarId ?: return
         _uiState.update { it.copy(saving = true) }
 
         val zone = ZoneId.systemDefault()
@@ -272,8 +318,7 @@ class EventEditViewModel(
                 state.end.atZone(zone).toInstant().toEpochMilli()
             },
             location = state.location.trim(),
-            description = com.souru.koyomi.data.model.TaskMarker
-                .join(state.description, descriptionMarkers),
+            description = state.description.trim(),
             rrule = if (thisOnly) null else state.repeat.toRRule(),
             reminderMinutes = state.reminderMinutes,
             eventColor = state.eventColor,
@@ -289,6 +334,25 @@ class EventEditViewModel(
         }
     }
 
+    private fun saveTask(state: EditorUiState) {
+        if (state.title.isBlank()) return
+        _uiState.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            val id = taskRepository.saveTask(
+                com.souru.koyomi.data.task.Task(
+                    id = if (taskId >= 0) taskId else 0L,
+                    title = state.title,
+                    dueDate = state.start.toLocalDate(),
+                    timeMinutes = state.taskTime?.let { it.hour * 60 + it.minute },
+                    color = state.eventColor?.color,
+                    reminderMinutes = state.reminderMinutes,
+                    done = taskDone,
+                ),
+            )
+            _uiState.update { it.copy(saving = false, saved = id >= 0) }
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -297,6 +361,7 @@ class EventEditViewModel(
                 EventEditViewModel(
                     repository = app.container.calendarRepository,
                     settingsRepository = app.container.settingsRepository,
+                    taskRepository = app.container.taskRepository,
                     savedStateHandle = createSavedStateHandle(),
                 )
             }

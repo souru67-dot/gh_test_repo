@@ -23,7 +23,8 @@ object Routes {
     const val MONTH = "month"
     const val SETTINGS = "settings"
     const val EDITOR =
-        "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}&dateEpochDay={dateEpochDay}"
+        "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}" +
+            "&dateEpochDay={dateEpochDay}&taskId={taskId}"
     const val TIMELINE = "timeline/{mode}?epochDay={epochDay}"
 
     fun editorForNew(date: LocalDate): String =
@@ -31,6 +32,8 @@ object Routes {
 
     fun editorForEdit(eventId: Long, beginMs: Long, endMs: Long): String =
         "editor?eventId=$eventId&beginMs=$beginMs&endMs=$endMs"
+
+    fun editorForTask(taskId: Long): String = "editor?taskId=$taskId"
 
     fun timeline(mode: String, date: LocalDate): String =
         "timeline/$mode?epochDay=${date.toEpochDay()}"
@@ -77,6 +80,9 @@ fun AppNavHost(
                 onEditEvent = { eventId, beginMs, endMs ->
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
                 },
+                onEditTask = { taskId ->
+                    navController.navigate(Routes.editorForTask(taskId))
+                },
                 onOpenTimeline = { mode, date ->
                     navController.navigate(Routes.timeline(mode, date))
                 },
@@ -110,6 +116,7 @@ fun AppNavHost(
                 navArgument("beginMs") { type = NavType.LongType; defaultValue = -1L },
                 navArgument("endMs") { type = NavType.LongType; defaultValue = -1L },
                 navArgument("dateEpochDay") { type = NavType.LongType; defaultValue = -1L },
+                navArgument("taskId") { type = NavType.LongType; defaultValue = -1L },
             ),
         ) {
             EventEditScreen(onClose = { navController.popBackStack() })

@@ -71,6 +71,7 @@ private val SheetPeekHeight = 280.dp
 fun MonthScreen(
     onCreateEvent: (LocalDate) -> Unit,
     onEditEvent: (eventId: Long, beginMs: Long, endMs: Long) -> Unit,
+    onEditTask: (taskId: Long) -> Unit,
     onOpenTimeline: (mode: String, date: LocalDate) -> Unit,
     onOpenSettings: () -> Unit,
     deepLinkEpochDay: Long?,
@@ -206,7 +207,7 @@ fun MonthScreen(
                 onDeleteTask = { task -> viewModel.deleteTask(task.id) },
                 onEditTask = { task ->
                     closeDetail()
-                    onEditEvent(task.id, task.begin, task.end)
+                    onEditTask(task.id)
                 },
                 modifier = Modifier
                     .fillMaxHeight(0.88f)

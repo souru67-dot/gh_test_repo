@@ -13,7 +13,6 @@ import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.data.task.TaskRepository
-import com.souru.koyomi.data.task.toTask
 import com.souru.koyomi.util.monthGridDays
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -61,9 +61,11 @@ class MonthViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     // Re-collect the ContentObserver flow whenever the permission state may have
-    // changed, so the observer gets registered right after the grant. Tasks are
-    // marker events, so the same provider observer covers them too.
-    private val dataChanges = permissionTick.flatMapLatest { calendarRepository.changes }
+    // changed, so the observer gets registered right after the grant.
+    private val dataChanges = merge(
+        permissionTick.flatMapLatest { calendarRepository.changes },
+        taskRepository.changes,
+    )
 
     val uiState: StateFlow<MonthUiState> =
         combine(
@@ -79,13 +81,10 @@ class MonthViewModel(
             // at once and ±1 left the neighbours' outer weeks looking empty.
             val gridStart = monthGridDays(month.minusMonths(2), weekStart).first()
             val gridEnd = monthGridDays(month.plusMonths(2), weekStart).last().plusDays(1)
-            val loaded = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden)
             MonthUiState(
                 hasPermission = calendarRepository.hasReadPermission(),
-                eventsByDay = loaded.mapValues { (_, list) -> list.filter { !it.isTask } },
-                tasksByDay = loaded
-                    .mapValues { (_, list) -> list.filter { it.isTask }.map { it.toTask() } }
-                    .filterValues { it.isNotEmpty() },
+                eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),
+                tasksByDay = taskRepository.loadTasksByDay(gridStart, gridEnd),
                 calendars = calendarRepository.loadCalendars(),
             )
         }.stateIn(

@@ -228,7 +228,22 @@ private fun TaskRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = task.done, onCheckedChange = { onToggle() })
-        Column(modifier = Modifier.weight(1f)) {
+        task.color?.let { colorInt ->
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        com.souru.koyomi.util.providerColor(colorInt)
+                            ?: MaterialTheme.colorScheme.primary,
+                        CircleShape,
+                    ),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (task.color != null) 8.dp else 0.dp),
+        ) {
             Text(
                 text = task.title,
                 style = MaterialTheme.typography.bodyLarge,
@@ -241,11 +256,9 @@ private fun TaskRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (!task.allDay) {
+            task.time?.let { time ->
                 Text(
-                    text = rememberTimeFormatter().format(
-                        Instant.ofEpochMilli(task.begin).atZone(ZoneId.systemDefault()),
-                    ),
+                    text = rememberTimeFormatter().format(time),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

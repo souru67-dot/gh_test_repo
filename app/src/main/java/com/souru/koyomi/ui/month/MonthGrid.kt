@@ -336,9 +336,10 @@ private fun DayCell(
             )
         }
 
-        // Space reserved for the week's multi-day bars drawn above the cells.
+        // Space reserved for the week's multi-day bars drawn above the cells,
+        // plus a small gap so day chips don't touch the bottom bar line.
         if (barLanes > 0) {
-            Spacer(modifier = Modifier.height((barLanes * 14).dp))
+            Spacer(modifier = Modifier.height((barLanes * 14 + 4).dp))
         }
 
         val shown = events.take((MAX_EVENT_CHIPS - barLanes).coerceAtLeast(1))
@@ -416,7 +417,8 @@ private fun MultiDayBar(
             lineHeight = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Clip,
-            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = lineColor,
         )
         Box(
             modifier = Modifier
