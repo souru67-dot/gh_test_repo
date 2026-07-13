@@ -38,6 +38,7 @@ class WidgetUpdateWorker(
             TodayWidget().updateAll(context)
             ClockTodayWidget().updateAll(context)
             MonthTodayWidget().updateAll(context)
+            AgendaMonthWidget().updateAll(context)
         }
 
         fun schedule(context: Context) {

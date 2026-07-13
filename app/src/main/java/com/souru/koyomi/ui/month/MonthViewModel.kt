@@ -18,7 +18,9 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +38,7 @@ data class MonthUiState(
     val calendars: List<CalendarInfo> = emptyList(),
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class MonthViewModel(
     private val calendarRepository: CalendarRepository,
     private val taskRepository: TaskRepository,
@@ -75,7 +77,10 @@ class MonthViewModel(
 
     val uiState: StateFlow<MonthUiState> =
         combine(
-            _visibleMonth,
+            // Debounced: while the pager is flinging through months there is
+            // no point querying the provider for every page passed — wait for
+            // the scroll to settle, then load once. Keeps the fling smooth.
+            _visibleMonth.debounce(180),
             weekStart,
             settingsRepository.hiddenCalendarIds,
             dataChanges,

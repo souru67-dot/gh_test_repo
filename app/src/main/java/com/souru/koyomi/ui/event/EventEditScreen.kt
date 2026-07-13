@@ -480,7 +480,12 @@ private fun RepeatUntilRow(
                 }
             },
         ) {
-            DatePicker(state = pickerState)
+            // Scrollable: the M3 year selector renders blank when the dialog
+            // gets less height than the picker needs (large fonts/zoom).
+            DatePicker(
+                state = pickerState,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
         }
     }
 }
@@ -664,7 +669,11 @@ private fun DateTimeRow(
                 }
             },
         ) {
-            DatePicker(state = pickerState)
+            // Scrollable — see the note on the other DatePickerDialog.
+            DatePicker(
+                state = pickerState,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
         }
     }
 

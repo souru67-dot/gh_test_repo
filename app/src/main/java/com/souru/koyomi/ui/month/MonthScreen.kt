@@ -23,7 +23,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarViewMonth
 import androidx.compose.material.icons.outlined.Search
@@ -31,6 +33,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,9 +67,12 @@ import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.util.MonthPages
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -99,6 +107,7 @@ fun MonthScreen(
     var detail by remember { mutableStateOf<EventDetails?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
     var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
+    var pendingDuplicate by remember { mutableStateOf<EventInstance?>(null) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -211,10 +220,7 @@ fun MonthScreen(
                     closeDetail()
                     onEditEvent(event.eventId, event.begin, event.end)
                 },
-                onDuplicate = { event ->
-                    viewModel.duplicateEvent(event.eventId)
-                    closeDetail()
-                },
+                onDuplicate = { event -> pendingDuplicate = event },
                 onDeleteRequest = { event ->
                     // `detail` belongs to the event shown in the sheet, so its
                     // RRULE tells us whether this is a recurring series.
@@ -323,6 +329,45 @@ fun MonthScreen(
                     )
                 }
             }
+        }
+    }
+
+    // 複製: let the user pick which day the copy lands on.
+    pendingDuplicate?.let { source ->
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = source.startDate
+                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { pendingDuplicate = null },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            val target = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC).toLocalDate()
+                            viewModel.duplicateEventTo(
+                                source.eventId,
+                                ChronoUnit.DAYS.between(source.startDate, target),
+                            )
+                        }
+                        pendingDuplicate = null
+                        closeDetail()
+                    },
+                ) { Text(stringResource(R.string.duplicate)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDuplicate = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        ) {
+            // Scrollable: the M3 year selector renders blank when the dialog
+            // gets less height than the picker needs (large fonts/zoom).
+            DatePicker(
+                state = pickerState,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
         }
     }
 
@@ -465,9 +510,11 @@ private fun VerticalMonthList(
                 multiDayBars = multiDayBars,
                 showWeekNumbers = showWeekNumbers,
                 showRokuyo = showRokuyo,
+                // Same cell density as the pager: a fixed compact height made
+                // the chips overflow their cells in continuous scroll mode.
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(288.dp)
+                    .fillParentMaxHeight()
                     .padding(horizontal = 4.dp),
             )
         }

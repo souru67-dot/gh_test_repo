@@ -138,13 +138,15 @@
 
     <!-- Widgets -->
     <string name="widget_month_label">Month calendar</string>
-    <string name="widget_month_description">This month at a glance, with dots on busy days.</string>
+    <string name="widget_month_description">This month at a glance, events tinted in their calendar colors.</string>
     <string name="widget_today_label">Today\'s events</string>
     <string name="widget_today_description">Today\'s and tomorrow\'s events with times.</string>
     <string name="widget_clock_today_label">Clock + today</string>
     <string name="widget_clock_today_description">A live clock next to today\'s events.</string>
     <string name="widget_month_today_label">Calendar + today</string>
     <string name="widget_month_today_description">This month\'s calendar with today\'s events underneath.</string>
+    <string name="widget_agenda_month_label">Today + mini calendar</string>
+    <string name="widget_agenda_month_description">Today\'s events beside a dotted mini month.</string>
     <string name="settings_widget_opacity">Widget background opacity</string>
     <string name="widget_config_title">Widget settings</string>
     <string name="events_count">%1$d events</string>

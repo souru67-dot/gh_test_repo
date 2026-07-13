@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="120dp"
+    android:viewportWidth="250"
+    android:viewportHeight="120">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h194a28,28 0 0 1 28,28v64a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Left: big day number + weekday (朱) -->
+    <path android:fillColor="#343B46" android:pathData="M20,16h24v20H20z" />
+    <path android:fillColor="#A8503C" android:pathData="M50,24h20v7H50z" />
+    <!-- Left: event rows -->
+    <path android:fillColor="#4A6FA5" android:pathData="M20,48h3v16h-3z" />
+    <path android:fillColor="#26241F" android:pathData="M29,49h70v6H29z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M29,59h30v4H29z" />
+    <path android:fillColor="#E67C73" android:pathData="M20,72h3v16h-3z" />
+    <path android:fillColor="#26241F" android:pathData="M29,73h54v6H29z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M29,83h30v4H29z" />
+    <!-- Vertical hairline -->
+    <path android:fillColor="#EFE8DA" android:pathData="M118,16h1.5v88h-1.5z" />
+    <!-- Right: weekday letters -->
+    <path android:fillColor="#BA7B74" android:pathData="M132,18h6v3h-6z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M146,18h6v3h-6zM160,18h6v3h-6zM174,18h6v3h-6zM188,18h6v3h-6zM202,18h6v3h-6z" />
+    <path android:fillColor="#7A8FA8" android:pathData="M216,18h6v3h-6z" />
+    <!-- Right: day-number grid -->
+    <path android:fillColor="#69655C" android:pathData="M132,30h6v4h-6zM146,30h6v4h-6zM160,30h6v4h-6zM174,30h6v4h-6zM188,30h6v4h-6zM202,30h6v4h-6zM216,30h6v4h-6zM132,46h6v4h-6zM146,46h6v4h-6zM174,46h6v4h-6zM188,46h6v4h-6zM202,46h6v4h-6zM216,46h6v4h-6zM132,62h6v4h-6zM146,62h6v4h-6zM160,62h6v4h-6zM188,62h6v4h-6zM202,62h6v4h-6zM216,62h6v4h-6zM132,78h6v4h-6zM146,78h6v4h-6zM160,78h6v4h-6zM174,78h6v4h-6zM188,78h6v4h-6zM202,78h6v4h-6zM132,94h6v4h-6zM146,94h6v4h-6zM160,94h6v4h-6zM174,94h6v4h-6zM188,94h6v4h-6zM202,94h6v4h-6zM216,94h6v4h-6z" />
+    <!-- Today: filled circle -->
+    <path android:fillColor="#343B46" android:pathData="M163,47.5m-7,0a7,7 0 1 1 14,0a7,7 0 1 1 -14,0" />
+    <path android:fillColor="#F8F3EA" android:pathData="M160,46h6v4h-6z" />
+    <!-- Event dots -->
+    <path android:fillColor="#4A6FA5" android:pathData="M135,38m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <path android:fillColor="#E67C73" android:pathData="M163,57m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <path android:fillColor="#F6BF26" android:pathData="M191,70m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <path android:fillColor="#33B679" android:pathData="M149,86m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+</vector>

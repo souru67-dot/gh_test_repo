@@ -122,6 +122,14 @@ private data class BarSegment(
 
 private const val MAX_BAR_LANES = 2
 
+/** Precomputed layout of one week row: lanes, bars and per-cell chips. */
+private data class WeekModel(
+    val days: List<LocalDate>,
+    val segments: List<BarSegment>,
+    val barLanes: Int,
+    val cellEvents: Map<LocalDate, List<EventInstance>>,
+)
+
 /** Greedy lane assignment for the week's multi-day events. */
 private fun weekBarSegments(
     weekDays: List<LocalDate>,
@@ -179,13 +187,26 @@ fun MonthGrid(
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
     val days = remember(month, weekStart) { monthGridDays(month, weekStart) }
-    val weekSegments = remember(days, eventsByDay, multiDayBars) {
+    val weekModels = remember(days, eventsByDay, multiDayBars) {
         List(6) { week ->
-            if (multiDayBars) {
-                weekBarSegments(days.subList(week * 7, week * 7 + 7), eventsByDay)
+            val weekDays = days.subList(week * 7, week * 7 + 7)
+            val segments = if (multiDayBars) {
+                weekBarSegments(weekDays, eventsByDay)
             } else {
                 emptyList()
             }
+            val shown = segments.filter { it.lane < MAX_BAR_LANES }
+            val barKeys = shown.map { "${it.event.eventId}-${it.event.begin}" }.toSet()
+            WeekModel(
+                days = weekDays,
+                segments = shown,
+                barLanes = (shown.maxOfOrNull { it.lane } ?: -1) + 1,
+                cellEvents = weekDays.associateWith { date ->
+                    eventsByDay[date].orEmpty().filter {
+                        "${it.eventId}-${it.begin}" !in barKeys
+                    }
+                },
+            )
         }
     }
     val rokuyoByDay = remember(days, showRokuyo) {
@@ -220,12 +241,10 @@ fun MonthGrid(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             for (week in 0 until 6) {
-                val weekDays = days.subList(week * 7, week * 7 + 7)
-                val shownSegments = weekSegments[week].filter { it.lane < MAX_BAR_LANES }
-                val barLanes = (shownSegments.maxOfOrNull { it.lane } ?: -1) + 1
-                val barEventKeys = shownSegments
-                    .map { "${it.event.eventId}-${it.event.begin}" }
-                    .toSet()
+                val model = weekModels[week]
+                val weekDays = model.days
+                val shownSegments = model.segments
+                val barLanes = model.barLanes
 
                 BoxWithConstraints(
                     modifier = Modifier
@@ -246,9 +265,7 @@ fun MonthGrid(
                                 isToday = date == today,
                                 isSelected = date == selectedDate,
                                 isDropTarget = date == dropTarget,
-                                events = eventsByDay[date].orEmpty().filter {
-                                    "${it.eventId}-${it.begin}" !in barEventKeys
-                                },
+                                events = model.cellEvents[date].orEmpty(),
                                 barLanes = barLanes,
                                 taskCount = taskCounts[date] ?: 0,
                                 rokuyo = rokuyoByDay[date],
