@@ -16,6 +16,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** 季節の彩り — theme packs. SUMI (墨と和紙) is the brand default. */
+enum class ThemePack { SUMI, SAKURA, WAKABA, AI, MOMIJI }
+
 /** App preferences. Event data itself lives in CalendarProvider, never here. */
 class SettingsRepository(private val context: Context) {
 
@@ -31,6 +34,9 @@ class SettingsRepository(private val context: Context) {
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
         val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
         val TASK_CALENDAR_ID = stringPreferencesKey("task_calendar_id")
+        val THEME_PACK = stringPreferencesKey("theme_pack")
+        val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
+        val SHOW_ROKUYO = booleanPreferencesKey("show_rokuyo")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -86,6 +92,38 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
+    }
+
+    val themePack: Flow<ThemePack> = context.dataStore.data.map { prefs ->
+        prefs[Keys.THEME_PACK]?.let { name ->
+            ThemePack.entries.find { it.name == name }
+        } ?: ThemePack.SUMI
+    }
+
+    /** Picking a pack also switches Dynamic Color off — the pack IS the look. */
+    suspend fun setThemePack(pack: ThemePack) {
+        context.dataStore.edit {
+            it[Keys.THEME_PACK] = pack.name
+            it[Keys.DYNAMIC_COLOR] = false
+        }
+    }
+
+    /** Month view: ISO week numbers in a narrow left rail. */
+    val showWeekNumbers: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_WEEK_NUMBERS] ?: false
+    }
+
+    suspend fun setShowWeekNumbers(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_WEEK_NUMBERS] = enabled }
+    }
+
+    /** Month view: 六曜 (大安・仏滅...) under each day number. */
+    val showRokuyo: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_ROKUYO] ?: false
+    }
+
+    suspend fun setShowRokuyo(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_ROKUYO] = enabled }
     }
 
     /** Calendars the user switched off in settings; their events are not shown. */

@@ -35,10 +35,10 @@ import androidx.glance.text.TextStyle
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.R
 import com.souru.koyomi.data.ThemeMode
+import com.souru.koyomi.data.ThemePack
 import com.souru.koyomi.data.holiday.JapaneseHolidays
 import com.souru.koyomi.data.model.EventInstance
-import com.souru.koyomi.ui.theme.KoyomiDarkColors
-import com.souru.koyomi.ui.theme.KoyomiLightColors
+import com.souru.koyomi.ui.theme.koyomiColorScheme
 import com.souru.koyomi.util.monthGridDays
 import com.souru.koyomi.util.orderedWeekDays
 import java.time.DayOfWeek
@@ -55,14 +55,13 @@ import kotlinx.coroutines.flow.first
 val WidgetSundayColor = ColorProvider(Color(0xFFBA7B74), Color(0xFFCB968F))
 val WidgetSaturdayColor = ColorProvider(Color(0xFF7A8FA8), Color(0xFF93A8BF))
 
-private val LightSurface = Color(0xFFFBF9F6)
-private val DarkSurface = Color(0xFF15140F)
 
 // ---------- Per-widget look (theme + opacity) ----------
 
 data class WidgetLook(
     val theme: ThemeMode,
     val opacityPercent: Int,
+    val pack: ThemePack = ThemePack.SUMI,
 )
 
 /**
@@ -77,20 +76,30 @@ suspend fun resolveWidgetLook(context: Context, glanceId: GlanceId): WidgetLook 
     val theme = settings.widgetTheme(appWidgetId).first()
     val opacity = settings.widgetOpacity(appWidgetId).first()
         ?: settings.widgetOpacityPercent.first()
-    return WidgetLook(theme = theme, opacityPercent = opacity)
+    val pack = settings.themePack.first()
+    return WidgetLook(theme = theme, opacityPercent = opacity, pack = pack)
 }
 
 /** Color scheme for the chosen widget theme (SYSTEM = dynamic on Android 12+). */
 @Composable
-fun widgetColors(theme: ThemeMode): androidx.glance.color.ColorProviders = when (theme) {
+fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when (look.theme) {
     ThemeMode.SYSTEM ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             GlanceTheme.colors
         } else {
-            KoyomiWidgetColors
+            ColorProviders(
+                light = koyomiColorScheme(look.pack, darkTheme = false),
+                dark = koyomiColorScheme(look.pack, darkTheme = true),
+            )
         }
-    ThemeMode.LIGHT -> ColorProviders(light = KoyomiLightColors, dark = KoyomiLightColors)
-    ThemeMode.DARK -> ColorProviders(light = KoyomiDarkColors, dark = KoyomiDarkColors)
+    ThemeMode.LIGHT -> {
+        val scheme = koyomiColorScheme(look.pack, darkTheme = false)
+        ColorProviders(light = scheme, dark = scheme)
+    }
+    ThemeMode.DARK -> {
+        val scheme = koyomiColorScheme(look.pack, darkTheme = true)
+        ColorProviders(light = scheme, dark = scheme)
+    }
 }
 
 /** Widget background honoring the opacity setting (0 = fully transparent). */
@@ -100,16 +109,18 @@ fun widgetBackground(look: WidgetLook): androidx.glance.unit.ColorProvider {
         return GlanceTheme.colors.surface
     }
     val alpha = look.opacityPercent / 100f
+    val lightSurface = koyomiColorScheme(look.pack, darkTheme = false).surface
+    val darkSurface = koyomiColorScheme(look.pack, darkTheme = true).surface
     return when (look.theme) {
         ThemeMode.SYSTEM -> ColorProvider(
-            LightSurface.copy(alpha = alpha),
-            DarkSurface.copy(alpha = alpha),
+            lightSurface.copy(alpha = alpha),
+            darkSurface.copy(alpha = alpha),
         )
         ThemeMode.LIGHT -> androidx.glance.unit.ColorProvider(
-            LightSurface.copy(alpha = alpha),
+            lightSurface.copy(alpha = alpha),
         )
         ThemeMode.DARK -> androidx.glance.unit.ColorProvider(
-            DarkSurface.copy(alpha = alpha),
+            darkSurface.copy(alpha = alpha),
         )
     }
 }

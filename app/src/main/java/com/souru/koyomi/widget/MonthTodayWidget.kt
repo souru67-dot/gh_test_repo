@@ -39,7 +39,7 @@ class MonthTodayWidget : GlanceAppWidget() {
         val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(colors = widgetColors(look.theme)) {
+            GlanceTheme(colors = widgetColors(look)) {
                 Content(context, data, sections.first(), look)
             }
         }

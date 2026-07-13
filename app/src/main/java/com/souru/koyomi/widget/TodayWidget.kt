@@ -62,7 +62,7 @@ class TodayWidget : GlanceAppWidget() {
         val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(colors = widgetColors(look.theme)) {
+            GlanceTheme(colors = widgetColors(look)) {
                 val size = LocalSize.current
                 if (size.width < 180.dp) {
                     MiniContent(context, sections[0], look)

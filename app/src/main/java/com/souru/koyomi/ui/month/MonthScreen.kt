@@ -26,6 +26,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarViewMonth
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.AlertDialog
@@ -78,6 +79,7 @@ fun MonthScreen(
     onEditTask: (taskId: Long) -> Unit,
     onOpenTimeline: (mode: String, date: LocalDate) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
 ) {
@@ -88,6 +90,8 @@ fun MonthScreen(
     val visibleMonth by viewModel.visibleMonth.collectAsStateWithLifecycle()
     val verticalScroll by viewModel.verticalScroll.collectAsStateWithLifecycle()
     val multiDayBars by viewModel.multiDayBars.collectAsStateWithLifecycle()
+    val showWeekNumbers by viewModel.showWeekNumbers.collectAsStateWithLifecycle()
+    val showRokuyo by viewModel.showRokuyo.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -180,11 +184,17 @@ fun MonthScreen(
                 },
                 onOpenTimeline = { mode -> onOpenTimeline(mode, selectedDate) },
                 onOpenSettings = onOpenSettings,
+                onOpenSearch = onOpenSearch,
             )
         },
         sheetContent = {
             DaySheetContent(
                 date = selectedDate,
+                rokuyo = if (showRokuyo) {
+                    com.souru.koyomi.data.rokuyo.Kyureki.rokuyoFor(selectedDate)
+                } else {
+                    null
+                },
                 events = state.eventsByDay[selectedDate].orEmpty(),
                 tasks = state.tasksByDay[selectedDate].orEmpty(),
                 calendars = state.calendars,
@@ -256,6 +266,7 @@ fun MonthScreen(
             }
             WeekdayHeader(
                 weekStart = weekStart,
+                showWeekNumbers = showWeekNumbers,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
             val taskCounts = remember(state.tasksByDay) {
@@ -270,6 +281,8 @@ fun MonthScreen(
                     taskCounts = taskCounts,
                     selectedDate = selectedDate,
                     multiDayBars = multiDayBars,
+                    showWeekNumbers = showWeekNumbers,
+                    showRokuyo = showRokuyo,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
@@ -302,6 +315,8 @@ fun MonthScreen(
                             if (days != 0L) pendingDrop = PendingDrop(event, days)
                         },
                         multiDayBars = multiDayBars,
+                        showWeekNumbers = showWeekNumbers,
+                        showRokuyo = showRokuyo,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),
@@ -422,6 +437,8 @@ private fun VerticalMonthList(
     taskCounts: Map<LocalDate, Int>,
     selectedDate: LocalDate,
     multiDayBars: Boolean,
+    showWeekNumbers: Boolean,
+    showRokuyo: Boolean,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
@@ -446,6 +463,8 @@ private fun VerticalMonthList(
                 },
                 onMoveEvent = onDropEvent,
                 multiDayBars = multiDayBars,
+                showWeekNumbers = showWeekNumbers,
+                showRokuyo = showRokuyo,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(288.dp)
@@ -461,6 +480,7 @@ private fun MonthTopBar(
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
     // BottomSheetScaffold does not wrap its topBar slot in a themed Surface,
@@ -482,6 +502,7 @@ private fun MonthTopBar(
                 onTodayClick = onTodayClick,
                 onOpenTimeline = onOpenTimeline,
                 onOpenSettings = onOpenSettings,
+                onOpenSearch = onOpenSearch,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
             )
@@ -495,6 +516,7 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
 ) {
@@ -520,6 +542,13 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
         )
     }
     Spacer(modifier = Modifier.weight(1f))
+    IconButton(onClick = onOpenSearch) {
+        Icon(
+            imageVector = Icons.Outlined.Search,
+            contentDescription = stringResource(R.string.search),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     IconButton(onClick = onTodayClick) {
         Icon(
             imageVector = Icons.Outlined.Today,

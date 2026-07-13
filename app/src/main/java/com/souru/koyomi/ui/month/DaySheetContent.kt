@@ -74,6 +74,7 @@ import java.util.Locale
 @Composable
 fun DaySheetContent(
     date: LocalDate,
+    rokuyo: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     calendars: List<CalendarInfo>,
@@ -99,6 +100,7 @@ fun DaySheetContent(
         if (shownDetail == null) {
             DayEventList(
                 date = date,
+                rokuyo = rokuyo,
                 events = events,
                 tasks = tasks,
                 onEventClick = onEventClick,
@@ -125,6 +127,7 @@ fun DaySheetContent(
 @Composable
 private fun DayEventList(
     date: LocalDate,
+    rokuyo: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     onEventClick: (EventInstance) -> Unit,
@@ -162,6 +165,14 @@ private fun DayEventList(
                     text = holidayName,
                     style = MaterialTheme.typography.labelMedium,
                     color = calendarColors.sunday,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            if (rokuyo != null) {
+                Text(
+                    text = rokuyo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }

@@ -40,7 +40,7 @@ class MonthWidget : GlanceAppWidget() {
         val look = resolveWidgetLook(context, id)
 
         provideContent {
-            GlanceTheme(colors = widgetColors(look.theme)) {
+            GlanceTheme(colors = widgetColors(look)) {
                 val size = LocalSize.current
                 val compact = size.height < 230.dp
                 GlanceMonthCalendar(

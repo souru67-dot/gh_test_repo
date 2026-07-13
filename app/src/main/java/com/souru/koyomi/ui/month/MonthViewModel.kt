@@ -60,6 +60,12 @@ class MonthViewModel(
     val multiDayBars: StateFlow<Boolean> = settingsRepository.multiDayBars
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    val showWeekNumbers: StateFlow<Boolean> = settingsRepository.showWeekNumbers
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showRokuyo: StateFlow<Boolean> = settingsRepository.showRokuyo
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
     private val dataChanges = merge(

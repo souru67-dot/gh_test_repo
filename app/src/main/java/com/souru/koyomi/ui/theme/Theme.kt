@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.souru.koyomi.data.ThemePack
 
 /**
  * Calendar-specific colors that must stay legible regardless of the
@@ -63,10 +64,164 @@ internal val KoyomiDarkColors = darkColorScheme(
     outlineVariant = Color(0xFF3B3830),
 )
 
+// ---------- 季節のテーマパック ----------
+// Each pack keeps the こよみ recipe — washi-toned surface, ink-dark text,
+// one restrained accent — and only shifts the hue toward its season.
+
+/** 桜 — cherry-tinted paper with a deep 蘇芳 primary. */
+internal val SakuraLightColors = lightColorScheme(
+    primary = Color(0xFF95566A),
+    onPrimary = Color(0xFFFBF2F1),
+    primaryContainer = Color(0xFFF1DBDF),
+    onPrimaryContainer = Color(0xFF3E212B),
+    secondary = Color(0xFF786369),
+    secondaryContainer = Color(0xFFF0E2DE),
+    onSecondaryContainer = Color(0xFF362A29),
+    tertiary = Color(0xFFA85D48),
+    surface = Color(0xFFFAF3F1),
+    onSurface = Color(0xFF292325),
+    surfaceVariant = Color(0xFFF2E7E4),
+    onSurfaceVariant = Color(0xFF605354),
+    outline = Color(0xFF8F7F80),
+    outlineVariant = Color(0xFFE5D6D3),
+)
+
+internal val SakuraDarkColors = darkColorScheme(
+    primary = Color(0xFFE0B4C0),
+    onPrimary = Color(0xFF3C232C),
+    primaryContainer = Color(0xFF55353F),
+    onPrimaryContainer = Color(0xFFF5DDE3),
+    secondary = Color(0xFFCDB7B4),
+    secondaryContainer = Color(0xFF453736),
+    onSecondaryContainer = Color(0xFFEEDEDA),
+    tertiary = Color(0xFFDB9481),
+    surface = Color(0xFF1B1718),
+    onSurface = Color(0xFFEBE0DE),
+    surfaceVariant = Color(0xFF2E2728),
+    onSurfaceVariant = Color(0xFFB5A8A6),
+    outline = Color(0xFF857877),
+    outlineVariant = Color(0xFF3D3536),
+)
+
+/** 若葉 — fresh leaf green on pale straw paper. */
+internal val WakabaLightColors = lightColorScheme(
+    primary = Color(0xFF4A6151),
+    onPrimary = Color(0xFFF4F7F0),
+    primaryContainer = Color(0xFFDCE6DA),
+    onPrimaryContainer = Color(0xFF24322A),
+    secondary = Color(0xFF66705C),
+    secondaryContainer = Color(0xFFE6EBD9),
+    onSecondaryContainer = Color(0xFF2B3122),
+    tertiary = Color(0xFF8A6A34),
+    surface = Color(0xFFF5F6EC),
+    onSurface = Color(0xFF24261F),
+    surfaceVariant = Color(0xFFE9ECDC),
+    onSurfaceVariant = Color(0xFF55594B),
+    outline = Color(0xFF7F8471),
+    outlineVariant = Color(0xFFD9DEC8),
+)
+
+internal val WakabaDarkColors = darkColorScheme(
+    primary = Color(0xFFAFC6B2),
+    onPrimary = Color(0xFF253226),
+    primaryContainer = Color(0xFF3A4A3E),
+    onPrimaryContainer = Color(0xFFD8E6D9),
+    secondary = Color(0xFFC0C9AC),
+    secondaryContainer = Color(0xFF3A4030),
+    onSecondaryContainer = Color(0xFFE2E8D0),
+    tertiary = Color(0xFFD2B077),
+    surface = Color(0xFF171916),
+    onSurface = Color(0xFFE3E6DB),
+    surfaceVariant = Color(0xFF282B24),
+    onSurfaceVariant = Color(0xFFACB2A0),
+    outline = Color(0xFF7B8171),
+    outlineVariant = Color(0xFF363B31),
+)
+
+/** 藍 — indigo ink; 朱 stays as the accent, the classic pairing. */
+internal val AiLightColors = lightColorScheme(
+    primary = Color(0xFF3A4E75),
+    onPrimary = Color(0xFFF2F5FA),
+    primaryContainer = Color(0xFFDCE3F0),
+    onPrimaryContainer = Color(0xFF1C2841),
+    secondary = Color(0xFF5C6474),
+    secondaryContainer = Color(0xFFE2E7F0),
+    onSecondaryContainer = Color(0xFF262C38),
+    tertiary = Color(0xFFA8503C),
+    surface = Color(0xFFF4F5F8),
+    onSurface = Color(0xFF222429),
+    surfaceVariant = Color(0xFFE8EAF0),
+    onSurfaceVariant = Color(0xFF52555E),
+    outline = Color(0xFF7B7F8A),
+    outlineVariant = Color(0xFFD8DCE5),
+)
+
+internal val AiDarkColors = darkColorScheme(
+    primary = Color(0xFFA9BEE4),
+    onPrimary = Color(0xFF1F2A40),
+    primaryContainer = Color(0xFF35435F),
+    onPrimaryContainer = Color(0xFFD9E2F5),
+    secondary = Color(0xFFB9C1D2),
+    secondaryContainer = Color(0xFF363D4B),
+    onSecondaryContainer = Color(0xFFDFE4F0),
+    tertiary = Color(0xFFD08A77),
+    surface = Color(0xFF15171B),
+    onSurface = Color(0xFFDFE2E9),
+    surfaceVariant = Color(0xFF262931),
+    onSurfaceVariant = Color(0xFFA6AAB6),
+    outline = Color(0xFF767A86),
+    outlineVariant = Color(0xFF343842),
+)
+
+/** 紅葉 — autumn amber and persimmon on warm paper. */
+internal val MomijiLightColors = lightColorScheme(
+    primary = Color(0xFF8C4F33),
+    onPrimary = Color(0xFFFBF3EC),
+    primaryContainer = Color(0xFFF1DFD1),
+    onPrimaryContainer = Color(0xFF3B2214),
+    secondary = Color(0xFF79624F),
+    secondaryContainer = Color(0xFFF0E3D2),
+    onSecondaryContainer = Color(0xFF342A1D),
+    tertiary = Color(0xFF9C3E32),
+    surface = Color(0xFFFAF3EA),
+    onSurface = Color(0xFF29241E),
+    surfaceVariant = Color(0xFFF1E7D8),
+    onSurfaceVariant = Color(0xFF5F574B),
+    outline = Color(0xFF8C8271),
+    outlineVariant = Color(0xFFE4D8C4),
+)
+
+internal val MomijiDarkColors = darkColorScheme(
+    primary = Color(0xFFE3B694),
+    onPrimary = Color(0xFF3B2415),
+    primaryContainer = Color(0xFF563926),
+    onPrimaryContainer = Color(0xFFF6E0CD),
+    secondary = Color(0xFFCFBBA2),
+    secondaryContainer = Color(0xFF463A2B),
+    onSecondaryContainer = Color(0xFFEEDFC9),
+    tertiary = Color(0xFFDD8C74),
+    surface = Color(0xFF1A1815),
+    onSurface = Color(0xFFEBE1D5),
+    surfaceVariant = Color(0xFF2D2922),
+    onSurfaceVariant = Color(0xFFB4AB9C),
+    outline = Color(0xFF837B6B),
+    outlineVariant = Color(0xFF3C372E),
+)
+
+/** The pack's color scheme; used by the app theme and the widgets alike. */
+fun koyomiColorScheme(pack: ThemePack, darkTheme: Boolean) = when (pack) {
+    ThemePack.SUMI -> if (darkTheme) KoyomiDarkColors else KoyomiLightColors
+    ThemePack.SAKURA -> if (darkTheme) SakuraDarkColors else SakuraLightColors
+    ThemePack.WAKABA -> if (darkTheme) WakabaDarkColors else WakabaLightColors
+    ThemePack.AI -> if (darkTheme) AiDarkColors else AiLightColors
+    ThemePack.MOMIJI -> if (darkTheme) MomijiDarkColors else MomijiLightColors
+}
+
 @Composable
 fun KoyomiTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    themePack: ThemePack = ThemePack.SUMI,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -74,8 +229,7 @@ fun KoyomiTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> KoyomiDarkColors
-        else -> KoyomiLightColors
+        else -> koyomiColorScheme(themePack, darkTheme)
     }
     val calendarColors = if (darkTheme) {
         CalendarColors(sunday = Color(0xFFD08E85), saturday = Color(0xFF93A8C4))

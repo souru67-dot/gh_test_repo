@@ -1,6 +1,7 @@
 package com.souru.koyomi.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,14 +40,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
 import com.souru.koyomi.data.ThemeMode
 import java.time.DayOfWeek
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = androidx.compose.runtime.remember {
+        androidx.compose.material3.SnackbarHostState()
+    }
 
     Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
@@ -111,6 +118,25 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = viewModel::setMultiDayBars,
                 )
             }
+            SwitchRow(
+                label = stringResource(R.string.settings_week_numbers),
+                checked = state.showWeekNumbers,
+                onChange = viewModel::setShowWeekNumbers,
+            )
+            SwitchRow(
+                label = stringResource(R.string.settings_rokuyo),
+                checked = state.showRokuyo,
+                onChange = viewModel::setShowRokuyo,
+            )
+
+            SectionLabel(stringResource(R.string.settings_theme_pack))
+            for (pack in com.souru.koyomi.data.ThemePack.entries) {
+                ThemePackRow(
+                    pack = pack,
+                    selected = state.themePack == pack && !state.dynamicColor,
+                    onClick = { viewModel.setThemePack(pack) },
+                )
+            }
 
             SectionLabel(stringResource(R.string.settings_theme))
             RadioRow(
@@ -166,6 +192,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 percent = state.widgetOpacityPercent,
                 onChange = viewModel::setWidgetOpacity,
             )
+
+            DataSection(viewModel = viewModel, state = state, snackbarHostState = snackbarHostState)
 
             SectionLabel(stringResource(R.string.settings_calendars))
             if (state.calendars.isEmpty()) {
@@ -300,6 +328,192 @@ private fun NotificationPermissionSection() {
                 },
             ) { Text(stringResource(R.string.notifications_allow)) }
         }
+    }
+}
+
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** One theme pack: three swatch dots (surface, primary, accent) + name. */
+@Composable
+private fun ThemePackRow(
+    pack: com.souru.koyomi.data.ThemePack,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val scheme = com.souru.koyomi.ui.theme.koyomiColorScheme(pack, dark)
+    val nameRes = when (pack) {
+        com.souru.koyomi.data.ThemePack.SUMI -> R.string.pack_sumi
+        com.souru.koyomi.data.ThemePack.SAKURA -> R.string.pack_sakura
+        com.souru.koyomi.data.ThemePack.WAKABA -> R.string.pack_wakaba
+        com.souru.koyomi.data.ThemePack.AI -> R.string.pack_ai
+        com.souru.koyomi.data.ThemePack.MOMIJI -> R.string.pack_momiji
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Row(modifier = Modifier.padding(start = 4.dp, end = 10.dp)) {
+            for (color in listOf(scheme.surface, scheme.primary, scheme.tertiary)) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(16.dp)
+                        .background(color, CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                )
+            }
+        }
+        Text(
+            text = stringResource(nameRes),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+/** ICS export/import with the system document picker. */
+@Composable
+private fun DataSection(
+    viewModel: SettingsViewModel,
+    state: SettingsUiState,
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var pendingImportUri by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<android.net.Uri?>(null)
+    }
+
+    fun report(count: Int, doneRes: Int, failRes: Int) {
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                if (count >= 0) {
+                    context.getString(doneRes, count)
+                } else {
+                    context.getString(failRes)
+                },
+            )
+        }
+    }
+
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/calendar"),
+    ) { uri ->
+        uri?.let {
+            viewModel.exportIcs(it) { count ->
+                report(count, R.string.export_done, R.string.export_failed)
+            }
+        }
+    }
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            val writable = state.calendars.filter { c -> c.isWritable }
+            when {
+                writable.isEmpty() -> report(-1, R.string.import_done, R.string.import_failed)
+                writable.size == 1 -> viewModel.importIcs(it, writable.first().id) { count ->
+                    report(count, R.string.import_done, R.string.import_failed)
+                }
+                else -> pendingImportUri = it
+            }
+        }
+    }
+
+    SectionLabel(stringResource(R.string.settings_data))
+    TextActionRow(stringResource(R.string.export_ics)) {
+        val suggested = "koyomi-" +
+            java.time.LocalDate.now()
+                .format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".ics"
+        exportLauncher.launch(suggested)
+    }
+    TextActionRow(stringResource(R.string.import_ics)) {
+        importLauncher.launch(arrayOf("text/calendar", "text/plain", "application/octet-stream"))
+    }
+
+    pendingImportUri?.let { uri ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingImportUri = null },
+            title = { Text(stringResource(R.string.import_choose_calendar)) },
+            text = {
+                Column {
+                    for (calendar in state.calendars.filter { it.isWritable }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    pendingImportUri = null
+                                    viewModel.importIcs(uri, calendar.id) { count ->
+                                        report(
+                                            count,
+                                            R.string.import_done,
+                                            R.string.import_failed,
+                                        )
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(
+                                        com.souru.koyomi.util.providerColor(calendar.color)
+                                            ?: MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ),
+                            )
+                            Text(
+                                text = calendar.displayName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingImportUri = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun TextActionRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

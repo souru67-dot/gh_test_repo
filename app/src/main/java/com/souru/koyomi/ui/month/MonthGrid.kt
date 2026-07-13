@@ -44,8 +44,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import com.souru.koyomi.data.holiday.JapaneseHolidays
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.rokuyo.Kyureki
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import com.souru.koyomi.util.monthGridDays
 import com.souru.koyomi.util.orderedWeekDays
@@ -55,15 +57,26 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
+import java.time.temporal.WeekFields
 import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val MAX_EVENT_CHIPS = 3
 
+/** Width of the ISO week-number rail on the left of the grid. */
+private val WeekNumberRailWidth = 18.dp
+
 @Composable
-fun WeekdayHeader(weekStart: DayOfWeek, modifier: Modifier = Modifier) {
+fun WeekdayHeader(
+    weekStart: DayOfWeek,
+    modifier: Modifier = Modifier,
+    showWeekNumbers: Boolean = false,
+) {
     val calendarColors = LocalCalendarColors.current
     Row(modifier = modifier.fillMaxWidth()) {
+        if (showWeekNumbers) {
+            Spacer(modifier = Modifier.width(WeekNumberRailWidth))
+        }
         for (day in orderedWeekDays(weekStart)) {
             Text(
                 text = day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
@@ -160,6 +173,8 @@ fun MonthGrid(
     modifier: Modifier = Modifier,
     taskCounts: Map<LocalDate, Int> = emptyMap(),
     multiDayBars: Boolean = true,
+    showWeekNumbers: Boolean = false,
+    showRokuyo: Boolean = false,
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
@@ -173,14 +188,24 @@ fun MonthGrid(
             }
         }
     }
+    val rokuyoByDay = remember(days, showRokuyo) {
+        if (showRokuyo) days.associateWith { Kyureki.rokuyoFor(it) } else emptyMap()
+    }
     val today = LocalDate.now()
     val dragState = remember { EventDragState() }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
+    val railPx = if (showWeekNumbers) {
+        with(LocalDensity.current) { WeekNumberRailWidth.toPx() }
+    } else {
+        0f
+    }
 
     fun dateAt(position: Offset): LocalDate? {
         if (gridSize.width == 0 || gridSize.height == 0) return null
-        val col = (position.x / (gridSize.width / 7f)).toInt().coerceIn(0, 6)
+        val cellsWidth = gridSize.width - railPx
+        if (cellsWidth <= 0f) return null
+        val col = ((position.x - railPx) / (cellsWidth / 7f)).toInt().coerceIn(0, 6)
         val row = (position.y / (gridSize.height / 6f)).toInt().coerceIn(0, 5)
         return days[row * 7 + col]
     }
@@ -207,8 +232,12 @@ fun MonthGrid(
                         .fillMaxWidth()
                         .weight(1f),
                 ) {
-                    val cellWidth = maxWidth / 7
+                    val rail = if (showWeekNumbers) WeekNumberRailWidth else 0.dp
+                    val cellWidth = (maxWidth - rail) / 7
                     Row(modifier = Modifier.fillMaxSize()) {
+                        if (showWeekNumbers) {
+                            WeekNumberCell(weekDays)
+                        }
                         for (i in 0 until 7) {
                             val date = weekDays[i]
                             DayCell(
@@ -222,6 +251,7 @@ fun MonthGrid(
                                 },
                                 barLanes = barLanes,
                                 taskCount = taskCounts[date] ?: 0,
+                                rokuyo = rokuyoByDay[date],
                                 onSelect = onSelect,
                                 onLongPress = onLongPress,
                                 dragState = dragState,
@@ -237,6 +267,8 @@ fun MonthGrid(
                         }
                     }
                     // Continuous stripes for multi-day events, over the cells.
+                    // They start below the day number (and the 六曜 line if shown).
+                    val barTop = if (showRokuyo) 38.dp else 27.dp
                     for (segment in shownSegments) {
                         MultiDayBar(
                             segment = segment,
@@ -244,8 +276,8 @@ fun MonthGrid(
                             cellWidth = cellWidth,
                             onSelect = onSelect,
                             modifier = Modifier.offset(
-                                x = cellWidth * segment.startCol,
-                                y = 27.dp + (segment.lane * 14).dp,
+                                x = rail + cellWidth * segment.startCol,
+                                y = barTop + (segment.lane * 14).dp,
                             ),
                         )
                     }
@@ -269,6 +301,27 @@ fun MonthGrid(
     }
 }
 
+/** Narrow rail cell showing the ISO week number of this row. */
+@Composable
+private fun WeekNumberCell(weekDays: List<LocalDate>) {
+    // ISO weeks are Monday-based; the row always contains exactly one Monday.
+    val monday = weekDays.first { it.dayOfWeek == DayOfWeek.MONDAY }
+    val weekNumber = monday.get(WeekFields.ISO.weekOfWeekBasedYear())
+    Box(
+        modifier = Modifier
+            .width(WeekNumberRailWidth)
+            .padding(top = 6.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Text(
+            text = weekNumber.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 8.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DayCell(
@@ -280,6 +333,7 @@ private fun DayCell(
     events: List<EventInstance>,
     barLanes: Int,
     taskCount: Int,
+    rokuyo: String?,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
     dragState: EventDragState,
@@ -337,6 +391,18 @@ private fun DayCell(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
                 color = if (isToday) MaterialTheme.colorScheme.onPrimary else dayColor,
+            )
+        }
+
+        if (rokuyo != null) {
+            Text(
+                text = rokuyo,
+                fontSize = 7.sp,
+                lineHeight = 9.sp,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = if (inCurrentMonth) 0.85f else 0.4f,
+                ),
             )
         }
 

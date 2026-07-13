@@ -1,0 +1,201 @@
+package com.souru.koyomi.data.rokuyo
+
+import java.time.LocalDate
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.PI
+import kotlin.math.floor
+import kotlin.math.sin
+
+/**
+ * 旧暦 (Japanese lunisolar calendar) conversion, accurate for 1900..2099.
+ *
+ * Month boundaries are astronomical new moons (朔) and month numbers follow
+ * the 中気 rule (the month containing the solar term at 330° is month 1,
+ * winter solstice 270° falls in month 11; a month without a 中気 is a leap
+ * month carrying the previous month's number). New moon and solar longitude
+ * times use truncated Meeus series evaluated in JST, which matches the
+ * officially published 旧暦 dates for this range.
+ */
+object Kyureki {
+
+    data class LunarDate(val month: Int, val day: Int, val isLeapMonth: Boolean)
+
+    /** 六曜 keyed by (lunar month + lunar day) % 6; lunar 1/1 is 先勝. */
+    private val ROKUYO = listOf("大安", "赤口", "先勝", "友引", "先負", "仏滅")
+
+    fun rokuyoFor(date: LocalDate): String? {
+        val lunar = lunarDateFor(date) ?: return null
+        // 閏月 keeps the number of the month it follows, which the formula
+        // already receives because leap months reuse that number here.
+        return ROKUYO[(lunar.month + lunar.day) % 6]
+    }
+
+    private val cache = ConcurrentHashMap<Long, LunarDate>()
+
+    fun lunarDateFor(date: LocalDate): LunarDate? {
+        if (date.year < 1900 || date.year > 2099) return null
+        cache[date.toEpochDay()]?.let { return it }
+        val result = compute(date)
+        if (cache.size > 4096) cache.clear()
+        cache[date.toEpochDay()] = result
+        return result
+    }
+
+    private fun compute(date: LocalDate): LunarDate {
+        // Locate the new moon on or before the date (start of the lunar month).
+        var k = floor(
+            (date.toEpochDay() - NEW_MOON_2000_EPOCH_DAY) / SYNODIC_MONTH,
+        )
+        while (newMoonJstDate(k) > date) k -= 1
+        while (newMoonJstDate(k + 1) <= date) k += 1
+        val monthStart = newMoonJstDate(k)
+        val nextStart = newMoonJstDate(k + 1)
+        val day = (date.toEpochDay() - monthStart.toEpochDay()).toInt() + 1
+
+        // First 中気 (solar longitude multiple of 30°) at or after month start.
+        val startJde = jdeAtJstMidnight(monthStart)
+        val startLongitude = sunLongitude(startJde)
+        val target = ((floor(startLongitude / 30.0).toInt() + 1) * 30) % 360
+        val chukiDate = solarTermJstDate(startJde, target)
+
+        return if (chukiDate < nextStart) {
+            LunarDate(month = monthNumberFor(target), day = day, isLeapMonth = false)
+        } else {
+            // No 中気 inside this month: leap month named after the previous
+            // month, which is one before the month the next 中気 belongs to.
+            val next = monthNumberFor(target)
+            val month = if (next == 1) 12 else next - 1
+            LunarDate(month = month, day = day, isLeapMonth = true)
+        }
+    }
+
+    /** 330°=雨水→1月, 0°=春分→2月, ..., 270°=冬至→11月. */
+    private fun monthNumberFor(longitudeDeg: Int): Int =
+        ((longitudeDeg / 30 + 1) % 12) + 1
+
+    // ---------- Astronomy (truncated Meeus) ----------
+
+    private const val SYNODIC_MONTH = 29.530588861
+
+    /** Epoch day of the first new moon of 2000 (2000-01-06, k = 0). */
+    private const val NEW_MOON_2000_EPOCH_DAY = 10962.0
+
+    /** JD of 1970-01-01T00:00 UT. */
+    private const val JD_UNIX_EPOCH = 2440587.5
+
+    /** ΔT ≈ 70 s expressed in days — plenty accurate for 1900..2099 dates. */
+    private const val DELTA_T_DAYS = 70.0 / 86400.0
+
+    private const val JST_OFFSET_DAYS = 9.0 / 24.0
+
+    private fun rad(deg: Double): Double = deg / 180.0 * PI
+
+    /** The JST calendar date containing the k-th new moon since 2000-01-06. */
+    private fun newMoonJstDate(k: Double): LocalDate = jdeToJstDate(newMoonJde(k))
+
+    private fun jdeToJstDate(jde: Double): LocalDate {
+        val jdJst = jde - DELTA_T_DAYS + JST_OFFSET_DAYS
+        return LocalDate.ofEpochDay(floor(jdJst - JD_UNIX_EPOCH).toLong())
+    }
+
+    private fun jdeAtJstMidnight(date: LocalDate): Double =
+        date.toEpochDay() + JD_UNIX_EPOCH - JST_OFFSET_DAYS + DELTA_T_DAYS
+
+    /** Instant (JDE, TT) of the k-th mean new moon after 2000-01-06 (Meeus ch. 49). */
+    private fun newMoonJde(k: Double): Double {
+        val t = k / 1236.85
+        val jde = 2451550.09766 + SYNODIC_MONTH * k +
+            t * t * (0.00015437 + t * (-0.000000150 + 0.00000000073 * t))
+        val e = 1 - 0.002516 * t - 0.0000074 * t * t
+        val m = rad(2.5534 + 29.10535670 * k - t * t * (0.0000014 + 0.00000011 * t))
+        val mp = rad(
+            201.5643 + 385.81693528 * k +
+                t * t * (0.0107582 + t * (0.00001238 - 0.000000058 * t)),
+        )
+        val f = rad(
+            160.7108 + 390.67050284 * k -
+                t * t * (0.0016118 + t * (0.00000227 - 0.000000011 * t)),
+        )
+        val om = rad(124.7746 - 1.56375588 * k + t * t * (0.0020672 + 0.00000215 * t))
+
+        val corrections = -0.40720 * sin(mp) +
+            0.17241 * e * sin(m) +
+            0.01608 * sin(2 * mp) +
+            0.01039 * sin(2 * f) +
+            0.00739 * e * sin(mp - m) -
+            0.00514 * e * sin(mp + m) +
+            0.00208 * e * e * sin(2 * m) -
+            0.00111 * sin(mp - 2 * f) -
+            0.00057 * sin(mp + 2 * f) +
+            0.00056 * e * sin(2 * mp + m) -
+            0.00042 * sin(3 * mp) +
+            0.00042 * e * sin(m + 2 * f) +
+            0.00038 * e * sin(m - 2 * f) -
+            0.00024 * e * sin(2 * mp - m) -
+            0.00017 * sin(om) -
+            0.00007 * sin(mp + 2 * m) +
+            0.00004 * sin(2 * mp - 2 * f) +
+            0.00004 * sin(3 * m) +
+            0.00003 * sin(mp + m - 2 * f) +
+            0.00003 * sin(2 * mp + 2 * f) -
+            0.00003 * sin(mp + m + 2 * f) +
+            0.00003 * sin(mp - m + 2 * f) -
+            0.00002 * sin(mp - m - 2 * f) -
+            0.00002 * sin(3 * mp + m) +
+            0.00002 * sin(4 * mp)
+
+        val planetary = 0.000325 * sin(rad(299.77 + 0.107408 * k - 0.009173 * t * t)) +
+            0.000165 * sin(rad(251.88 + 0.016321 * k)) +
+            0.000164 * sin(rad(251.83 + 26.651886 * k)) +
+            0.000126 * sin(rad(349.42 + 36.412478 * k)) +
+            0.000110 * sin(rad(84.66 + 18.206239 * k)) +
+            0.000062 * sin(rad(141.74 + 53.303771 * k)) +
+            0.000060 * sin(rad(207.14 + 2.453732 * k)) +
+            0.000056 * sin(rad(154.84 + 7.306860 * k)) +
+            0.000047 * sin(rad(34.52 + 27.261239 * k)) +
+            0.000042 * sin(rad(207.19 + 0.121824 * k)) +
+            0.000040 * sin(rad(291.34 + 1.844379 * k)) +
+            0.000037 * sin(rad(161.72 + 24.198154 * k)) +
+            0.000035 * sin(rad(239.56 + 25.513099 * k)) +
+            0.000023 * sin(rad(331.55 + 3.592518 * k))
+
+        return jde + corrections + planetary
+    }
+
+    /** Apparent solar longitude in degrees, 0..360 (Meeus ch. 25, low precision). */
+    private fun sunLongitude(jde: Double): Double {
+        val t = (jde - 2451545.0) / 36525.0
+        val l0 = 280.46646 + 36000.76983 * t + 0.0003032 * t * t
+        val m = rad(357.52911 + 35999.05029 * t - 0.0001537 * t * t)
+        val c = (1.914602 - 0.004817 * t - 0.000014 * t * t) * sin(m) +
+            (0.019993 - 0.000101 * t) * sin(2 * m) +
+            0.000289 * sin(3 * m)
+        val omega = rad(125.04 - 1934.136 * t)
+        val lambda = l0 + c - 0.00569 - 0.00478 * sin(omega)
+        return ((lambda % 360.0) + 360.0) % 360.0
+    }
+
+    /** JST date on which the sun reaches [targetDeg], searching forward of [fromJde]. */
+    private fun solarTermJstDate(fromJde: Double, targetDeg: Int): LocalDate {
+        val start = sunLongitude(fromJde)
+        var jde = fromJde + angleForward(start, targetDeg.toDouble()) / MEAN_SOLAR_MOTION
+        repeat(5) {
+            jde -= angleSigned(sunLongitude(jde), targetDeg.toDouble()) / MEAN_SOLAR_MOTION
+        }
+        return jdeToJstDate(jde)
+    }
+
+    private const val MEAN_SOLAR_MOTION = 0.9856473 // degrees per day
+
+    /** Degrees to travel forward from [from] to reach [target] (0..360). */
+    private fun angleForward(from: Double, target: Double): Double =
+        (((target - from) % 360.0) + 360.0) % 360.0
+
+    /** Signed smallest angle from [target] to [current] (-180..180). */
+    private fun angleSigned(current: Double, target: Double): Double {
+        var d = (current - target) % 360.0
+        if (d > 180.0) d -= 360.0
+        if (d < -180.0) d += 360.0
+        return d
+    }
+}

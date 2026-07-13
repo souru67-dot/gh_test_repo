@@ -15,6 +15,7 @@ import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventDraft
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.util.Ics
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -149,6 +150,87 @@ class CalendarRepository(private val context: Context) {
             list.sortWith(compareByDescending<EventInstance> { it.allDay }.thenBy { it.begin })
         }
         result
+    }
+
+    /**
+     * Full-text search over event instances in [rangeStart, rangeEndExclusive):
+     * title, location and description, case-insensitive for ASCII. Results
+     * are distinct instances in chronological order.
+     */
+    suspend fun searchEvents(
+        query: String,
+        rangeStart: LocalDate,
+        rangeEndExclusive: LocalDate,
+        hiddenCalendarIds: Set<Long> = emptySet(),
+    ): List<EventInstance> = withContext(Dispatchers.IO) {
+        if (!hasReadPermission() || query.isBlank()) return@withContext emptyList()
+
+        val zone = ZoneId.systemDefault()
+        val beginMs = rangeStart.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMs = rangeEndExclusive.atStartOfDay(zone).toInstant().toEpochMilli()
+        val uriBuilder = CalendarContract.Instances.CONTENT_URI.buildUpon()
+        ContentUris.appendId(uriBuilder, beginMs)
+        ContentUris.appendId(uriBuilder, endMs)
+
+        val projection = arrayOf(
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END,
+            CalendarContract.Instances.ALL_DAY,
+            CalendarContract.Instances.DISPLAY_COLOR,
+            CalendarContract.Instances.CALENDAR_ID,
+            CalendarContract.Instances.EVENT_LOCATION,
+        )
+        val like = "%" + query.trim()
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_") + "%"
+        val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
+            "${CalendarContract.Events.DELETED} = 0 AND " +
+            "(${CalendarContract.Events.STATUS} IS NULL OR " +
+            "${CalendarContract.Events.STATUS} != ${CalendarContract.Events.STATUS_CANCELED}) " +
+            "AND (${CalendarContract.Instances.TITLE} LIKE ? ESCAPE '\\' OR " +
+            "${CalendarContract.Instances.EVENT_LOCATION} LIKE ? ESCAPE '\\' OR " +
+            "${CalendarContract.Instances.DESCRIPTION} LIKE ? ESCAPE '\\')"
+
+        val calendarColors = loadCalendars().associate { it.id to it.color }
+        val results = mutableListOf<EventInstance>()
+        resolver.query(
+            uriBuilder.build(),
+            projection,
+            selection,
+            arrayOf(like, like, like),
+            "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val calendarId = cursor.getLong(6)
+                if (calendarId in hiddenCalendarIds) continue
+                val allDay = cursor.getInt(4) != 0
+                val begin = cursor.getLong(2)
+                val end = cursor.getLong(3)
+                val instanceZone = if (allDay) ZoneOffset.UTC else zone
+                val displayColor = cursor.getInt(5)
+                results += EventInstance(
+                    eventId = cursor.getLong(0),
+                    title = cursor.getString(1).orEmpty(),
+                    begin = begin,
+                    end = end,
+                    allDay = allDay,
+                    color = if (displayColor != 0) {
+                        displayColor
+                    } else {
+                        calendarColors[calendarId] ?: 0
+                    },
+                    calendarId = calendarId,
+                    location = cursor.getString(7),
+                    startDate = Instant.ofEpochMilli(begin).atZone(instanceZone).toLocalDate(),
+                    endDate = Instant.ofEpochMilli(maxOf(begin, end - 1))
+                        .atZone(instanceZone).toLocalDate(),
+                )
+            }
+        }
+        results
     }
 
     /**
@@ -511,6 +593,116 @@ class CalendarRepository(private val context: Context) {
             )
         }
         return createEvent(draft)
+    }
+
+    // ---------- ICS import / export ----------
+
+    /**
+     * Events of the shown calendars as [Ics.Event]s, ready to be written to
+     * an .ics file. Recurrence exceptions are skipped (the parent series
+     * carries the rule); soft-deleted rows are skipped like everywhere else.
+     */
+    suspend fun exportIcsEvents(
+        hiddenCalendarIds: Set<Long> = emptySet(),
+    ): List<Ics.Event> = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext emptyList()
+        val calendarIds = loadCalendars()
+            .filter { it.isVisible && it.id !in hiddenCalendarIds }
+            .map { it.id }
+        if (calendarIds.isEmpty()) return@withContext emptyList()
+
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DESCRIPTION,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.DURATION,
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.RRULE,
+        )
+        val selection = "${CalendarContract.Events.DELETED} = 0 AND " +
+            "${CalendarContract.Events.ORIGINAL_ID} IS NULL AND " +
+            "${CalendarContract.Events.CALENDAR_ID} IN " +
+            "(${calendarIds.joinToString(",")})"
+
+        val events = mutableListOf<Ics.Event>()
+        resolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            projection,
+            selection,
+            null,
+            "${CalendarContract.Events.DTSTART} ASC",
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                if (cursor.isNull(4)) continue
+                val allDay = cursor.getInt(7) != 0
+                val dtStart = cursor.getLong(4)
+                val dtEnd = if (cursor.isNull(5)) null else cursor.getLong(5)
+                val duration = cursor.getString(6)
+                events += Ics.Event(
+                    summary = cursor.getString(1).orEmpty(),
+                    description = cursor.getString(2),
+                    location = cursor.getString(3),
+                    startMillis = dtStart,
+                    endMillis = dtEnd
+                        ?: (dtStart + parseDurationMillis(duration, allDay)),
+                    allDay = allDay,
+                    rrule = cursor.getString(8),
+                    durationSpec = if (dtEnd == null) duration else null,
+                    uid = "koyomi-${cursor.getLong(0)}@koyomi.app",
+                )
+            }
+        }
+        events
+    }
+
+    /** Inserts parsed .ics events into [calendarId]. Returns how many succeeded. */
+    suspend fun importIcsEvents(
+        events: List<Ics.Event>,
+        calendarId: Long,
+    ): Int = withContext(Dispatchers.IO) {
+        if (!hasWritePermission()) return@withContext 0
+        val zone = ZoneId.systemDefault()
+        var imported = 0
+        for (event in events) {
+            val values = ContentValues().apply {
+                put(CalendarContract.Events.CALENDAR_ID, calendarId)
+                put(CalendarContract.Events.TITLE, event.summary)
+                event.description?.takeIf { it.isNotBlank() }?.let {
+                    put(CalendarContract.Events.DESCRIPTION, it)
+                }
+                event.location?.takeIf { it.isNotBlank() }?.let {
+                    put(CalendarContract.Events.EVENT_LOCATION, it)
+                }
+                put(CalendarContract.Events.ALL_DAY, if (event.allDay) 1 else 0)
+                put(CalendarContract.Events.DTSTART, event.startMillis)
+                put(
+                    CalendarContract.Events.EVENT_TIMEZONE,
+                    if (event.allDay) "UTC" else zone.id,
+                )
+                if (event.rrule.isNullOrBlank()) {
+                    put(CalendarContract.Events.DTEND, event.endMillis)
+                } else {
+                    put(CalendarContract.Events.RRULE, event.rrule)
+                    val durationMillis = event.endMillis - event.startMillis
+                    put(
+                        CalendarContract.Events.DURATION,
+                        if (event.allDay) {
+                            "P${(durationMillis / 86_400_000L).coerceAtLeast(1)}D"
+                        } else {
+                            "P${(durationMillis / 1000L).coerceAtLeast(60)}S"
+                        },
+                    )
+                }
+            }
+            val inserted = runCatching {
+                resolver.insert(CalendarContract.Events.CONTENT_URI, values)
+            }.getOrNull()
+            if (inserted != null) imported++
+        }
+        imported
     }
 
     /** The user-picked event color of an existing event, if any. */

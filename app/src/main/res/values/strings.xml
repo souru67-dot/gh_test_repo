@@ -16,6 +16,13 @@
     <string name="next_period">Next</string>
     <string name="chosen_color">Selected color</string>
 
+    <!-- Search & agenda -->
+    <string name="search">Search</string>
+    <string name="search_hint">Search events</string>
+    <string name="search_no_results">No results</string>
+    <string name="agenda_upcoming">Coming up</string>
+    <string name="search_date_pattern">EEE, MMM d, yyyy</string>
+
     <!-- Event detail -->
     <string name="edit">Edit</string>
     <string name="duplicate">Duplicate</string>
@@ -83,7 +90,25 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="settings_dynamic_color">Wallpaper colors (Material You)</string>
+    <string name="settings_theme_pack">Theme packs</string>
+    <string name="pack_sumi">Ink &amp; Washi</string>
+    <string name="pack_sakura">Sakura</string>
+    <string name="pack_wakaba">Fresh Leaf</string>
+    <string name="pack_ai">Indigo</string>
+    <string name="pack_momiji">Autumn Maple</string>
+    <string name="settings_week_numbers">Show week numbers</string>
+    <string name="settings_rokuyo">Show rokuyō (Japanese lucky days)</string>
     <string name="settings_calendars">Calendars to show</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">Data</string>
+    <string name="export_ics">Export events (.ics)</string>
+    <string name="import_ics">Import events (.ics)</string>
+    <string name="export_done">Exported %1$d events</string>
+    <string name="export_failed">Export failed</string>
+    <string name="import_done">Imported %1$d events</string>
+    <string name="import_failed">Import failed</string>
+    <string name="import_choose_calendar">Calendar to import into</string>
 
     <!-- Sync & notifications -->
     <string name="settings_sync">Google Calendar sync</string>

@@ -15,6 +15,13 @@
     <string name="next_period">次へ</string>
     <string name="chosen_color">選択中の色</string>
 
+    <!-- Search & agenda -->
+    <string name="search">検索</string>
+    <string name="search_hint">予定を検索</string>
+    <string name="search_no_results">見つかりませんでした</string>
+    <string name="agenda_upcoming">これからの予定</string>
+    <string name="search_date_pattern">yyyy年M月d日(EEE)</string>
+
     <!-- Event detail -->
     <string name="edit">編集</string>
     <string name="duplicate">複製</string>
@@ -82,7 +89,25 @@
     <string name="theme_light">ライト</string>
     <string name="theme_dark">ダーク</string>
     <string name="settings_dynamic_color">壁紙の色を使う(Material You)</string>
+    <string name="settings_theme_pack">きせかえテーマ</string>
+    <string name="pack_sumi">墨と和紙</string>
+    <string name="pack_sakura">桜</string>
+    <string name="pack_wakaba">若葉</string>
+    <string name="pack_ai">藍</string>
+    <string name="pack_momiji">紅葉</string>
+    <string name="settings_week_numbers">週番号を表示</string>
+    <string name="settings_rokuyo">六曜を表示(大安・仏滅など)</string>
     <string name="settings_calendars">表示するカレンダー</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">データ</string>
+    <string name="export_ics">予定を書き出す(.ics)</string>
+    <string name="import_ics">予定を取り込む(.ics)</string>
+    <string name="export_done">%1$d件の予定を書き出しました</string>
+    <string name="export_failed">書き出しに失敗しました</string>
+    <string name="import_done">%1$d件の予定を取り込みました</string>
+    <string name="import_failed">取り込みに失敗しました</string>
+    <string name="import_choose_calendar">取り込み先のカレンダー</string>
 
     <!-- Sync & notifications -->
     <string name="settings_sync">Googleカレンダーの同期</string>
