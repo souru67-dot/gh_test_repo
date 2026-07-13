@@ -168,6 +168,14 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
 
             SectionLabel(stringResource(R.string.settings_calendars))
+            if (state.calendars.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.no_calendars_found),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             for (calendar in state.calendars) {
                 val shown = calendar.isVisible && calendar.id !in state.hiddenCalendarIds
                 Row(

@@ -20,12 +20,10 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
@@ -123,21 +121,20 @@ class TodayWidget : GlanceAppWidget() {
                             context.getString(R.string.events_count, today.events.size)
                         },
                         style = TextStyle(
-                            color = GlanceTheme.colors.onSurface,
+                            // 朱 when the day holds something — a quiet pulse.
+                            color = if (today.events.isEmpty()) {
+                                GlanceTheme.colors.onSurfaceVariant
+                            } else {
+                                GlanceTheme.colors.tertiary
+                            },
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
                         ),
                     )
                 }
             }
-            // Hairline divider between the header and the agenda.
-            Spacer(modifier = GlanceModifier.height(6.dp))
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(GlanceTheme.colors.surfaceVariant),
-            ) {}
+            Spacer(modifier = GlanceModifier.height(8.dp))
+            WidgetHairlineDivider()
             Spacer(modifier = GlanceModifier.height(4.dp))
             LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                 when {

@@ -125,10 +125,16 @@ private fun TimelineTopBar(
         )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onPrev) {
-            Icon(Icons.Filled.ChevronLeft, contentDescription = null)
+            Icon(
+                Icons.Filled.ChevronLeft,
+                contentDescription = stringResource(R.string.previous_period),
+            )
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = stringResource(R.string.next_period),
+            )
         }
         IconButton(onClick = onToday) {
             Icon(

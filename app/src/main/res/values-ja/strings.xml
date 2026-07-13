@@ -10,6 +10,10 @@
     <string name="add_event">予定を追加</string>
     <string name="permission_banner">カレンダーへのアクセスが許可されていないため、予定を表示できません。</string>
     <string name="open_settings">設定を開く</string>
+    <string name="no_calendars_found">端末にカレンダーアカウントが見つかりません。Googleアカウントを追加するか、カレンダー同期を有効にしてください。</string>
+    <string name="previous_period">前へ</string>
+    <string name="next_period">次へ</string>
+    <string name="chosen_color">選択中の色</string>
 
     <!-- Event detail -->
     <string name="edit">編集</string>

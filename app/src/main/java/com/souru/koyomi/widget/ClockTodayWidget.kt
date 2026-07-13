@@ -3,7 +3,6 @@ package com.souru.koyomi.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -15,15 +14,13 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
 import com.souru.koyomi.R
 
 class ClockTodayWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -70,7 +67,15 @@ class ClockTodayWidget : GlanceAppWidget() {
                 context = context,
                 modifier = GlanceModifier.width(128.dp),
             )
-            Spacer(modifier = GlanceModifier.width(14.dp))
+            Spacer(modifier = GlanceModifier.width(12.dp))
+            // Vertical hairline separating the clock from the agenda.
+            Box(
+                modifier = GlanceModifier
+                    .width(1.dp)
+                    .fillMaxHeight()
+                    .background(GlanceTheme.colors.surfaceVariant),
+            ) {}
+            Spacer(modifier = GlanceModifier.width(12.dp))
             LazyColumn(
                 modifier = GlanceModifier
                     .defaultWeight()
@@ -82,13 +87,8 @@ class ClockTodayWidget : GlanceAppWidget() {
                     for (section in sections) {
                         if (section.events.isEmpty()) continue
                         item {
-                            Text(
+                            WidgetSectionLabel(
                                 text = relativeDayLabel(context, section.date),
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.primary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                ),
                                 modifier = GlanceModifier.padding(top = 4.dp, bottom = 2.dp),
                             )
                         }

@@ -3,7 +3,6 @@ package com.souru.koyomi.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -18,9 +17,6 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
 import com.souru.koyomi.R
 
 private const val MAX_EVENTS = 3
@@ -72,13 +68,10 @@ class MonthTodayWidget : GlanceAppWidget() {
                     .defaultWeight(),
             )
             Spacer(modifier = GlanceModifier.height(6.dp))
-            Text(
+            WidgetHairlineDivider()
+            Spacer(modifier = GlanceModifier.height(4.dp))
+            WidgetSectionLabel(
                 text = context.getString(R.string.widget_today_label),
-                style = TextStyle(
-                    color = GlanceTheme.colors.primary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
                 modifier = GlanceModifier.padding(start = 4.dp, bottom = 2.dp),
             )
             if (today.events.isEmpty()) {

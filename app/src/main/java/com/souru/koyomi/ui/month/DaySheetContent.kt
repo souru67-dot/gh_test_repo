@@ -465,28 +465,12 @@ private fun EventDetailPane(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(top = 8.dp),
-        ) {
-            if (!instance.location.isNullOrBlank()) {
-                DetailRow(icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) }) {
-                    Text(instance.location, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            if (!detail?.description.isNullOrBlank()) {
-                DetailRow(icon = { Icon(Icons.Outlined.Notes, null, Modifier.size(18.dp)) }) {
-                    Text(detail?.description.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
+        // Actions right under the header so they are visible at the sheet's
+        // peek height — no scrolling needed to edit or delete.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(top = 10.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
@@ -506,6 +490,24 @@ private fun EventDetailPane(
             ) {
                 Icon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.delete), modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp, bottom = 12.dp),
+        ) {
+            if (!instance.location.isNullOrBlank()) {
+                DetailRow(icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) }) {
+                    Text(instance.location, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (!detail?.description.isNullOrBlank()) {
+                DetailRow(icon = { Icon(Icons.Outlined.Notes, null, Modifier.size(18.dp)) }) {
+                    Text(detail?.description.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

@@ -11,6 +11,10 @@
     <string name="add_event">Add event</string>
     <string name="permission_banner">Calendar access is not granted. Events cannot be shown.</string>
     <string name="open_settings">Open settings</string>
+    <string name="no_calendars_found">No calendar account was found on this device. Add a Google account or enable calendar sync.</string>
+    <string name="previous_period">Previous</string>
+    <string name="next_period">Next</string>
+    <string name="chosen_color">Selected color</string>
 
     <!-- Event detail -->
     <string name="edit">Edit</string>

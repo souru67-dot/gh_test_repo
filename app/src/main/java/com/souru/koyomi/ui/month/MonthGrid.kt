@@ -161,7 +161,18 @@ fun MonthGrid(
     taskCounts: Map<LocalDate, Int> = emptyMap(),
     multiDayBars: Boolean = true,
 ) {
-    val days = monthGridDays(month, weekStart)
+    // The grid and lane layout are pure functions of their inputs; caching
+    // them keeps drag/selection recompositions from redoing date math.
+    val days = remember(month, weekStart) { monthGridDays(month, weekStart) }
+    val weekSegments = remember(days, eventsByDay, multiDayBars) {
+        List(6) { week ->
+            if (multiDayBars) {
+                weekBarSegments(days.subList(week * 7, week * 7 + 7), eventsByDay)
+            } else {
+                emptyList()
+            }
+        }
+    }
     val today = LocalDate.now()
     val dragState = remember { EventDragState() }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -185,12 +196,7 @@ fun MonthGrid(
         Column(modifier = Modifier.fillMaxSize()) {
             for (week in 0 until 6) {
                 val weekDays = days.subList(week * 7, week * 7 + 7)
-                val segments = if (multiDayBars) {
-                    weekBarSegments(weekDays, eventsByDay)
-                } else {
-                    emptyList()
-                }
-                val shownSegments = segments.filter { it.lane < MAX_BAR_LANES }
+                val shownSegments = weekSegments[week].filter { it.lane < MAX_BAR_LANES }
                 val barLanes = (shownSegments.maxOfOrNull { it.lane } ?: -1) + 1
                 val barEventKeys = shownSegments
                     .map { "${it.event.eventId}-${it.event.begin}" }

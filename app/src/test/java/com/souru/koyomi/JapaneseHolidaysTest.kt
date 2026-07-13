@@ -83,4 +83,52 @@ class JapaneseHolidaysTest {
         assertTrue(JapaneseHolidays.isRedDay(LocalDate.of(2026, 8, 11))) // 山の日 (Tue)
         assertFalse(JapaneseHolidays.isRedDay(LocalDate.of(2026, 7, 4))) // Saturday
     }
+
+    @Test
+    fun `substitute holidays 2025`() {
+        val holidays = JapaneseHolidays.holidaysFor(2025)
+        // 天皇誕生日 2/23, みどりの日 5/4 and 勤労感謝の日 11/23 all fall on Sundays.
+        assertEquals("振替休日", holidays[LocalDate.of(2025, 2, 24)])
+        assertEquals("振替休日", holidays[LocalDate.of(2025, 5, 6)]) // 5/5 already a holiday
+        assertEquals("振替休日", holidays[LocalDate.of(2025, 11, 24)])
+        assertEquals("春分の日", holidays[LocalDate.of(2025, 3, 20)])
+        assertEquals("秋分の日", holidays[LocalDate.of(2025, 9, 23)])
+    }
+
+    @Test
+    fun `silver week 2032`() {
+        // 敬老の日 9/20 (Mon) and 秋分の日 9/22 (Wed) sandwich 9/21.
+        val holidays = JapaneseHolidays.holidaysFor(2032)
+        assertEquals("敬老の日", holidays[LocalDate.of(2032, 9, 20)])
+        assertEquals("国民の休日", holidays[LocalDate.of(2032, 9, 21)])
+        assertEquals("秋分の日", holidays[LocalDate.of(2032, 9, 22)])
+    }
+
+    @Test
+    fun `historical rules before happy monday`() {
+        val holidays = JapaneseHolidays.holidaysFor(1999)
+        assertEquals("成人の日", holidays[LocalDate.of(1999, 1, 15)])
+        assertEquals("体育の日", holidays[LocalDate.of(1999, 10, 10)])
+        // 2000 switches both to the happy-monday rule.
+        val y2000 = JapaneseHolidays.holidaysFor(2000)
+        assertEquals("成人の日", y2000[LocalDate.of(2000, 1, 10)])
+        assertFalse(y2000.containsKey(LocalDate.of(2000, 1, 15)))
+    }
+
+    @Test
+    fun `emperor birthday moves between eras`() {
+        assertEquals("天皇誕生日", JapaneseHolidays.nameFor(LocalDate.of(2018, 12, 23)))
+        // 2019 has neither the Heisei (12/23) nor the Reiwa (2/23) birthday.
+        assertFalse(JapaneseHolidays.holidaysFor(2019).containsKey(LocalDate.of(2019, 12, 23)))
+        assertEquals("天皇誕生日", JapaneseHolidays.nameFor(LocalDate.of(2020, 2, 23)))
+    }
+
+    @Test
+    fun `out of range years have no holidays`() {
+        assertTrue(JapaneseHolidays.holidaysFor(1979).isEmpty())
+        assertTrue(JapaneseHolidays.holidaysFor(2100).isEmpty())
+        // In-range boundaries still work.
+        assertEquals("元日", JapaneseHolidays.nameFor(LocalDate.of(1980, 1, 1)))
+        assertEquals("元日", JapaneseHolidays.nameFor(LocalDate.of(2099, 1, 1)))
+    }
 }

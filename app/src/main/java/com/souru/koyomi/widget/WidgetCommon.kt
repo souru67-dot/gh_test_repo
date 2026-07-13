@@ -114,6 +114,31 @@ fun widgetBackground(look: WidgetLook): androidx.glance.unit.ColorProvider {
     }
 }
 
+/** 1dp hairline — the only divider used inside widgets. */
+@Composable
+fun WidgetHairlineDivider(modifier: GlanceModifier = GlanceModifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(GlanceTheme.colors.surfaceVariant),
+    ) {}
+}
+
+/** Section heading in the brand accent (朱) — 今日/明日/dates in list widgets. */
+@Composable
+fun WidgetSectionLabel(text: String, modifier: GlanceModifier = GlanceModifier) {
+    Text(
+        text = text,
+        style = TextStyle(
+            color = GlanceTheme.colors.tertiary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+        ),
+        modifier = modifier,
+    )
+}
+
 /** Calendar color tuned for readability on light/dark widget backgrounds. */
 fun eventColorProvider(
     colorInt: Int,
@@ -192,13 +217,25 @@ fun GlanceMonthCalendar(
                     fontWeight = FontWeight.Bold,
                 ),
             )
+            // 朱 dot after the month — the launcher icon's brand mark, echoed.
+            Box(
+                modifier = GlanceModifier
+                    .padding(start = 5.dp, top = if (compact) 6.dp else 10.dp),
+            ) {
+                Box(
+                    modifier = GlanceModifier
+                        .size(5.dp)
+                        .background(GlanceTheme.colors.tertiary)
+                        .cornerRadius(3.dp),
+                ) {}
+            }
             Text(
                 text = data.month.year.toString(),
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
                     fontSize = 11.sp,
                 ),
-                modifier = GlanceModifier.padding(start = 6.dp, top = 4.dp),
+                modifier = GlanceModifier.padding(start = 7.dp, top = 4.dp),
             )
             Spacer(modifier = GlanceModifier.defaultWeight())
             Text(
@@ -232,6 +269,9 @@ fun GlanceMonthCalendar(
                 )
             }
         }
+        WidgetHairlineDivider(
+            modifier = GlanceModifier.padding(top = 2.dp, bottom = 2.dp),
+        )
         for (week in 0 until 6) {
             Row(
                 modifier = GlanceModifier
@@ -415,7 +455,7 @@ fun WidgetEventRow(
     ) {
         Box(
             modifier = GlanceModifier
-                .size(width = 3.dp, height = 24.dp)
+                .size(width = 3.dp, height = 26.dp)
                 .background(eventColorProvider(event.color, alpha = if (dimmed) 0.45f else 1f))
                 .cornerRadius(2.dp),
         ) {}
@@ -434,6 +474,7 @@ fun WidgetEventRow(
             style = TextStyle(
                 color = titleColor,
                 fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
             ),
             maxLines = 1,
             modifier = GlanceModifier.padding(start = 4.dp),

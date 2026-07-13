@@ -60,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -730,6 +732,7 @@ private fun EventColorRow(
             TextButton(onClick = { expanded = true }) {
                 // No explicit event color: preview the calendar's own color so
                 // "仕事=青" is visible at a glance, matching Google Calendar.
+                val swatchDescription = stringResource(R.string.chosen_color)
                 Box(
                     modifier = Modifier
                         .size(20.dp)
@@ -738,7 +741,8 @@ private fun EventColorRow(
                                 ?: calendarColor
                                 ?: MaterialTheme.colorScheme.primary,
                             androidx.compose.foundation.shape.CircleShape,
-                        ),
+                        )
+                        .semantics { contentDescription = swatchDescription },
                 )
                 if (selected == null) {
                     Text(

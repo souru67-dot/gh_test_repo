@@ -234,12 +234,23 @@ fun MonthScreen(
         ) {
             if (!state.hasPermission) {
                 PermissionBanner(
-                    onOpenSettings = {
+                    text = stringResource(R.string.permission_banner),
+                    actionLabel = stringResource(R.string.open_settings),
+                    onAction = {
                         val intent = Intent(
                             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.fromParts("package", context.packageName, null),
                         )
                         context.startActivity(intent)
+                    },
+                )
+            } else if (state.calendars.isEmpty()) {
+                // Permission granted but the device has no calendar account.
+                PermissionBanner(
+                    text = stringResource(R.string.no_calendars_found),
+                    actionLabel = stringResource(R.string.open_settings),
+                    onAction = {
+                        context.startActivity(Intent(Settings.ACTION_SYNC_SETTINGS))
                     },
                 )
             }
@@ -549,7 +560,11 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
 }
 
 @Composable
-private fun PermissionBanner(onOpenSettings: () -> Unit) {
+private fun PermissionBanner(
+    text: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         shape = RoundedCornerShape(12.dp),
@@ -559,11 +574,11 @@ private fun PermissionBanner(onOpenSettings: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
-                text = stringResource(R.string.permission_banner),
+                text = text,
                 style = MaterialTheme.typography.bodySmall,
             )
-            TextButton(onClick = onOpenSettings) {
-                Text(stringResource(R.string.open_settings))
+            TextButton(onClick = onAction) {
+                Text(actionLabel)
             }
         }
     }
