@@ -24,7 +24,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CalendarViewMonth
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -105,6 +109,7 @@ fun MonthScreen(
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
     var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
     var pendingDuplicate by remember { mutableStateOf<EventInstance?>(null) }
+    var showMonthJump by remember { mutableStateOf(false) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -191,6 +196,7 @@ fun MonthScreen(
                 onOpenTimeline = { mode -> onOpenTimeline(mode, selectedDate) },
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
+                onMonthClick = { showMonthJump = true },
             )
         },
         sheetContent = {
@@ -327,6 +333,18 @@ fun MonthScreen(
                 }
             }
         }
+    }
+
+    // 年月ジャンプ: tapping the "7月 2026" header opens a month picker.
+    if (showMonthJump) {
+        MonthJumpDialog(
+            initial = visibleMonth,
+            onDismiss = { showMonthJump = false },
+            onSelect = { target ->
+                showMonthJump = false
+                scope.launch { scrollToMonth(target) }
+            },
+        )
     }
 
     // 複製: let the user pick which day the copy lands on.
@@ -511,6 +529,7 @@ private fun MonthTopBar(
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
+    onMonthClick: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
     // BottomSheetScaffold does not wrap its topBar slot in a themed Surface,
@@ -533,6 +552,7 @@ private fun MonthTopBar(
                 onOpenTimeline = onOpenTimeline,
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
+                onMonthClick = onMonthClick,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
             )
@@ -547,6 +567,7 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
+    onMonthClick: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
 ) {
@@ -557,7 +578,11 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     } else {
         month.format(DateTimeFormatter.ofPattern("MMMM", locale))
     }
-    Row(verticalAlignment = Alignment.Bottom) {
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        // Tapping the month opens the year/month jump picker.
+        modifier = Modifier.clickable(onClick = onMonthClick),
+    ) {
         Text(
             text = monthLabel,
             style = MaterialTheme.typography.headlineMedium,
@@ -569,6 +594,12 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 8.dp, bottom = 5.dp),
+        )
+        Icon(
+            imageVector = Icons.Filled.ArrowDropDown,
+            contentDescription = stringResource(R.string.jump_to_month),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 2.dp),
         )
     }
     Spacer(modifier = Modifier.weight(1f))
@@ -616,6 +647,83 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Year stepper + 12-month grid; jumps the pager to the chosen month. */
+@Composable
+private fun MonthJumpDialog(
+    initial: YearMonth,
+    onDismiss: () -> Unit,
+    onSelect: (YearMonth) -> Unit,
+) {
+    var year by remember { androidx.compose.runtime.mutableIntStateOf(initial.year) }
+    val locale = Locale.getDefault()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+        text = {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(
+                        onClick = { if (year > 1970) year-- },
+                    ) {
+                        Icon(
+                            Icons.Filled.ChevronLeft,
+                            contentDescription = stringResource(R.string.previous_period),
+                        )
+                    }
+                    Text(
+                        text = if (locale.language == "ja") "${year}年" else year.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = { if (year < 2169) year++ },
+                    ) {
+                        Icon(
+                            Icons.Filled.ChevronRight,
+                            contentDescription = stringResource(R.string.next_period),
+                        )
+                    }
+                }
+                for (rowIndex in 0 until 4) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        for (columnIndex in 0 until 3) {
+                            val target = YearMonth.of(year, rowIndex * 3 + columnIndex + 1)
+                            val selected = target == initial
+                            TextButton(
+                                onClick = { onSelect(target) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = target.month.getDisplayName(
+                                        java.time.format.TextStyle.SHORT,
+                                        locale,
+                                    ),
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.tertiary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    fontWeight = if (selected) {
+                                        androidx.compose.ui.text.font.FontWeight.Bold
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable

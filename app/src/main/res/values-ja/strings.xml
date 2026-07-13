@@ -21,6 +21,7 @@
     <string name="search_no_results">見つかりませんでした</string>
     <string name="agenda_upcoming">これからの予定</string>
     <string name="search_date_pattern">yyyy年M月d日(EEE)</string>
+    <string name="jump_to_month">年月を選択</string>
 
     <!-- Event detail -->
     <string name="edit">編集</string>

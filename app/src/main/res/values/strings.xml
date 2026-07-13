@@ -22,6 +22,7 @@
     <string name="search_no_results">No results</string>
     <string name="agenda_upcoming">Coming up</string>
     <string name="search_date_pattern">EEE, MMM d, yyyy</string>
+    <string name="jump_to_month">Jump to month</string>
 
     <!-- Event detail -->
     <string name="edit">Edit</string>

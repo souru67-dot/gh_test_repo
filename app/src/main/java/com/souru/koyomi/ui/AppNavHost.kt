@@ -96,7 +96,7 @@ fun AppNavHost(
         }
         composable(Routes.SEARCH) {
             SearchScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popIfCurrent(Routes.SEARCH) },
                 onOpenEvent = { eventId, beginMs, endMs ->
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
                 },
@@ -111,14 +111,14 @@ fun AppNavHost(
         ) { backStackEntry ->
             TimelineScreen(
                 mode = backStackEntry.arguments?.getString("mode") ?: "week",
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popIfCurrent(Routes.TIMELINE) },
                 onEditEvent = { eventId, beginMs, endMs ->
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
                 },
             )
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(onBack = { navController.popIfCurrent(Routes.SETTINGS) })
         }
         composable(
             route = Routes.EDITOR,
@@ -130,7 +130,17 @@ fun AppNavHost(
                 navArgument("taskId") { type = NavType.LongType; defaultValue = -1L },
             ),
         ) {
-            EventEditScreen(onClose = { navController.popBackStack() })
+            EventEditScreen(onClose = { navController.popIfCurrent(Routes.EDITOR) })
         }
     }
+}
+
+/**
+ * Pops only while [route] is on top. Back handlers can fire twice (double
+ * tap, or a save-completion callback racing a manual close); an unguarded
+ * second popBackStack() would pop the month screen too and leave an empty,
+ * blank NavHost.
+ */
+private fun androidx.navigation.NavHostController.popIfCurrent(route: String) {
+    if (currentDestination?.route == route) popBackStack()
 }
