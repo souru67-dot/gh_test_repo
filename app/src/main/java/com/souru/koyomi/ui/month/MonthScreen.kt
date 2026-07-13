@@ -23,9 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarViewMonth
 import androidx.compose.material.icons.outlined.Search
@@ -33,8 +31,6 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +61,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.ui.common.KoyomiDatePickerDialog
 import com.souru.koyomi.util.MonthPages
 import java.time.DayOfWeek
 import java.time.Instant
@@ -338,37 +335,23 @@ fun MonthScreen(
             initialSelectedDateMillis = source.startDate
                 .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
         )
-        DatePickerDialog(
-            onDismissRequest = { pendingDuplicate = null },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pickerState.selectedDateMillis?.let { millis ->
-                            val target = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneOffset.UTC).toLocalDate()
-                            viewModel.duplicateEventTo(
-                                source.eventId,
-                                ChronoUnit.DAYS.between(source.startDate, target),
-                            )
-                        }
-                        pendingDuplicate = null
-                        closeDetail()
-                    },
-                ) { Text(stringResource(R.string.duplicate)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDuplicate = null }) {
-                    Text(stringResource(R.string.cancel))
+        KoyomiDatePickerDialog(
+            state = pickerState,
+            onDismiss = { pendingDuplicate = null },
+            confirmLabel = stringResource(R.string.duplicate),
+            onConfirm = {
+                pickerState.selectedDateMillis?.let { millis ->
+                    val target = Instant.ofEpochMilli(millis)
+                        .atZone(ZoneOffset.UTC).toLocalDate()
+                    viewModel.duplicateEventTo(
+                        source.eventId,
+                        ChronoUnit.DAYS.between(source.startDate, target),
+                    )
                 }
+                pendingDuplicate = null
+                closeDetail()
             },
-        ) {
-            // Scrollable: the M3 year selector renders blank when the dialog
-            // gets less height than the picker needs (large fonts/zoom).
-            DatePicker(
-                state = pickerState,
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            )
-        }
+        )
     }
 
     pendingDrop?.let { drop ->

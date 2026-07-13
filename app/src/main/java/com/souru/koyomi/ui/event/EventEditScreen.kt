@@ -28,8 +28,6 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Subject
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
+import com.souru.koyomi.ui.common.KoyomiDatePickerDialog
 import com.souru.koyomi.util.RepeatFreq
 import java.time.Instant
 import java.time.LocalDate
@@ -460,33 +459,18 @@ private fun RepeatUntilRow(
             initialSelectedDateMillis = (until ?: LocalDate.now().plusMonths(1))
                 .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
         )
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pickerState.selectedDateMillis?.let { millis ->
-                            onChange(
-                                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
-                            )
-                        }
-                        showPicker = false
-                    },
-                ) { Text(stringResource(R.string.ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text(stringResource(R.string.cancel))
+        KoyomiDatePickerDialog(
+            state = pickerState,
+            onDismiss = { showPicker = false },
+            onConfirm = {
+                pickerState.selectedDateMillis?.let { millis ->
+                    onChange(
+                        Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
+                    )
                 }
+                showPicker = false
             },
-        ) {
-            // Scrollable: the M3 year selector renders blank when the dialog
-            // gets less height than the picker needs (large fonts/zoom).
-            DatePicker(
-                state = pickerState,
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            )
-        }
+        )
     }
 }
 
@@ -649,32 +633,18 @@ private fun DateTimeRow(
             initialSelectedDateMillis = value.toLocalDate()
                 .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
         )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pickerState.selectedDateMillis?.let { millis ->
-                            val date = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneOffset.UTC).toLocalDate()
-                            onChange(LocalDateTime.of(date, value.toLocalTime()))
-                        }
-                        showDatePicker = false
-                    },
-                ) { Text(stringResource(R.string.ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
+        KoyomiDatePickerDialog(
+            state = pickerState,
+            onDismiss = { showDatePicker = false },
+            onConfirm = {
+                pickerState.selectedDateMillis?.let { millis ->
+                    val date = Instant.ofEpochMilli(millis)
+                        .atZone(ZoneOffset.UTC).toLocalDate()
+                    onChange(LocalDateTime.of(date, value.toLocalTime()))
                 }
+                showDatePicker = false
             },
-        ) {
-            // Scrollable — see the note on the other DatePickerDialog.
-            DatePicker(
-                state = pickerState,
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            )
-        }
+        )
     }
 
     if (showTimePicker) {
