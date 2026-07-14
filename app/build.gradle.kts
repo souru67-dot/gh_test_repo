@@ -4,6 +4,14 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// Release signing is read from a keystore + environment variables so no
+// secret ever lives in the repo. When they are absent (e.g. plain CI), the
+// release build is produced UNSIGNED — enough to verify R8/shrinking, and
+// Play App Signing re-signs the upload anyway. See docs/RELEASE.md.
+val releaseKeystore = rootProject.file("keystore/release.keystore")
+val keystorePassword: String? = System.getenv("KOYOMI_KEYSTORE_PASSWORD")
+val hasReleaseSigning = releaseKeystore.exists() && keystorePassword != null
+
 android {
     namespace = "com.souru.koyomi"
     compileSdk = 35
@@ -13,7 +21,18 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = keystorePassword
+                keyAlias = System.getenv("KOYOMI_KEY_ALIAS") ?: "koyomi"
+                keyPassword = System.getenv("KOYOMI_KEY_PASSWORD") ?: keystorePassword
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +43,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
