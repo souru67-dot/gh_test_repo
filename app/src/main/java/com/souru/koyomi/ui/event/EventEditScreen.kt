@@ -43,7 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
@@ -567,7 +567,7 @@ private fun TaskFields(state: EditorUiState, viewModel: EventEditViewModel) {
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
             title = { Text(stringResource(R.string.select_time)) },
-            text = { TimePicker(state = pickerState) },
+            text = { TimeInput(state = pickerState) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -656,7 +656,7 @@ private fun DateTimeRow(
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
             title = { Text(stringResource(R.string.select_time)) },
-            text = { TimePicker(state = pickerState) },
+            text = { TimeInput(state = pickerState) },
             confirmButton = {
                 TextButton(
                     onClick = {

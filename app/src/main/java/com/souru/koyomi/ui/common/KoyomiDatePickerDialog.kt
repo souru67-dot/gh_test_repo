@@ -3,8 +3,10 @@ package com.souru.koyomi.ui.common
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.souru.koyomi.R
 
 /**
@@ -38,17 +41,26 @@ fun KoyomiDatePickerDialog(
     onConfirm: () -> Unit,
     confirmLabel: String = stringResource(R.string.ok),
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    // usePlatformDefaultWidth = false: the platform's default dialog width is
+    // narrower than the DatePicker's fixed ~360dp, which clipped the Saturday
+    // column. Let the surface size to the picker instead, with a horizontal
+    // scroll as a safety net on very narrow screens.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
+            modifier = Modifier.padding(16.dp),
         ) {
-            Column {
+            Column(modifier = Modifier.heightIn(max = 560.dp)) {
                 Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState())
+                        .horizontalScroll(rememberScrollState()),
                 ) {
                     DatePicker(state = state)
                 }
