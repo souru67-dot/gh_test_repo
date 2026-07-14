@@ -263,8 +263,9 @@ fun MonthScreen(
                         context.startActivity(intent)
                     },
                 )
-            } else if (state.calendars.isEmpty()) {
+            } else if (state.loaded && state.calendars.isEmpty()) {
                 // Permission granted but the device has no calendar account.
+                // Gated on `loaded` so it never flashes before the first load.
                 PermissionBanner(
                     text = stringResource(R.string.no_calendars_found),
                     actionLabel = stringResource(R.string.open_settings),
@@ -278,16 +279,12 @@ fun MonthScreen(
                 showWeekNumbers = showWeekNumbers,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
-            val taskCounts = remember(state.tasksByDay) {
-                state.tasksByDay.mapValues { (_, tasks) -> tasks.count { !it.done } }
-                    .filterValues { it > 0 }
-            }
             if (verticalScroll) {
                 VerticalMonthList(
                     listState = listState,
                     weekStart = weekStart,
                     state = state,
-                    taskCounts = taskCounts,
+                    tasksByDay = state.tasksByDay,
                     selectedDate = selectedDate,
                     multiDayBars = multiDayBars,
                     showWeekNumbers = showWeekNumbers,
@@ -310,7 +307,7 @@ fun MonthScreen(
                         month = MonthPages.monthAt(page),
                         weekStart = weekStart,
                         eventsByDay = state.eventsByDay,
-                        taskCounts = taskCounts,
+                        tasksByDay = state.tasksByDay,
                         selectedDate = selectedDate,
                         onSelect = { date ->
                             viewModel.select(date)
@@ -480,7 +477,7 @@ private fun VerticalMonthList(
     listState: LazyListState,
     weekStart: DayOfWeek,
     state: MonthUiState,
-    taskCounts: Map<LocalDate, Int>,
+    tasksByDay: Map<LocalDate, List<com.souru.koyomi.data.task.Task>>,
     selectedDate: LocalDate,
     multiDayBars: Boolean,
     showWeekNumbers: Boolean,
@@ -497,7 +494,7 @@ private fun VerticalMonthList(
                 month = month,
                 weekStart = weekStart,
                 eventsByDay = state.eventsByDay,
-                taskCounts = taskCounts,
+                tasksByDay = tasksByDay,
                 selectedDate = selectedDate,
                 onSelect = { date ->
                     viewModel.select(date)

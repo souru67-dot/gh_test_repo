@@ -36,6 +36,9 @@ data class MonthUiState(
     val eventsByDay: Map<LocalDate, List<EventInstance>> = emptyMap(),
     val tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
     val calendars: List<CalendarInfo> = emptyList(),
+    /** False until the first provider load finishes; gates the empty banners
+     *  so "no calendars" never flashes during startup. */
+    val loaded: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -97,6 +100,7 @@ class MonthViewModel(
                 eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),
                 tasksByDay = taskRepository.loadTasksByDay(gridStart, gridEnd),
                 calendars = calendarRepository.loadCalendars(),
+                loaded = true,
             )
         }.stateIn(
             viewModelScope,

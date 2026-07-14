@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
 import com.souru.koyomi.data.holiday.JapaneseHolidays
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.data.rokuyo.Kyureki
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import com.souru.koyomi.util.monthGridDays
@@ -179,7 +180,7 @@ fun MonthGrid(
     onLongPress: (LocalDate) -> Unit,
     onMoveEvent: (event: EventInstance, days: Long) -> Unit,
     modifier: Modifier = Modifier,
-    taskCounts: Map<LocalDate, Int> = emptyMap(),
+    tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
     multiDayBars: Boolean = true,
     showWeekNumbers: Boolean = false,
     showRokuyo: Boolean = false,
@@ -267,7 +268,7 @@ fun MonthGrid(
                                 isDropTarget = date == dropTarget,
                                 events = model.cellEvents[date].orEmpty(),
                                 barLanes = barLanes,
-                                taskCount = taskCounts[date] ?: 0,
+                                tasks = tasksByDay[date].orEmpty(),
                                 rokuyo = rokuyoByDay[date],
                                 onSelect = onSelect,
                                 onLongPress = onLongPress,
@@ -349,7 +350,7 @@ private fun DayCell(
     isDropTarget: Boolean,
     events: List<EventInstance>,
     barLanes: Int,
-    taskCount: Int,
+    tasks: List<Task>,
     rokuyo: String?,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
@@ -429,13 +430,17 @@ private fun DayCell(
             Spacer(modifier = Modifier.height((barLanes * 14 + 4).dp))
         }
 
-        val shown = events.take((MAX_EVENT_CHIPS - barLanes).coerceAtLeast(1))
-        val overflow = events.size - shown.size
+        // Events fill the cell's chip slots first, then tasks; any remainder
+        // collapses into a single "+N" counter so the cell height stays stable.
+        val maxChips = (MAX_EVENT_CHIPS - barLanes).coerceAtLeast(1)
+        val shownEvents = events.take(maxChips)
+        val shownTasks = tasks.take((maxChips - shownEvents.size).coerceAtLeast(0))
+        val overflow = (events.size + tasks.size) - shownEvents.size - shownTasks.size
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
-            for (event in shown) {
+            for (event in shownEvents) {
                 DraggableEventChip(
                     event = event,
                     cellDate = date,
@@ -446,6 +451,9 @@ private fun DayCell(
                     dropTargetOf = dropTargetOf,
                 )
             }
+            for (task in shownTasks) {
+                TaskChip(task = task, dimmed = !inCurrentMonth)
+            }
             if (overflow > 0) {
                 Text(
                     text = "+$overflow",
@@ -455,16 +463,53 @@ private fun DayCell(
                     fontSize = 9.sp,
                 )
             }
-            if (taskCount > 0) {
-                Text(
-                    text = "☑$taskCount",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 3.dp),
-                    fontSize = 9.sp,
-                )
-            }
         }
+    }
+}
+
+/**
+ * Task chip: a check glyph (done/undone) followed by the title, tinted with
+ * the task's color. Mirrors the event chip so the month reads consistently,
+ * while the ☑/☐ marker keeps tasks distinguishable from events.
+ */
+@Composable
+private fun TaskChip(task: Task, dimmed: Boolean) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val solid = com.souru.koyomi.util.providerColor(task.color)
+        ?.let { com.souru.koyomi.util.mutedColor(it, darkTheme) }
+        ?: MaterialTheme.colorScheme.primary
+    val alpha = if (dimmed) 0.55f else 1f
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 1.dp)
+            .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
+            .background(solid.copy(alpha = 0.15f * alpha), RoundedCornerShape(3.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (task.done) "☑" else "☐",
+            fontSize = 8.sp,
+            lineHeight = 11.sp,
+            color = solid.copy(alpha = alpha),
+            modifier = Modifier.padding(start = 2.dp),
+        )
+        Text(
+            text = task.title.ifBlank { " " },
+            modifier = Modifier.padding(start = 2.dp, end = 3.dp, top = 0.5.dp, bottom = 0.5.dp),
+            fontSize = 9.sp,
+            lineHeight = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textDecoration = if (task.done) {
+                androidx.compose.ui.text.style.TextDecoration.LineThrough
+            } else {
+                null
+            },
+            color = MaterialTheme.colorScheme.onSurface.copy(
+                alpha = if (dimmed || task.done) 0.55f else 0.92f,
+            ),
+        )
     }
 }
 

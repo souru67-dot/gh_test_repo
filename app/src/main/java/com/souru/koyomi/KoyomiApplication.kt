@@ -12,7 +12,11 @@ import com.souru.koyomi.notifications.ReminderReceiver
 import com.souru.koyomi.widget.WidgetUpdateWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 /** Plain manual DI — the app is small enough not to need a framework. */
@@ -28,12 +32,25 @@ class KoyomiApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    @OptIn(FlowPreview::class)
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
         createNotificationChannel()
         // Keep widgets fresh across date rollover and calendar changes.
         WidgetUpdateWorker.schedule(this)
+        // Redraw widgets promptly when events or tasks change, instead of
+        // waiting for the periodic/content-trigger worker. `drop(1)` skips the
+        // replayed/initial emission so we don't redraw on every cold start;
+        // debounce coalesces the burst a single edit can produce.
+        appScope.launch {
+            merge(
+                container.calendarRepository.changes.drop(1),
+                container.taskRepository.changes.drop(1),
+            ).debounce(400).collect {
+                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+            }
+        }
         // (Re)schedule periodic calendar sync, following the setting live.
         appScope.launch {
             container.settingsRepository.syncIntervalMinutes.collect { minutes ->

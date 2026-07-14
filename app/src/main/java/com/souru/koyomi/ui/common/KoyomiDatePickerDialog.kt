@@ -3,7 +3,6 @@ package com.souru.koyomi.ui.common
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -43,8 +42,9 @@ fun KoyomiDatePickerDialog(
 ) {
     // usePlatformDefaultWidth = false: the platform's default dialog width is
     // narrower than the DatePicker's fixed ~360dp, which clipped the Saturday
-    // column. Let the surface size to the picker instead, with a horizontal
-    // scroll as a safety net on very narrow screens.
+    // column. Letting the surface size to the picker fixes that. NOTE: the
+    // picker must NOT be wrapped in a horizontalScroll — that hands it an
+    // infinite width constraint and its internal Row weights crash at measure.
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -59,8 +59,7 @@ fun KoyomiDatePickerDialog(
                 Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
-                        .horizontalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState()),
                 ) {
                     DatePicker(state = state)
                 }
