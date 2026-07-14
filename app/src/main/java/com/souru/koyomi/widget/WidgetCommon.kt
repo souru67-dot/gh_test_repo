@@ -377,8 +377,10 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
 }
 
 /**
- * Dots-only compact month for small composite widgets: weekday letters,
- * day numbers and a single calendar-color dot under days with events.
+ * Compact month for the composite 4x2 widget: a month label on top, weekday
+ * letters, then only the days of the current month (leading/trailing days
+ * from adjacent months are left blank). Days with events carry a single
+ * calendar-color dot; today is a filled circle.
  */
 @Composable
 fun GlanceMiniMonth(
@@ -388,7 +390,39 @@ fun GlanceMiniMonth(
 ) {
     val today = LocalDate.now()
     val locale = Locale.getDefault()
+    val monthLabel = if (locale.language == "ja") {
+        "${data.month.monthValue}月"
+    } else {
+        data.month.format(DateTimeFormatter.ofPattern("MMM", locale))
+    }
+    // Render only the weeks that actually contain a day of this month, so the
+    // grid isn't padded with empty rows once adjacent-month days are hidden.
+    val weeks = (0 until 6).filter { week ->
+        (0 until 7).any { YearMonth.from(data.days[week * 7 + it]) == data.month }
+    }
     Column(modifier = modifier) {
+        // Month header — small year alongside for context.
+        Row(
+            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = monthLabel,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+            Text(
+                text = data.month.year.toString(),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 8.sp,
+                ),
+                modifier = GlanceModifier.padding(start = 4.dp),
+            )
+        }
         Row(modifier = GlanceModifier.fillMaxWidth()) {
             for (day in orderedWeekDays(data.weekStart)) {
                 Text(
@@ -406,7 +440,7 @@ fun GlanceMiniMonth(
                 )
             }
         }
-        for (week in 0 until 6) {
+        for (week in weeks) {
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -414,13 +448,17 @@ fun GlanceMiniMonth(
             ) {
                 for (i in 0 until 7) {
                     val date = data.days[week * 7 + i]
-                    MiniDayCell(
-                        context = context,
-                        date = date,
-                        inMonth = YearMonth.from(date) == data.month,
-                        isToday = date == today,
-                        dotColor = data.dayEvents[date]?.firstOrNull()?.second,
-                    )
+                    if (YearMonth.from(date) == data.month) {
+                        MiniDayCell(
+                            context = context,
+                            date = date,
+                            isToday = date == today,
+                            dotColor = data.dayEvents[date]?.firstOrNull()?.second,
+                        )
+                    } else {
+                        // Adjacent-month day: keep the column, show nothing.
+                        Box(modifier = GlanceModifier.defaultWeight()) {}
+                    }
                 }
             }
         }
@@ -431,12 +469,10 @@ fun GlanceMiniMonth(
 private fun androidx.glance.layout.RowScope.MiniDayCell(
     context: Context,
     date: LocalDate,
-    inMonth: Boolean,
     isToday: Boolean,
     dotColor: Int?,
 ) {
     val dayColor = when {
-        !inMonth -> GlanceTheme.colors.outline
         isToday -> GlanceTheme.colors.onPrimary
         JapaneseHolidays.isRedDay(date) -> WidgetSundayColor
         date.dayOfWeek == DayOfWeek.SATURDAY -> WidgetSaturdayColor
@@ -451,11 +487,11 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
         Box(
             modifier = if (isToday) {
                 GlanceModifier
-                    .size(14.dp)
+                    .size(15.dp)
                     .background(GlanceTheme.colors.primary)
-                    .cornerRadius(7.dp)
+                    .cornerRadius(8.dp)
             } else {
-                GlanceModifier.size(14.dp)
+                GlanceModifier.size(15.dp)
             },
             contentAlignment = Alignment.Center,
         ) {
@@ -463,22 +499,25 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
                 text = date.dayOfMonth.toString(),
                 style = TextStyle(
                     color = dayColor,
-                    fontSize = 8.sp,
+                    fontSize = 9.sp,
                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Center,
                 ),
             )
         }
-        if (dotColor != null && inMonth) {
-            Box(
-                modifier = GlanceModifier
-                    .size(3.dp)
-                    .background(eventColorProvider(dotColor))
-                    .cornerRadius(2.dp),
-            ) {}
-        } else {
-            Spacer(modifier = GlanceModifier.size(3.dp))
-        }
+        // A calendar-color dot marks days that have events.
+        Box(
+            modifier = GlanceModifier
+                .size(3.dp)
+                .cornerRadius(2.dp)
+                .then(
+                    if (dotColor != null) {
+                        GlanceModifier.background(eventColorProvider(dotColor))
+                    } else {
+                        GlanceModifier
+                    },
+                ),
+        ) {}
     }
 }
 
