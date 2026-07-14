@@ -475,7 +475,8 @@ private fun DayCell(
 @Composable
 private fun TaskChip(task: Task, dimmed: Boolean) {
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val solid = com.souru.koyomi.util.providerColor(task.color)
+    val solid = task.color
+        ?.let { com.souru.koyomi.util.providerColor(it) }
         ?.let { com.souru.koyomi.util.mutedColor(it, darkTheme) }
         ?: MaterialTheme.colorScheme.primary
     val alpha = if (dimmed) 0.55f else 1f
