@@ -30,6 +30,28 @@ object Kyureki {
         return ROKUYO[(lunar.month + lunar.day) % 6]
     }
 
+    /** 二十四節気, indexed by (solar longitude / 15): 0°=春分 … 315°=立春. */
+    private val SEKKI = listOf(
+        "春分", "清明", "穀雨", "立夏", "小満", "芒種",
+        "夏至", "小暑", "大暑", "立秋", "処暑", "白露",
+        "秋分", "寒露", "霜降", "立冬", "小雪", "大雪",
+        "冬至", "小寒", "大寒", "立春", "雨水", "啓蟄",
+    )
+
+    /**
+     * The 二十四節気 (24 solar term) name if [date] is the day the sun reaches a
+     * 15° longitude multiple in JST; otherwise null. Uses the same astronomy
+     * as the 旧暦 conversion. Accurate for 1900..2099.
+     */
+    fun solarTermFor(date: LocalDate): String? {
+        if (date.year < 1900 || date.year > 2099) return null
+        val startJde = jdeAtJstMidnight(date)
+        val longitude = sunLongitude(startJde)
+        val target = ((floor(longitude / 15.0).toInt() + 1) * 15) % 360
+        val termDate = solarTermJstDate(startJde, target)
+        return if (termDate == date) SEKKI[target / 15] else null
+    }
+
     private val cache = ConcurrentHashMap<Long, LunarDate>()
 
     fun lunarDateFor(date: LocalDate): LunarDate? {

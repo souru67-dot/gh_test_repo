@@ -128,6 +128,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 checked = state.showRokuyo,
                 onChange = viewModel::setShowRokuyo,
             )
+            SwitchRow(
+                label = stringResource(R.string.settings_solar_terms),
+                checked = state.showSolarTerms,
+                onChange = viewModel::setShowSolarTerms,
+            )
 
             SectionLabel(stringResource(R.string.settings_theme_pack))
             for (pack in com.souru.koyomi.data.ThemePack.entries) {

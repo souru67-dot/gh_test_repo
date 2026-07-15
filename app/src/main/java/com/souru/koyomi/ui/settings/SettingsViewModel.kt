@@ -38,6 +38,7 @@ data class SettingsUiState(
     val themePack: ThemePack = ThemePack.SUMI,
     val showWeekNumbers: Boolean = false,
     val showRokuyo: Boolean = false,
+    val showSolarTerms: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -92,7 +93,8 @@ class SettingsViewModel(
         },
         settingsRepository.hiddenCalendarIds,
         calendars,
-    ) { base, extras, hidden, calendars ->
+        settingsRepository.showSolarTerms,
+    ) { base, extras, hidden, calendars, solarTerms ->
         base.copy(
             calendars = calendars,
             hiddenCalendarIds = hidden,
@@ -101,6 +103,7 @@ class SettingsViewModel(
             themePack = extras.themePack,
             showWeekNumbers = extras.showWeekNumbers,
             showRokuyo = extras.showRokuyo,
+            showSolarTerms = solarTerms,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -157,6 +160,10 @@ class SettingsViewModel(
 
     fun setShowRokuyo(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowRokuyo(enabled) }
+    }
+
+    fun setShowSolarTerms(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowSolarTerms(enabled) }
     }
 
     /** Writes all shown calendars to [uri] as .ics; -1 on failure. */

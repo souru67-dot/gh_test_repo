@@ -75,6 +75,7 @@ import java.util.Locale
 fun DaySheetContent(
     date: LocalDate,
     rokuyo: String?,
+    solarTerm: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     calendars: List<CalendarInfo>,
@@ -101,6 +102,7 @@ fun DaySheetContent(
             DayEventList(
                 date = date,
                 rokuyo = rokuyo,
+                solarTerm = solarTerm,
                 events = events,
                 tasks = tasks,
                 onEventClick = onEventClick,
@@ -128,6 +130,7 @@ fun DaySheetContent(
 private fun DayEventList(
     date: LocalDate,
     rokuyo: String?,
+    solarTerm: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     onEventClick: (EventInstance) -> Unit,
@@ -165,6 +168,14 @@ private fun DayEventList(
                     text = holidayName,
                     style = MaterialTheme.typography.labelMedium,
                     color = calendarColors.sunday,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            if (solarTerm != null) {
+                Text(
+                    text = solarTerm,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }

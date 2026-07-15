@@ -101,6 +101,7 @@ fun MonthScreen(
     val multiDayBars by viewModel.multiDayBars.collectAsStateWithLifecycle()
     val showWeekNumbers by viewModel.showWeekNumbers.collectAsStateWithLifecycle()
     val showRokuyo by viewModel.showRokuyo.collectAsStateWithLifecycle()
+    val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -207,6 +208,11 @@ fun MonthScreen(
                 } else {
                     null
                 },
+                solarTerm = if (showSolarTerms) {
+                    com.souru.koyomi.data.rokuyo.Kyureki.solarTermFor(selectedDate)
+                } else {
+                    null
+                },
                 events = state.eventsByDay[selectedDate].orEmpty(),
                 tasks = state.tasksByDay[selectedDate].orEmpty(),
                 calendars = state.calendars,
@@ -289,6 +295,7 @@ fun MonthScreen(
                     multiDayBars = multiDayBars,
                     showWeekNumbers = showWeekNumbers,
                     showRokuyo = showRokuyo,
+                    showSolarTerms = showSolarTerms,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
@@ -323,6 +330,7 @@ fun MonthScreen(
                         multiDayBars = multiDayBars,
                         showWeekNumbers = showWeekNumbers,
                         showRokuyo = showRokuyo,
+                        showSolarTerms = showSolarTerms,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),
@@ -482,6 +490,7 @@ private fun VerticalMonthList(
     multiDayBars: Boolean,
     showWeekNumbers: Boolean,
     showRokuyo: Boolean,
+    showSolarTerms: Boolean,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
@@ -508,6 +517,7 @@ private fun VerticalMonthList(
                 multiDayBars = multiDayBars,
                 showWeekNumbers = showWeekNumbers,
                 showRokuyo = showRokuyo,
+                showSolarTerms = showSolarTerms,
                 // Same cell density as the pager: a fixed compact height made
                 // the chips overflow their cells in continuous scroll mode.
                 modifier = Modifier

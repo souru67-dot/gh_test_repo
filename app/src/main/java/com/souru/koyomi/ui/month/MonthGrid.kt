@@ -184,6 +184,7 @@ fun MonthGrid(
     multiDayBars: Boolean = true,
     showWeekNumbers: Boolean = false,
     showRokuyo: Boolean = false,
+    showSolarTerms: Boolean = false,
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
@@ -213,6 +214,12 @@ fun MonthGrid(
     val rokuyoByDay = remember(days, showRokuyo) {
         if (showRokuyo) days.associateWith { Kyureki.rokuyoFor(it) } else emptyMap()
     }
+    val solarTermByDay = remember(days, showSolarTerms) {
+        if (showSolarTerms) days.associateWith { Kyureki.solarTermFor(it) } else emptyMap()
+    }
+    // A calendar sub-line under each day (六曜 and/or 二十四節気); reserved with
+    // a fixed height so multi-day bars stay aligned even on days without a term.
+    val subLine = showRokuyo || showSolarTerms
     val today = LocalDate.now()
     val dragState = remember { EventDragState() }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -270,6 +277,8 @@ fun MonthGrid(
                                 barLanes = barLanes,
                                 tasks = tasksByDay[date].orEmpty(),
                                 rokuyo = rokuyoByDay[date],
+                                solarTerm = solarTermByDay[date],
+                                reserveSubLine = subLine,
                                 onSelect = onSelect,
                                 onLongPress = onLongPress,
                                 dragState = dragState,
@@ -285,8 +294,9 @@ fun MonthGrid(
                         }
                     }
                     // Continuous stripes for multi-day events, over the cells.
-                    // They start below the day number (and the 六曜 line if shown).
-                    val barTop = if (showRokuyo) 38.dp else 27.dp
+                    // They start below the day number (and the calendar sub-line
+                    // if 六曜/二十四節気 is shown).
+                    val barTop = if (subLine) 38.dp else 27.dp
                     for (segment in shownSegments) {
                         MultiDayBar(
                             segment = segment,
@@ -352,6 +362,8 @@ private fun DayCell(
     barLanes: Int,
     tasks: List<Task>,
     rokuyo: String?,
+    solarTerm: String?,
+    reserveSubLine: Boolean,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
     dragState: EventDragState,
@@ -412,16 +424,33 @@ private fun DayCell(
             )
         }
 
-        if (rokuyo != null) {
-            Text(
-                text = rokuyo,
-                fontSize = 7.sp,
-                lineHeight = 9.sp,
-                maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (inCurrentMonth) 0.85f else 0.4f,
-                ),
-            )
+        // Sub-line: 二十四節気 takes precedence (rare, notable, 朱), otherwise 六曜.
+        // Fixed height keeps every cell — and the bars above them — aligned.
+        if (reserveSubLine) {
+            Box(
+                modifier = Modifier.height(10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                val termLabel = solarTerm
+                val label = termLabel ?: rokuyo
+                if (label != null) {
+                    Text(
+                        text = label,
+                        fontSize = 7.sp,
+                        lineHeight = 9.sp,
+                        maxLines = 1,
+                        color = if (termLabel != null) {
+                            MaterialTheme.colorScheme.tertiary.copy(
+                                alpha = if (inCurrentMonth) 1f else 0.4f,
+                            )
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = if (inCurrentMonth) 0.85f else 0.4f,
+                            )
+                        },
+                    )
+                }
+            }
         }
 
         // Space reserved for the week's multi-day bars drawn above the cells,

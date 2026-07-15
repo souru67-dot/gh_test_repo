@@ -83,7 +83,10 @@ class SearchViewModel(
     }
 
     companion object {
-        private const val AGENDA_DAYS = 60L
+        // ~13 months so the blank-query agenda doubles as "everything I've
+        // registered up to about a year ahead" — a browsable reminder of your
+        // own upcoming events, titles included.
+        private const val AGENDA_DAYS = 397L
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

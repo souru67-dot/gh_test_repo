@@ -99,6 +99,7 @@
     <string name="pack_momiji">Autumn Maple</string>
     <string name="settings_week_numbers">Show week numbers</string>
     <string name="settings_rokuyo">Show rokuyō (Japanese lucky days)</string>
+    <string name="settings_solar_terms">Show 24 solar terms (risshun, geshi…)</string>
     <string name="settings_calendars">Calendars to show</string>
 
     <!-- Data (ICS) -->

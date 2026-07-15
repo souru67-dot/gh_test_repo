@@ -37,6 +37,7 @@ class SettingsRepository(private val context: Context) {
         val THEME_PACK = stringPreferencesKey("theme_pack")
         val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
         val SHOW_ROKUYO = booleanPreferencesKey("show_rokuyo")
+        val SHOW_SOLAR_TERMS = booleanPreferencesKey("show_solar_terms")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -124,6 +125,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowRokuyo(enabled: Boolean) {
         context.dataStore.edit { it[Keys.SHOW_ROKUYO] = enabled }
+    }
+
+    /** Month view: 二十四節気 (立春・夏至...) on their day. */
+    val showSolarTerms: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_SOLAR_TERMS] ?: false
+    }
+
+    suspend fun setShowSolarTerms(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_SOLAR_TERMS] = enabled }
     }
 
     /** Calendars the user switched off in settings; their events are not shown. */

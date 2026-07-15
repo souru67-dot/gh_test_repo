@@ -71,6 +71,9 @@ class MonthViewModel(
     val showRokuyo: StateFlow<Boolean> = settingsRepository.showRokuyo
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val showSolarTerms: StateFlow<Boolean> = settingsRepository.showSolarTerms
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
     private val dataChanges = merge(
