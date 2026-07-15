@@ -75,6 +75,9 @@ class AgendaMonthWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(widgetBackground(look))
                 .cornerRadius(28.dp)
+                // Whole-widget tap opens today; the header, event rows and
+                // mini-month day cells (children) keep their own taps.
+                .clickable(actionStartActivity(openDayIntent(context, today.date)))
                 .padding(14.dp),
         ) {
             Column(

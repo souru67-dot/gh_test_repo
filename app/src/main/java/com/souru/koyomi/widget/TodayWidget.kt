@@ -92,6 +92,9 @@ class TodayWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(widgetBackground(look))
                 .cornerRadius(28.dp)
+                // Whole-widget tap opens today; event rows (children) take
+                // priority and open their own day.
+                .clickable(actionStartActivity(openDayIntent(context, today.date)))
                 .padding(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

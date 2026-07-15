@@ -7,14 +7,17 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
+import java.time.LocalDate
 
 class MonthWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = MonthWidget()
@@ -51,6 +54,9 @@ class MonthWidget : GlanceAppWidget() {
                         .fillMaxSize()
                         .background(widgetBackground(look))
                         .cornerRadius(28.dp)
+                        // Whole-widget tap opens the app; day cells (children)
+                        // take priority and open their specific day.
+                        .clickable(actionStartActivity(openDayIntent(context, LocalDate.now())))
                         .padding(if (compact) 10.dp else 14.dp),
                 )
             }

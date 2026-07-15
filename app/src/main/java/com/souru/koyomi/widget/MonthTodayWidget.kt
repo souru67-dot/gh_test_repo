@@ -6,8 +6,10 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -18,6 +20,7 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import com.souru.koyomi.R
+import java.time.LocalDate
 
 private const val MAX_EVENTS = 3
 
@@ -57,6 +60,9 @@ class MonthTodayWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(widgetBackground(look))
                 .cornerRadius(28.dp)
+                // Whole-widget tap opens the app; day cells and event rows
+                // (children) keep their own, more specific taps.
+                .clickable(actionStartActivity(openDayIntent(context, LocalDate.now())))
                 .padding(14.dp),
         ) {
             GlanceMonthCalendar(

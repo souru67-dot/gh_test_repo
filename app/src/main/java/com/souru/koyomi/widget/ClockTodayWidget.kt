@@ -6,8 +6,10 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -60,6 +62,9 @@ class ClockTodayWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(widgetBackground(look))
                 .cornerRadius(28.dp)
+                // Whole-widget tap opens today; the clock and event rows
+                // (children) keep their own taps.
+                .clickable(actionStartActivity(openDayIntent(context, java.time.LocalDate.now())))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
