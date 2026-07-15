@@ -107,9 +107,62 @@ fun MonthScreen(
     var detailInstance by remember { mutableStateOf<EventInstance?>(null) }
     var detail by remember { mutableStateOf<EventDetails?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
-    var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
     var pendingDuplicate by remember { mutableStateOf<EventInstance?>(null) }
+    var pendingRecurringMove by remember { mutableStateOf<PendingMove?>(null) }
     var showMonthJump by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+
+    // Whether an event's calendar accepts edits (read-only calendars can't be
+    // dragged). Recomputed only when the calendar list changes.
+    val writableCalendarIds = remember(state.calendars) {
+        state.calendars.filter { it.isWritable }.map { it.id }.toSet()
+    }
+
+    // Drop router: copy is always a new single event; a move on a recurring
+    // series first asks for scope (this one / all).
+    fun handleDrop(event: EventInstance, target: LocalDate, copy: Boolean) {
+        if (copy) {
+            viewModel.dragCopy(event, target)
+            return
+        }
+        if (target == event.startDate) return
+        scope.launch {
+            val details = viewModel.loadDetails(event.eventId)
+            if (!details?.rrule.isNullOrBlank()) {
+                pendingRecurringMove = PendingMove(event, target)
+            } else {
+                viewModel.dragMoveAll(event, target)
+            }
+        }
+    }
+
+    // Drag feedback: snackbar with an undo action for move/copy.
+    val undoLabel = stringResource(R.string.undo)
+    val dragDatePattern = stringResource(R.string.drag_date_pattern)
+    LaunchedEffect(Unit) {
+        viewModel.dragEvents.collect { ev ->
+            val formatter = java.time.format.DateTimeFormatter
+                .ofPattern(dragDatePattern, Locale.getDefault())
+            val (message, undoable) = when (ev) {
+                is MonthViewModel.DragEvent.Moved ->
+                    context.getString(R.string.drag_moved, ev.target.format(formatter)) to true
+                is MonthViewModel.DragEvent.Copied ->
+                    context.getString(R.string.drag_copied, ev.target.format(formatter)) to true
+                MonthViewModel.DragEvent.Failed ->
+                    context.getString(R.string.drag_failed) to false
+                MonthViewModel.DragEvent.NotEditable ->
+                    context.getString(R.string.not_editable) to false
+            }
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = if (undoable) undoLabel else null,
+                duration = androidx.compose.material3.SnackbarDuration.Short,
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                viewModel.undoLastDrag()
+            }
+        }
+    }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -173,6 +226,7 @@ fun MonthScreen(
 
     BottomSheetScaffold(
         scaffoldState = rememberBottomSheetScaffoldState(),
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         sheetPeekHeight = SheetPeekHeight,
         sheetDragHandle = {
             // Slim brand handle instead of the stock Material pill.
@@ -292,9 +346,9 @@ fun MonthScreen(
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
-                    onDropEvent = { event, days ->
-                        if (days != 0L) pendingDrop = PendingDrop(event, days)
-                    },
+                    canDragEvent = { it.calendarId in writableCalendarIds },
+                    onNotEditable = { viewModel.reportNotEditable() },
+                    onDropEvent = ::handleDrop,
                 )
             } else {
                 HorizontalPager(
@@ -317,9 +371,9 @@ fun MonthScreen(
                             viewModel.select(date)
                             onCreateEvent(date)
                         },
-                        onMoveEvent = { event, days ->
-                            if (days != 0L) pendingDrop = PendingDrop(event, days)
-                        },
+                        onDropEvent = ::handleDrop,
+                        canDragEvent = { it.calendarId in writableCalendarIds },
+                        onNotEditable = { viewModel.reportNotEditable() },
                         multiDayBars = multiDayBars,
                         showWeekNumbers = showWeekNumbers,
                         showRokuyo = showRokuyo,
@@ -369,15 +423,16 @@ fun MonthScreen(
         )
     }
 
-    pendingDrop?.let { drop ->
+    // Moving a recurring event: choose the scope (Google Calendar convention).
+    pendingRecurringMove?.let { move ->
         AlertDialog(
-            onDismissRequest = { pendingDrop = null },
-            title = { Text(stringResource(R.string.drop_title)) },
+            onDismissRequest = { pendingRecurringMove = null },
+            title = { Text(stringResource(R.string.move_recurring_title)) },
             text = {
                 Text(
                     stringResource(
-                        R.string.drop_message,
-                        drop.event.title.ifBlank { stringResource(R.string.untitled) },
+                        R.string.move_recurring_message,
+                        move.event.title.ifBlank { stringResource(R.string.untitled) },
                     ),
                 )
             },
@@ -385,17 +440,17 @@ fun MonthScreen(
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(
                         onClick = {
-                            viewModel.moveEvent(drop.event.eventId, drop.days)
-                            pendingDrop = null
+                            viewModel.dragMoveInstance(move.event, move.target)
+                            pendingRecurringMove = null
                         },
-                    ) { Text(stringResource(R.string.drop_move)) }
+                    ) { Text(stringResource(R.string.move_this_occurrence)) }
                     TextButton(
                         onClick = {
-                            viewModel.duplicateEventTo(drop.event.eventId, drop.days)
-                            pendingDrop = null
+                            viewModel.dragMoveAll(move.event, move.target)
+                            pendingRecurringMove = null
                         },
-                    ) { Text(stringResource(R.string.drop_copy)) }
-                    TextButton(onClick = { pendingDrop = null }) {
+                    ) { Text(stringResource(R.string.move_all_occurrences)) }
+                    TextButton(onClick = { pendingRecurringMove = null }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }
@@ -469,7 +524,7 @@ fun MonthScreen(
 
 private data class PendingDelete(val event: EventInstance, val isRecurring: Boolean)
 
-private data class PendingDrop(val event: EventInstance, val days: Long)
+private data class PendingMove(val event: EventInstance, val target: LocalDate)
 
 /** Seamless vertically scrolling months (settings option). */
 @Composable
@@ -485,7 +540,9 @@ private fun VerticalMonthList(
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
-    onDropEvent: (EventInstance, Long) -> Unit,
+    canDragEvent: (EventInstance) -> Boolean,
+    onNotEditable: () -> Unit,
+    onDropEvent: (event: EventInstance, target: LocalDate, copy: Boolean) -> Unit,
 ) {
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(count = MonthPages.COUNT, key = { it }) { page ->
@@ -504,7 +561,9 @@ private fun VerticalMonthList(
                     viewModel.select(date)
                     onCreateEvent(date)
                 },
-                onMoveEvent = onDropEvent,
+                onDropEvent = onDropEvent,
+                canDragEvent = canDragEvent,
+                onNotEditable = onNotEditable,
                 multiDayBars = multiDayBars,
                 showWeekNumbers = showWeekNumbers,
                 showRokuyo = showRokuyo,

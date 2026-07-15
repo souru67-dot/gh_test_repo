@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import com.souru.koyomi.data.holiday.JapaneseHolidays
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.data.task.Task
@@ -94,15 +96,22 @@ fun WeekdayHeader(
     }
 }
 
+/** Height of the copy drop-zone shown at the top of the grid while dragging. */
+private val CopyZoneHeight = 46.dp
+
 /** Drag & drop state shared between the grid and its chips. */
 private class EventDragState {
     var event by mutableStateOf<EventInstance?>(null)
     var sourceDate by mutableStateOf<LocalDate?>(null)
     var position by mutableStateOf(Offset.Zero)
 
+    /** Latched once the finger passes through the copy zone: drop = copy. */
+    var copyArmed by mutableStateOf(false)
+
     fun clear() {
         event = null
         sourceDate = null
+        copyArmed = false
     }
 }
 
@@ -178,9 +187,11 @@ fun MonthGrid(
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
-    onMoveEvent: (event: EventInstance, days: Long) -> Unit,
+    onDropEvent: (event: EventInstance, target: LocalDate, copy: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
+    canDragEvent: (EventInstance) -> Boolean = { true },
+    onNotEditable: () -> Unit = {},
     multiDayBars: Boolean = true,
     showWeekNumbers: Boolean = false,
     showRokuyo: Boolean = false,
@@ -215,16 +226,22 @@ fun MonthGrid(
     }
     val today = LocalDate.now()
     val dragState = remember { EventDragState() }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
     val railPx = if (showWeekNumbers) {
-        with(LocalDensity.current) { WeekNumberRailWidth.toPx() }
+        with(density) { WeekNumberRailWidth.toPx() }
     } else {
         0f
     }
+    val copyZonePx = with(density) { CopyZoneHeight.toPx() }
 
     fun dateAt(position: Offset): LocalDate? {
         if (gridSize.width == 0 || gridSize.height == 0) return null
+        // The copy zone floats over the top of the grid during a drag; a drop
+        // there is not a day target (it only arms copy mode).
+        if (dragState.event != null && position.y < copyZonePx) return null
         val cellsWidth = gridSize.width - railPx
         if (cellsWidth <= 0f) return null
         val col = ((position.x - railPx) / (cellsWidth / 7f)).toInt().coerceIn(0, 6)
@@ -273,9 +290,13 @@ fun MonthGrid(
                                 onSelect = onSelect,
                                 onLongPress = onLongPress,
                                 dragState = dragState,
+                                haptics = haptics,
+                                canDragEvent = canDragEvent,
+                                onNotEditable = onNotEditable,
+                                copyZonePx = copyZonePx,
                                 gridCoords = { gridCoords },
-                                onDrop = { event, source, target ->
-                                    onMoveEvent(event, ChronoUnit.DAYS.between(source, target))
+                                onDrop = { event, target, copy ->
+                                    onDropEvent(event, target, copy)
                                 },
                                 dropTargetOf = ::dateAt,
                                 modifier = Modifier
@@ -303,6 +324,17 @@ fun MonthGrid(
             }
         }
 
+        // Copy drop-zone: appears at the top only while dragging. Passing the
+        // finger through it latches copy mode (the ghost then shows a +).
+        dragState.event?.let {
+            CopyZone(
+                armed = dragState.copyArmed,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CopyZoneHeight),
+            )
+        }
+
         // Floating chip that follows the finger while dragging.
         dragState.event?.let { event ->
             Box(
@@ -313,9 +345,41 @@ fun MonthGrid(
                     )
                 },
             ) {
-                DragGhostChip(event)
+                DragGhostChip(event, copyArmed = dragState.copyArmed)
             }
         }
+    }
+}
+
+/** The "drop here to copy" bar shown at the top of the grid during a drag. */
+@Composable
+private fun CopyZone(armed: Boolean, modifier: Modifier = Modifier) {
+    val container = if (armed) {
+        MaterialTheme.colorScheme.tertiary
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val content = if (armed) {
+        MaterialTheme.colorScheme.onTertiary
+    } else {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    }
+    Box(
+        modifier = modifier
+            .padding(6.dp)
+            .background(container, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = if (armed) {
+                stringResource(com.souru.koyomi.R.string.drop_copy_armed)
+            } else {
+                stringResource(com.souru.koyomi.R.string.drop_copy_zone)
+            },
+            color = content,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 
@@ -355,8 +419,12 @@ private fun DayCell(
     onSelect: (LocalDate) -> Unit,
     onLongPress: (LocalDate) -> Unit,
     dragState: EventDragState,
+    haptics: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    canDragEvent: (EventInstance) -> Boolean,
+    onNotEditable: () -> Unit,
+    copyZonePx: Float,
     gridCoords: () -> LayoutCoordinates?,
-    onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
+    onDrop: (event: EventInstance, target: LocalDate, copy: Boolean) -> Unit,
     dropTargetOf: (Offset) -> LocalDate?,
     modifier: Modifier = Modifier,
 ) {
@@ -446,6 +514,10 @@ private fun DayCell(
                     cellDate = date,
                     dimmed = !inCurrentMonth,
                     dragState = dragState,
+                    haptics = haptics,
+                    canDragEvent = canDragEvent,
+                    onNotEditable = onNotEditable,
+                    copyZonePx = copyZonePx,
                     gridCoords = gridCoords,
                     onDrop = onDrop,
                     dropTargetOf = dropTargetOf,
@@ -568,8 +640,12 @@ private fun DraggableEventChip(
     cellDate: LocalDate,
     dimmed: Boolean,
     dragState: EventDragState,
+    haptics: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    canDragEvent: (EventInstance) -> Boolean,
+    onNotEditable: () -> Unit,
+    copyZonePx: Float,
     gridCoords: () -> LayoutCoordinates?,
-    onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
+    onDrop: (event: EventInstance, target: LocalDate, copy: Boolean) -> Unit,
     dropTargetOf: (Offset) -> LocalDate?,
 ) {
     var chipCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -585,11 +661,24 @@ private fun DraggableEventChip(
             .pointerInput(event.eventId, event.begin) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { startOffset ->
+                        // Read-only calendars (holidays, subscriptions) cannot
+                        // be edited — reject the drag with a distinct buzz.
+                        if (!canDragEvent(event)) {
+                            haptics.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                            )
+                            onNotEditable()
+                            return@detectDragGesturesAfterLongPress
+                        }
                         val grid = gridCoords()
                         val chip = chipCoords
                         if (grid != null && chip != null && grid.isAttached && chip.isAttached) {
+                            haptics.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                            )
                             dragState.event = event
                             dragState.sourceDate = cellDate
+                            dragState.copyArmed = false
                             dragState.position = grid.localPositionOf(chip, startOffset)
                         }
                     },
@@ -597,14 +686,26 @@ private fun DraggableEventChip(
                         change.consume()
                         if (dragState.event != null) {
                             dragState.position += dragAmount
+                            // Latch copy mode once the finger enters the zone.
+                            if (dragState.position.y in 0f..copyZonePx) {
+                                if (!dragState.copyArmed) {
+                                    dragState.copyArmed = true
+                                    haptics.performHapticFeedback(
+                                        androidx.compose.ui.hapticfeedback
+                                            .HapticFeedbackType.TextHandleMove,
+                                    )
+                                }
+                            }
                         }
                     },
                     onDragEnd = {
                         val dragged = dragState.event
-                        val source = dragState.sourceDate
                         val target = dropTargetOf(dragState.position)
-                        if (dragged != null && source != null && target != null) {
-                            onDrop(dragged, source, target)
+                        if (dragged != null && target != null) {
+                            haptics.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                            )
+                            onDrop(dragged, target, dragState.copyArmed)
                         }
                         dragState.clear()
                     },
@@ -661,19 +762,44 @@ private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolea
 }
 
 @Composable
-private fun DragGhostChip(event: EventInstance) {
+private fun DragGhostChip(event: EventInstance, copyArmed: Boolean) {
     val background = eventColor(event)
     val textColor = if (background.luminance() > 0.5f) {
         Color.Black.copy(alpha = 0.8f)
     } else {
         Color.White
     }
-    Box(
-        modifier = Modifier.background(background, RoundedCornerShape(6.dp)),
+    Row(
+        modifier = Modifier
+            // Lifted: a shadow + slight scale so the chip reads as "picked up".
+            .graphicsLayer {
+                scaleX = 1.05f
+                scaleY = 1.05f
+                shadowElevation = 8.dp.toPx()
+                shape = RoundedCornerShape(6.dp)
+                clip = true
+            }
+            .background(background, RoundedCornerShape(6.dp)),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (copyArmed) {
+            // "+" badge marks copy mode, matching the armed copy zone.
+            Text(
+                text = "＋",
+                modifier = Modifier.padding(start = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+            )
+        }
         Text(
             text = event.title.ifBlank { " " },
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(
+                start = if (copyArmed) 4.dp else 10.dp,
+                end = 10.dp,
+                top = 5.dp,
+                bottom = 5.dp,
+            ),
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             color = textColor,

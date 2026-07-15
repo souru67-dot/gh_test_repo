@@ -135,6 +135,18 @@
     <string name="drop_message">「%1$s」をどうしますか?</string>
     <string name="drop_move">ここに移動</string>
     <string name="drop_copy">ここに複製</string>
+    <string name="drop_copy_zone">ここにドロップで複製</string>
+    <string name="drop_copy_armed">複製モード ＋</string>
+    <string name="drag_date_pattern">M月d日</string>
+    <string name="drag_moved">%1$sに移動しました</string>
+    <string name="drag_copied">%1$sに複製しました</string>
+    <string name="drag_failed">操作に失敗しました</string>
+    <string name="not_editable">このカレンダーは編集できません</string>
+    <string name="undo">元に戻す</string>
+    <string name="move_recurring_title">繰り返しの予定を移動</string>
+    <string name="move_recurring_message">「%1$s」は繰り返しの予定です。移動する範囲を選んでください。</string>
+    <string name="move_this_occurrence">この予定のみ</string>
+    <string name="move_all_occurrences">すべての予定</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">月カレンダー</string>
