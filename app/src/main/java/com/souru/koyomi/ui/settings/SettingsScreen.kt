@@ -133,6 +133,21 @@ fun SettingsScreen(onBack: () -> Unit) {
                 checked = state.showSolarTerms,
                 onChange = viewModel::setShowSolarTerms,
             )
+            SwitchRow(
+                label = stringResource(R.string.settings_lunar_date),
+                checked = state.showLunarDate,
+                onChange = viewModel::setShowLunarDate,
+            )
+            SwitchRow(
+                label = stringResource(R.string.settings_moon_age),
+                checked = state.showMoonAge,
+                onChange = viewModel::setShowMoonAge,
+            )
+            SwitchRow(
+                label = stringResource(R.string.settings_japanese_era),
+                checked = state.useJapaneseEra,
+                onChange = viewModel::setUseJapaneseEra,
+            )
 
             SectionLabel(stringResource(R.string.settings_theme_pack))
             for (pack in com.souru.koyomi.data.ThemePack.entries) {

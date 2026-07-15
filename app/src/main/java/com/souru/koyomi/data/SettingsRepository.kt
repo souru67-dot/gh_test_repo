@@ -38,6 +38,9 @@ class SettingsRepository(private val context: Context) {
         val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
         val SHOW_ROKUYO = booleanPreferencesKey("show_rokuyo")
         val SHOW_SOLAR_TERMS = booleanPreferencesKey("show_solar_terms")
+        val SHOW_LUNAR_DATE = booleanPreferencesKey("show_lunar_date")
+        val SHOW_MOON_AGE = booleanPreferencesKey("show_moon_age")
+        val USE_JAPANESE_ERA = booleanPreferencesKey("use_japanese_era")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -134,6 +137,33 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowSolarTerms(enabled: Boolean) {
         context.dataStore.edit { it[Keys.SHOW_SOLAR_TERMS] = enabled }
+    }
+
+    /** Day sheet: 旧暦 (lunar) date, e.g. 神無月十五日. */
+    val showLunarDate: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_LUNAR_DATE] ?: false
+    }
+
+    suspend fun setShowLunarDate(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_LUNAR_DATE] = enabled }
+    }
+
+    /** Day sheet: 月齢 (moon age / phase). */
+    val showMoonAge: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_MOON_AGE] ?: false
+    }
+
+    suspend fun setShowMoonAge(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_MOON_AGE] = enabled }
+    }
+
+    /** Header year shown as a Japanese era (令和8年) instead of Gregorian. */
+    val useJapaneseEra: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.USE_JAPANESE_ERA] ?: false
+    }
+
+    suspend fun setUseJapaneseEra(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.USE_JAPANESE_ERA] = enabled }
     }
 
     /** Calendars the user switched off in settings; their events are not shown. */

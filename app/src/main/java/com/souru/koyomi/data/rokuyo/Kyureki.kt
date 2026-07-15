@@ -52,6 +52,57 @@ object Kyureki {
         return if (termDate == date) SEKKI[target / 15] else null
     }
 
+    /** 和風月名 (traditional lunar month names), index 0 = 睦月 (month 1). */
+    private val WAFU_MONTH = listOf(
+        "睦月", "如月", "弥生", "卯月", "皐月", "水無月",
+        "文月", "葉月", "長月", "神無月", "霜月", "師走",
+    )
+
+    /** 旧暦 label like "神無月 十五日" (閏 prefix for a leap month), or null. */
+    fun lunarDateLabel(date: LocalDate): String? {
+        val lunar = lunarDateFor(date) ?: return null
+        val month = WAFU_MONTH[(lunar.month - 1).coerceIn(0, 11)]
+        val prefix = if (lunar.isLeapMonth) "閏" else ""
+        return "$prefix$month${kanjiDay(lunar.day)}"
+    }
+
+    private val KANJI_DIGIT = listOf("", "一", "二", "三", "四", "五", "六", "七", "八", "九")
+
+    /** 1..31 as a 漢数字 day, e.g. 15 → 十五日, 21 → 二十一日. */
+    private fun kanjiDay(day: Int): String {
+        val d = day.coerceIn(1, 31)
+        val body = when {
+            d < 10 -> KANJI_DIGIT[d]
+            d == 10 -> "十"
+            d < 20 -> "十" + KANJI_DIGIT[d - 10]
+            d % 10 == 0 -> KANJI_DIGIT[d / 10] + "十"
+            else -> KANJI_DIGIT[d / 10] + "十" + KANJI_DIGIT[d % 10]
+        }
+        return body + "日"
+    }
+
+    /**
+     * Moon age (日) at JST noon of [date]: days elapsed since the previous new
+     * moon. 0 ≈ 新月, ~7.4 ≈ 上弦, ~14.8 ≈ 満月, ~22.1 ≈ 下弦. 1900..2099.
+     */
+    fun moonAgeFor(date: LocalDate): Double? {
+        if (date.year < 1900 || date.year > 2099) return null
+        val jdeNoon = jdeAtJstMidnight(date) + 0.5
+        var k = floor((date.toEpochDay() - NEW_MOON_2000_EPOCH_DAY) / SYNODIC_MONTH)
+        while (newMoonJde(k) > jdeNoon) k -= 1
+        while (newMoonJde(k + 1) <= jdeNoon) k += 1
+        return jdeNoon - newMoonJde(k)
+    }
+
+    /** A phase name when [age] is near a quarter, else null (show the number). */
+    fun moonPhaseName(age: Double): String? = when {
+        age < 1.0 -> "新月"
+        age in 6.9..7.9 -> "上弦"
+        age in 14.2..15.4 -> "満月"
+        age in 21.6..22.6 -> "下弦"
+        else -> null
+    }
+
     private val cache = ConcurrentHashMap<Long, LunarDate>()
 
     fun lunarDateFor(date: LocalDate): LunarDate? {

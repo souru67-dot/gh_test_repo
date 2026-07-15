@@ -74,6 +74,15 @@ class MonthViewModel(
     val showSolarTerms: StateFlow<Boolean> = settingsRepository.showSolarTerms
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showMoonAge: StateFlow<Boolean> = settingsRepository.showMoonAge
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val useJapaneseEra: StateFlow<Boolean> = settingsRepository.useJapaneseEra
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
     private val dataChanges = merge(

@@ -102,6 +102,9 @@ fun MonthScreen(
     val showWeekNumbers by viewModel.showWeekNumbers.collectAsStateWithLifecycle()
     val showRokuyo by viewModel.showRokuyo.collectAsStateWithLifecycle()
     val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
+    val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
+    val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
+    val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -190,6 +193,7 @@ fun MonthScreen(
         topBar = {
             MonthTopBar(
                 month = visibleMonth,
+                useJapaneseEra = useJapaneseEra,
                 onTodayClick = {
                     viewModel.select(LocalDate.now())
                     scope.launch { scrollToMonth(YearMonth.now()) }
@@ -210,6 +214,20 @@ fun MonthScreen(
                 },
                 solarTerm = if (showSolarTerms) {
                     com.souru.koyomi.data.rokuyo.Kyureki.solarTermFor(selectedDate)
+                } else {
+                    null
+                },
+                lunarDate = if (showLunarDate) {
+                    com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
+                } else {
+                    null
+                },
+                moonAge = if (showMoonAge) {
+                    com.souru.koyomi.data.rokuyo.Kyureki.moonAgeFor(selectedDate)?.let { age ->
+                        val name = com.souru.koyomi.data.rokuyo.Kyureki.moonPhaseName(age)
+                        val rounded = (kotlin.math.round(age * 10) / 10.0)
+                        if (name != null) "月齢$rounded・$name" else "月齢$rounded"
+                    }
                 } else {
                     null
                 },
@@ -532,6 +550,7 @@ private fun VerticalMonthList(
 @Composable
 private fun MonthTopBar(
     month: YearMonth,
+    useJapaneseEra: Boolean,
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -555,6 +574,7 @@ private fun MonthTopBar(
         ) {
             MonthTopBarContent(
                 month = month,
+                useJapaneseEra = useJapaneseEra,
                 onTodayClick = onTodayClick,
                 onOpenTimeline = onOpenTimeline,
                 onOpenSettings = onOpenSettings,
@@ -570,6 +590,7 @@ private fun MonthTopBar(
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     month: YearMonth,
+    useJapaneseEra: Boolean,
     onTodayClick: () -> Unit,
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -597,7 +618,11 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = month.year.toString(),
+            text = if (useJapaneseEra) {
+                com.souru.koyomi.util.JapaneseEraFormat.yearLabel(month.year, month.monthValue)
+            } else {
+                month.year.toString()
+            },
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 8.dp, bottom = 5.dp),

@@ -76,6 +76,8 @@ fun DaySheetContent(
     date: LocalDate,
     rokuyo: String?,
     solarTerm: String?,
+    lunarDate: String?,
+    moonAge: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     calendars: List<CalendarInfo>,
@@ -103,6 +105,8 @@ fun DaySheetContent(
                 date = date,
                 rokuyo = rokuyo,
                 solarTerm = solarTerm,
+                lunarDate = lunarDate,
+                moonAge = moonAge,
                 events = events,
                 tasks = tasks,
                 onEventClick = onEventClick,
@@ -126,11 +130,14 @@ fun DaySheetContent(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DayEventList(
     date: LocalDate,
     rokuyo: String?,
     solarTerm: String?,
+    lunarDate: String?,
+    moonAge: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
     onEventClick: (EventInstance) -> Unit,
@@ -171,28 +178,37 @@ private fun DayEventList(
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
-            if (solarTerm != null) {
-                Text(
-                    text = solarTerm,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-            if (rokuyo != null) {
-                Text(
-                    text = rokuyo,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onAdd) {
                 Icon(
                     imageVector = Icons.Filled.Add,
                     contentDescription = stringResource(R.string.add_event),
                 )
+            }
+        }
+
+        // 暦のラベル (二十四節気・六曜・旧暦・月齢): only what the user enabled,
+        // wrapping so any combination fits.
+        val almanac = buildList {
+            solarTerm?.let { add(it to MaterialTheme.colorScheme.tertiary) }
+            rokuyo?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            lunarDate?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            moonAge?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        if (almanac.isNotEmpty()) {
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for ((label, color) in almanac) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = color,
+                    )
+                }
             }
         }
 

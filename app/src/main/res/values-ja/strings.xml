@@ -99,6 +99,9 @@
     <string name="settings_week_numbers">週番号を表示</string>
     <string name="settings_rokuyo">六曜を表示(大安・仏滅など)</string>
     <string name="settings_solar_terms">二十四節気を表示(立春・夏至など)</string>
+    <string name="settings_lunar_date">旧暦の日付を表示</string>
+    <string name="settings_moon_age">月齢を表示</string>
+    <string name="settings_japanese_era">和暦(令和8年)で表示</string>
     <string name="settings_calendars">表示するカレンダー</string>
 
     <!-- Data (ICS) -->

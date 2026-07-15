@@ -39,6 +39,9 @@ data class SettingsUiState(
     val showWeekNumbers: Boolean = false,
     val showRokuyo: Boolean = false,
     val showSolarTerms: Boolean = false,
+    val showLunarDate: Boolean = false,
+    val showMoonAge: Boolean = false,
+    val useJapaneseEra: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -64,6 +67,13 @@ class SettingsViewModel(
         val showRokuyo: Boolean,
         val syncIntervalMinutes: Int,
         val widgetOpacityPercent: Int,
+    )
+
+    private data class AlmanacPrefs(
+        val showSolarTerms: Boolean,
+        val showLunarDate: Boolean,
+        val showMoonAge: Boolean,
+        val useJapaneseEra: Boolean,
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -93,8 +103,13 @@ class SettingsViewModel(
         },
         settingsRepository.hiddenCalendarIds,
         calendars,
-        settingsRepository.showSolarTerms,
-    ) { base, extras, hidden, calendars, solarTerms ->
+        combine(
+            settingsRepository.showSolarTerms,
+            settingsRepository.showLunarDate,
+            settingsRepository.showMoonAge,
+            settingsRepository.useJapaneseEra,
+        ) { terms, lunar, moon, era -> AlmanacPrefs(terms, lunar, moon, era) },
+    ) { base, extras, hidden, calendars, almanac ->
         base.copy(
             calendars = calendars,
             hiddenCalendarIds = hidden,
@@ -103,7 +118,10 @@ class SettingsViewModel(
             themePack = extras.themePack,
             showWeekNumbers = extras.showWeekNumbers,
             showRokuyo = extras.showRokuyo,
-            showSolarTerms = solarTerms,
+            showSolarTerms = almanac.showSolarTerms,
+            showLunarDate = almanac.showLunarDate,
+            showMoonAge = almanac.showMoonAge,
+            useJapaneseEra = almanac.useJapaneseEra,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -164,6 +182,18 @@ class SettingsViewModel(
 
     fun setShowSolarTerms(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowSolarTerms(enabled) }
+    }
+
+    fun setShowLunarDate(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowLunarDate(enabled) }
+    }
+
+    fun setShowMoonAge(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowMoonAge(enabled) }
+    }
+
+    fun setUseJapaneseEra(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setUseJapaneseEra(enabled) }
     }
 
     /** Writes all shown calendars to [uri] as .ics; -1 on failure. */
