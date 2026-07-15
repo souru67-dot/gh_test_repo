@@ -4,17 +4,15 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!--
-      こよみ brand mark (弐・障子格子): a month grid drawn like a shōji lattice.
-      藍 (indigo) lines on the washi background, with a single 朱 (vermilion)
-      cell marking "today". Kept within the adaptive-icon safe zone (24..84).
+      Monochrome (themed icon, Android 13+). The system tints this by its alpha,
+      so a single flat color is used; the lattice + today cell keep the mark
+      recognizable when wallpaper-themed.
     -->
-    <!-- 朱: today cell -->
     <path
-        android:fillColor="#B24A34"
+        android:fillColor="#1C1B18"
         android:pathData="M40,40h13v13h-13z" />
-    <!-- 藍: shōji lattice (4x4) -->
     <path
-        android:strokeColor="#294863"
+        android:strokeColor="#1C1B18"
         android:strokeWidth="2"
         android:strokeLineCap="butt"
         android:fillColor="#00000000"

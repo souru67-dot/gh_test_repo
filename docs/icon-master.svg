@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- こよみ Play Console icon master (弐・障子格子). Full-bleed 512×512;
+       Google Play applies its own rounded mask. -->
+  <rect width="512" height="512" fill="#F8F3EA"/>
+  <!-- 朱: today cell -->
+  <rect x="192" y="192" width="64" height="64" fill="#B24A34"/>
+  <!-- 藍: shōji lattice (4×4) -->
+  <g stroke="#294863" stroke-width="9" fill="none">
+    <path d="M128 128V384 M192 128V384 M256 128V384 M320 128V384 M384 128V384"/>
+    <path d="M128 128H384 M128 192H384 M128 256H384 M128 320H384 M128 384H384"/>
+  </g>
+</svg>
