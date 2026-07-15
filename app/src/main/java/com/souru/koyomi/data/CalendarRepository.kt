@@ -552,72 +552,9 @@ class CalendarRepository(private val context: Context) {
     }
 
     /** Drag & drop copy: duplicates an event, shifted by [days] whole days. */
-    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean =
-        duplicateEventReturningId(eventId, days) != null
-
-    /**
-     * Like [duplicateEventTo] but returns the created event's id (or null on
-     * failure) so callers can offer an "undo" that deletes the exact copy.
-     */
-    suspend fun duplicateEventReturningId(eventId: Long, days: Long): Long? {
-        val newId = duplicateEvent(eventId) ?: return null
-        if (days != 0L && !moveEventByDays(newId, days)) {
-            // Roll back the half-made copy so undo state stays consistent.
-            deleteEvent(newId)
-            return null
-        }
-        return newId
-    }
-
-    /**
-     * Moves a SINGLE occurrence of a recurring event by [days], keeping the
-     * rest of the series in place, by writing a confirmed exception at the
-     * original instance time with a shifted start. Returns success.
-     */
-    suspend fun moveEventInstanceByDays(
-        eventId: Long,
-        instanceBeginMs: Long,
-        days: Long,
-    ): Boolean = withContext(Dispatchers.IO) {
-        if (days == 0L) return@withContext true
-        val details = loadEventDetails(eventId) ?: return@withContext false
-        val newStart = if (details.allDay) {
-            instanceBeginMs + days * 86_400_000L
-        } else {
-            val zone = runCatching { ZoneId.of(details.timeZone) }
-                .getOrDefault(ZoneId.systemDefault())
-            Instant.ofEpochMilli(instanceBeginMs).atZone(zone)
-                .plusDays(days).toInstant().toEpochMilli()
-        }
-        writeInstanceStart(eventId, instanceBeginMs, newStart)
-    }
-
-    /**
-     * Undo helper for a single-occurrence move: puts the occurrence back to
-     * its original start ([instanceBeginMs] IS the original occurrence start).
-     */
-    suspend fun restoreEventInstance(eventId: Long, instanceBeginMs: Long): Boolean =
-        withContext(Dispatchers.IO) {
-            writeInstanceStart(eventId, instanceBeginMs, instanceBeginMs)
-        }
-
-    /** Writes a confirmed exception for one occurrence with a new DTSTART. */
-    private fun writeInstanceStart(
-        eventId: Long,
-        instanceBeginMs: Long,
-        newStartMs: Long,
-    ): Boolean {
-        if (!hasWritePermission()) return false
-        val values = ContentValues().apply {
-            put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceBeginMs)
-            put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
-            put(CalendarContract.Events.DTSTART, newStartMs)
-        }
-        val uri = android.net.Uri.withAppendedPath(
-            CalendarContract.Events.CONTENT_EXCEPTION_URI,
-            eventId.toString(),
-        )
-        return runCatching { resolver.insert(uri, values) != null }.getOrDefault(false)
+    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean {
+        val newId = duplicateEvent(eventId) ?: return false
+        return if (days == 0L) true else moveEventByDays(newId, days)
     }
 
     /** Copies an event (single copy at the same time; the copy does not repeat). */

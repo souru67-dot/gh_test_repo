@@ -17,7 +17,6 @@ import com.souru.koyomi.util.monthGridDays
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +28,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -150,79 +148,6 @@ class MonthViewModel(
     /** Month-view drag & drop: copy an event onto another day. */
     fun duplicateEventTo(eventId: Long, days: Long) {
         viewModelScope.launch { calendarRepository.duplicateEventTo(eventId, days) }
-    }
-
-    // ---- Drag & drop with snackbar + undo ----
-
-    /** One-shot UI feedback after a drag operation; consumed by the screen. */
-    sealed interface DragEvent {
-        data class Moved(val target: LocalDate) : DragEvent
-        data class Copied(val target: LocalDate) : DragEvent
-        data object Failed : DragEvent
-        data object NotEditable : DragEvent
-    }
-
-    private val _dragEvents = kotlinx.coroutines.channels.Channel<DragEvent>(
-        kotlinx.coroutines.channels.Channel.BUFFERED,
-    )
-    val dragEvents = _dragEvents.receiveAsFlow()
-
-    /** The reversal for the most recent successful drag, or null. */
-    private var pendingUndo: (suspend () -> Boolean)? = null
-
-    /** Move the whole event/series to [target] (keeps time of day). */
-    fun dragMoveAll(event: EventInstance, target: LocalDate) {
-        val days = ChronoUnit.DAYS.between(event.startDate, target)
-        if (days == 0L) return
-        viewModelScope.launch {
-            if (calendarRepository.moveEventByDays(event.eventId, days)) {
-                pendingUndo = { calendarRepository.moveEventByDays(event.eventId, -days) }
-                _dragEvents.send(DragEvent.Moved(target))
-            } else {
-                _dragEvents.send(DragEvent.Failed)
-            }
-        }
-    }
-
-    /** Move only the dragged occurrence of a recurring event to [target]. */
-    fun dragMoveInstance(event: EventInstance, target: LocalDate) {
-        val days = ChronoUnit.DAYS.between(event.startDate, target)
-        if (days == 0L) return
-        viewModelScope.launch {
-            if (calendarRepository.moveEventInstanceByDays(event.eventId, event.begin, days)) {
-                pendingUndo = {
-                    calendarRepository.restoreEventInstance(event.eventId, event.begin)
-                }
-                _dragEvents.send(DragEvent.Moved(target))
-            } else {
-                _dragEvents.send(DragEvent.Failed)
-            }
-        }
-    }
-
-    /** Copy the event onto [target] as a new, non-recurring event. */
-    fun dragCopy(event: EventInstance, target: LocalDate) {
-        val days = ChronoUnit.DAYS.between(event.startDate, target)
-        viewModelScope.launch {
-            val newId = calendarRepository.duplicateEventReturningId(event.eventId, days)
-            if (newId != null) {
-                pendingUndo = { calendarRepository.deleteEvent(newId) }
-                _dragEvents.send(DragEvent.Copied(target))
-            } else {
-                _dragEvents.send(DragEvent.Failed)
-            }
-        }
-    }
-
-    fun reportNotEditable() {
-        viewModelScope.launch { _dragEvents.send(DragEvent.NotEditable) }
-    }
-
-    /** Reverses the last successful move/copy. */
-    fun undoLastDrag() {
-        val undo = pendingUndo ?: return
-        pendingUndo = null
-        viewModelScope.launch { undo() }
     }
 
     /** Nudge the sync framework so remote Google Calendar changes come in. */
