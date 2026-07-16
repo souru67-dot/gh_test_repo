@@ -177,7 +177,7 @@ fun MonthGrid(
     eventsByDay: Map<LocalDate, List<EventInstance>>,
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
-    onLongPress: (LocalDate) -> Unit,
+    onCreateNew: (LocalDate) -> Unit,
     onMoveEvent: (event: EventInstance, days: Long) -> Unit,
     modifier: Modifier = Modifier,
     tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
@@ -280,7 +280,7 @@ fun MonthGrid(
                                 solarTerm = solarTermByDay[date],
                                 reserveSubLine = subLine,
                                 onSelect = onSelect,
-                                onLongPress = onLongPress,
+                                onCreateNew = onCreateNew,
                                 dragState = dragState,
                                 gridCoords = { gridCoords },
                                 onDrop = { event, source, target ->
@@ -365,7 +365,7 @@ private fun DayCell(
     solarTerm: String?,
     reserveSubLine: Boolean,
     onSelect: (LocalDate) -> Unit,
-    onLongPress: (LocalDate) -> Unit,
+    onCreateNew: (LocalDate) -> Unit,
     dragState: EventDragState,
     gridCoords: () -> LayoutCoordinates?,
     onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
@@ -397,9 +397,11 @@ private fun DayCell(
                     else -> Modifier
                 },
             )
+            // Double-tap creates an event; long-press is reserved for
+            // dragging event chips, so the two gestures no longer collide.
             .combinedClickable(
                 onClick = { onSelect(date) },
-                onLongClick = { onLongPress(date) },
+                onDoubleClick = { onCreateNew(date) },
             )
             .padding(horizontal = 1.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

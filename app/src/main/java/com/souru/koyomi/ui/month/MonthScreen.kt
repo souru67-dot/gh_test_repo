@@ -381,7 +381,7 @@ fun MonthScreen(
                             viewModel.select(date)
                             closeDetail()
                         },
-                        onLongPress = { date ->
+                        onCreateNew = { date ->
                             viewModel.select(date)
                             onCreateEvent(date)
                         },
@@ -595,7 +595,7 @@ private fun VerticalMonthList(
                     viewModel.select(date)
                     onCloseDetail()
                 },
-                onLongPress = { date ->
+                onCreateNew = { date ->
                     viewModel.select(date)
                     onCreateEvent(date)
                 },
