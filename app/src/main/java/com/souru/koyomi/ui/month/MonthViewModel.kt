@@ -50,6 +50,7 @@ class MonthViewModel(
     private val taskRepository: TaskRepository,
     private val settingsRepository: SettingsRepository,
     private val templateRepository: com.souru.koyomi.data.template.EventTemplateRepository,
+    private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
 ) : ViewModel() {
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
@@ -80,6 +81,16 @@ class MonthViewModel(
 
     val showLuckyDays: StateFlow<Boolean> = settingsRepository.showLuckyDays
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Forecast keyed by date; empty until a place is chosen in settings. */
+    val weatherByDay: StateFlow<Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather>> =
+        weatherRepository.forecastByDay
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Refreshes the forecast if the cache is stale; cheap no-op otherwise. */
+    fun refreshWeather() {
+        viewModelScope.launch { weatherRepository.refreshIfStale() }
+    }
 
     val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -347,6 +358,7 @@ class MonthViewModel(
                     taskRepository = app.container.taskRepository,
                     settingsRepository = app.container.settingsRepository,
                     templateRepository = app.container.templateRepository,
+                    weatherRepository = app.container.weatherRepository,
                 )
             }
         }

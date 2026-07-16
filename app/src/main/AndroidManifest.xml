@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Weather forecast (Open-Meteo). No location permission: the user picks a place by name. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".KoyomiApplication"

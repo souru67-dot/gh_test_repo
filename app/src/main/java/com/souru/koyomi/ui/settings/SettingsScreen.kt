@@ -220,6 +220,9 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             NotificationPermissionSection()
 
+            SectionLabel(stringResource(R.string.settings_weather))
+            WeatherPlaceRow(viewModel = viewModel)
+
             SectionLabel(stringResource(R.string.settings_widget_opacity))
             WidgetOpacitySlider(
                 percent = state.widgetOpacityPercent,
@@ -420,6 +423,90 @@ private fun ThemePackRow(
         Text(
             text = stringResource(nameRes),
             style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+/**
+ * Forecast location: shows the chosen place; tapping opens a name search
+ * (Open-Meteo geocoding). Clearing the place turns weather display off.
+ */
+@Composable
+private fun WeatherPlaceRow(viewModel: SettingsViewModel) {
+    val place by viewModel.weatherPlace.collectAsStateWithLifecycle()
+    val results by viewModel.weatherResults.collectAsStateWithLifecycle()
+    var showDialog by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showDialog = true }
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.weather_place),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = place?.name ?: stringResource(R.string.weather_place_none),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (showDialog) {
+        var query by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf("")
+        }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(stringResource(R.string.weather_place)) },
+            text = {
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(stringResource(R.string.weather_search_hint)) },
+                        singleLine = true,
+                        trailingIcon = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { viewModel.searchWeatherPlaces(query) },
+                            ) { Text(stringResource(R.string.search)) }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    for (result in results) {
+                        Text(
+                            text = result.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setWeatherPlace(result)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showDialog = false },
+                ) { Text(stringResource(R.string.close)) }
+            },
+            dismissButton = {
+                if (place != null) {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            viewModel.setWeatherPlace(null)
+                            showDialog = false
+                        },
+                    ) { Text(stringResource(R.string.weather_clear)) }
+                }
+            },
         )
     }
 }

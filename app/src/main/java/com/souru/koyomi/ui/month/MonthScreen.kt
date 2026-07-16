@@ -107,6 +107,7 @@ fun MonthScreen(
     val showRokuyo by viewModel.showRokuyo.collectAsStateWithLifecycle()
     val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
     val showLuckyDays by viewModel.showLuckyDays.collectAsStateWithLifecycle()
+    val weatherByDay by viewModel.weatherByDay.collectAsStateWithLifecycle()
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -156,6 +157,7 @@ fun MonthScreen(
         viewModel.refreshPermission()
         // Pull in changes made on Google Calendar since the app was last open.
         viewModel.syncNow()
+        viewModel.refreshWeather()
         onPauseOrDispose { }
     }
 
@@ -262,6 +264,7 @@ fun MonthScreen(
                 } else {
                     emptyList()
                 },
+                weather = weatherByDay[selectedDate]?.let { "${it.emoji} ${it.tempLabel}" },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -364,6 +367,7 @@ fun MonthScreen(
                     showRokuyo = showRokuyo,
                     showSolarTerms = showSolarTerms,
                     showLuckyDays = showLuckyDays,
+                    weatherByDay = weatherByDay,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
@@ -400,6 +404,7 @@ fun MonthScreen(
                         showRokuyo = showRokuyo,
                         showSolarTerms = showSolarTerms,
                         showLuckyDays = showLuckyDays,
+                        weatherByDay = weatherByDay,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),
@@ -586,6 +591,7 @@ private fun VerticalMonthList(
     showRokuyo: Boolean,
     showSolarTerms: Boolean,
     showLuckyDays: Boolean,
+    weatherByDay: Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather>,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
@@ -614,6 +620,7 @@ private fun VerticalMonthList(
                 showRokuyo = showRokuyo,
                 showSolarTerms = showSolarTerms,
                 showLuckyDays = showLuckyDays,
+                weatherByDay = weatherByDay,
                 // Same cell density as the pager: a fixed compact height made
                 // the chips overflow their cells in continuous scroll mode.
                 modifier = Modifier

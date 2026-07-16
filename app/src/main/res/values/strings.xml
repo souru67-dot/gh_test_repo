@@ -173,6 +173,11 @@
     <string name="widget_agenda_month_description">Today\'s events beside a dotted mini month.</string>
     <string name="widget_todo_agenda_label">To-dos + events + calendar</string>
     <string name="widget_todo_agenda_description">Your to-dos and the coming days\' events (scrollable) beside a mini month.</string>
+    <string name="settings_weather">Weather</string>
+    <string name="weather_place">Forecast location</string>
+    <string name="weather_place_none">Not set</string>
+    <string name="weather_search_hint">Search by city name</string>
+    <string name="weather_clear">Turn off</string>
     <string name="settings_widget_opacity">Widget background opacity</string>
     <string name="widget_config_title">Widget settings</string>
     <string name="events_count">%1$d events</string>

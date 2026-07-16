@@ -79,6 +79,7 @@ fun DaySheetContent(
     rokuyo: String?,
     solarTerm: String?,
     luckyDays: List<String> = emptyList(),
+    weather: String? = null,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -113,6 +114,7 @@ fun DaySheetContent(
                 rokuyo = rokuyo,
                 solarTerm = solarTerm,
                 luckyDays = luckyDays,
+                weather = weather,
                 lunarDate = lunarDate,
                 moonAge = moonAge,
                 events = events,
@@ -149,6 +151,7 @@ private fun DayEventList(
     rokuyo: String?,
     solarTerm: String?,
     luckyDays: List<String>,
+    weather: String?,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -213,6 +216,7 @@ private fun DayEventList(
         // 暦のラベル (二十四節気・六曜・旧暦・月齢): only what the user enabled,
         // wrapping so any combination fits.
         val almanac = buildList {
+            weather?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
             solarTerm?.let { add(it to MaterialTheme.colorScheme.tertiary) }
             for (lucky in luckyDays) add(lucky to MaterialTheme.colorScheme.tertiary)
             rokuyo?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }

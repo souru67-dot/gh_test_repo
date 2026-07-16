@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -186,6 +187,7 @@ fun MonthGrid(
     showRokuyo: Boolean = false,
     showSolarTerms: Boolean = false,
     showLuckyDays: Boolean = false,
+    weatherByDay: Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather> = emptyMap(),
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
@@ -283,6 +285,7 @@ fun MonthGrid(
                                 rokuyo = rokuyoByDay[date],
                                 solarTerm = solarTermByDay[date],
                                 luckyMark = luckyByDay[date],
+                                weather = weatherByDay[date]?.emoji,
                                 reserveSubLine = subLine,
                                 onSelect = onSelect,
                                 onCreateNew = onCreateNew,
@@ -369,6 +372,7 @@ private fun DayCell(
     rokuyo: String?,
     solarTerm: String?,
     luckyMark: String?,
+    weather: String?,
     reserveSubLine: Boolean,
     onSelect: (LocalDate) -> Unit,
     onCreateNew: (LocalDate) -> Unit,
@@ -412,24 +416,35 @@ private fun DayCell(
             .padding(horizontal = 1.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .let {
-                    if (isToday) {
-                        it.background(MaterialTheme.colorScheme.primary, CircleShape)
-                    } else {
-                        it
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = date.dayOfMonth.toString(),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                color = if (isToday) MaterialTheme.colorScheme.onPrimary else dayColor,
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .let {
+                        if (isToday) {
+                            it.background(MaterialTheme.colorScheme.primary, CircleShape)
+                        } else {
+                            it
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isToday) MaterialTheme.colorScheme.onPrimary else dayColor,
+                )
+            }
+            // Forecast glyph for the next two weeks, when a place is set.
+            if (weather != null) {
+                Text(
+                    text = weather,
+                    fontSize = 7.sp,
+                    lineHeight = 8.sp,
+                    modifier = Modifier.alpha(if (inCurrentMonth) 1f else 0.4f),
+                )
+            }
         }
 
         // Sub-line: 二十四節気 takes precedence (rare, notable, 朱), otherwise 六曜.

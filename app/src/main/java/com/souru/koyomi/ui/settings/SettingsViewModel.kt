@@ -49,8 +49,33 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val calendarRepository: CalendarRepository,
+    private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
     private val appContext: Context,
 ) : ViewModel() {
+
+    /** The place the forecast is fetched for; null = weather off. */
+    val weatherPlace: StateFlow<com.souru.koyomi.data.weather.WeatherPlace?> =
+        weatherRepository.place
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _weatherResults =
+        MutableStateFlow<List<com.souru.koyomi.data.weather.WeatherPlace>>(emptyList())
+    val weatherResults: StateFlow<List<com.souru.koyomi.data.weather.WeatherPlace>> =
+        _weatherResults
+
+    fun searchWeatherPlaces(query: String) {
+        viewModelScope.launch {
+            _weatherResults.value = weatherRepository.searchPlaces(query)
+        }
+    }
+
+    fun setWeatherPlace(place: com.souru.koyomi.data.weather.WeatherPlace?) {
+        viewModelScope.launch {
+            weatherRepository.setPlace(place)
+            if (place != null) weatherRepository.refreshIfStale()
+            _weatherResults.value = emptyList()
+        }
+    }
 
     private val calendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
 
@@ -266,6 +291,7 @@ class SettingsViewModel(
                 SettingsViewModel(
                     settingsRepository = app.container.settingsRepository,
                     calendarRepository = app.container.calendarRepository,
+                    weatherRepository = app.container.weatherRepository,
                     appContext = app.applicationContext,
                 )
             }
