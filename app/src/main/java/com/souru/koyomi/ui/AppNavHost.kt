@@ -18,6 +18,7 @@ import com.souru.koyomi.ui.search.SearchScreen
 import com.souru.koyomi.ui.settings.SettingsScreen
 import com.souru.koyomi.ui.tasks.TasksScreen
 import com.souru.koyomi.ui.timeline.TimelineScreen
+import com.souru.koyomi.ui.year.YearScreen
 import java.time.LocalDate
 
 object Routes {
@@ -26,6 +27,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SEARCH = "search"
     const val TASKS = "tasks"
+    const val YEAR = "year"
     const val EDITOR =
         "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}" +
             "&dateEpochDay={dateEpochDay}&taskId={taskId}"
@@ -42,6 +44,9 @@ object Routes {
     fun timeline(mode: String, date: LocalDate): String =
         "timeline/$mode?epochDay=${date.toEpochDay()}"
 }
+
+/** SavedStateHandle key: a date pick (epoch day) waiting for the month view. */
+private const val KEY_JUMP_EPOCH_DAY = "jump_epoch_day"
 
 @Composable
 fun AppNavHost(
@@ -76,7 +81,12 @@ fun AppNavHost(
                 },
             )
         }
-        composable(Routes.MONTH) {
+        composable(Routes.MONTH) { entry ->
+            // The year view reports its pick through the month entry's
+            // SavedStateHandle; it rides the same jump path as widget taps.
+            val yearPick by entry.savedStateHandle
+                .getStateFlow<Long?>(KEY_JUMP_EPOCH_DAY, null)
+                .collectAsStateWithLifecycle()
             MonthScreen(
                 onCreateEvent = { date ->
                     navController.navigate(Routes.editorForNew(date))
@@ -93,8 +103,25 @@ fun AppNavHost(
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenTasks = { navController.navigate(Routes.TASKS) },
-                deepLinkEpochDay = deepLinkEpochDay,
-                onDeepLinkConsumed = onDeepLinkConsumed,
+                onOpenYear = { navController.navigate(Routes.YEAR) },
+                deepLinkEpochDay = deepLinkEpochDay ?: yearPick,
+                onDeepLinkConsumed = {
+                    onDeepLinkConsumed()
+                    entry.savedStateHandle[KEY_JUMP_EPOCH_DAY] = null
+                },
+            )
+        }
+        composable(Routes.YEAR) {
+            val useJapaneseEra by app.container.settingsRepository.useJapaneseEra
+                .collectAsStateWithLifecycle(initialValue = false)
+            YearScreen(
+                onBack = { navController.popIfCurrent(Routes.YEAR) },
+                onOpenMonth = { date ->
+                    navController.previousBackStackEntry?.savedStateHandle
+                        ?.set(KEY_JUMP_EPOCH_DAY, date.toEpochDay())
+                    navController.popIfCurrent(Routes.YEAR)
+                },
+                useJapaneseEra = useJapaneseEra,
             )
         }
         composable(Routes.SEARCH) {

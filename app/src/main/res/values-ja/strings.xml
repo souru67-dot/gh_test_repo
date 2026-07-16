@@ -78,6 +78,7 @@
     <string name="switch_view">表示切替</string>
     <string name="view_week">週表示</string>
     <string name="view_day">日表示</string>
+    <string name="view_year">年表示</string>
     <string name="settings">設定</string>
     <string name="settings_week_start">週の開始曜日</string>
     <string name="week_start_sunday">日曜日</string>

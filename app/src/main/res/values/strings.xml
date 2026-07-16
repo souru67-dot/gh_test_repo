@@ -79,6 +79,7 @@
     <string name="switch_view">Switch view</string>
     <string name="view_week">Week</string>
     <string name="view_day">Day</string>
+    <string name="view_year">Year</string>
     <string name="settings">Settings</string>
     <string name="settings_week_start">Week starts on</string>
     <string name="week_start_sunday">Sunday</string>

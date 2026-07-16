@@ -92,6 +92,7 @@ fun MonthScreen(
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
+    onOpenYear: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
 ) {
@@ -238,6 +239,7 @@ fun MonthScreen(
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
+                onOpenYear = onOpenYear,
                 onMonthClick = { showMonthJump = true },
             )
         },
@@ -622,6 +624,7 @@ private fun MonthTopBar(
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
+    onOpenYear: () -> Unit,
     onMonthClick: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
@@ -647,6 +650,7 @@ private fun MonthTopBar(
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
+                onOpenYear = onOpenYear,
                 onMonthClick = onMonthClick,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
@@ -664,6 +668,7 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
+    onOpenYear: () -> Unit,
     onMonthClick: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
@@ -737,6 +742,13 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
                 onClick = {
                     onViewMenuChange(false)
                     onOpenTimeline("day")
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.view_year)) },
+                onClick = {
+                    onViewMenuChange(false)
+                    onOpenYear()
                 },
             )
             DropdownMenuItem(
