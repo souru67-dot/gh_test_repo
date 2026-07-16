@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h144a28,28 0 0 1 28,28v144a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Month name (big) + 朱 dot -->
+    <path android:fillColor="#26241F" android:pathData="M20,14h30v11H20z" />
+    <path android:fillColor="#A8503C" android:pathData="M57,23m-3,0a3,3 0 1 1 6,0a3,3 0 1 1 -6,0" />
+    <path android:fillColor="#B0ACA3" android:pathData="M66,17h16v6H66z" />
+    <!-- Weekday row -->
+    <path android:fillColor="#BA7B74" android:pathData="M24,34h8v3h-8z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M48,34h8v3h-8zM72,34h8v3h-8zM96,34h8v3h-8zM120,34h8v3h-8zM144,34h8v3h-8z" />
+    <path android:fillColor="#7A8FA8" android:pathData="M168,34h8v3h-8z" />
+    <!-- Day numbers grid (compact) -->
+    <path android:fillColor="#69655C" android:pathData="M24,44h8v5h-8zM48,44h8v5h-8zM72,44h8v5h-8zM96,44h8v5h-8zM120,44h8v5h-8zM144,44h8v5h-8zM168,44h8v5h-8zM24,62h8v5h-8zM48,62h8v5h-8zM72,62h8v5h-8zM120,62h8v5h-8zM144,62h8v5h-8zM168,62h8v5h-8zM24,80h8v5h-8zM48,80h8v5h-8zM96,80h8v5h-8zM120,80h8v5h-8zM144,80h8v5h-8zM168,80h8v5h-8zM24,98h8v5h-8zM48,98h8v5h-8zM72,98h8v5h-8zM96,98h8v5h-8zM120,98h8v5h-8zM144,98h8v5h-8zM168,98h8v5h-8z" />
+    <!-- Today: filled circle (藍墨) -->
+    <path android:fillColor="#343B46" android:pathData="M100,64.5m-9,0a9,9 0 1 1 18,0a9,9 0 1 1 -18,0" />
+    <path android:fillColor="#F8F3EA" android:pathData="M96,62h8v5h-8z" />
+    <!-- Event dots on some days -->
+    <path android:fillColor="#4A6FA5" android:pathData="M28,53m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <path android:fillColor="#F6BF26" android:pathData="M76,71m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <path android:fillColor="#33B679" android:pathData="M148,89m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <!-- Hairline between the calendar and today's list -->
+    <path android:fillColor="#EFE8DA" android:pathData="M20,114h160v1.5H20z" />
+    <!-- 今日 label (朱) -->
+    <path android:fillColor="#A8503C" android:pathData="M20,122h24v6H20z" />
+    <!-- Today's event rows -->
+    <path android:fillColor="#4A6FA5" android:pathData="M20,136h3v14h-3z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M29,137h20v5H29z" />
+    <path android:fillColor="#26241F" android:pathData="M55,137h96v5H55z" />
+    <path android:fillColor="#E67C73" android:pathData="M20,158h3v14h-3z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M29,159h20v5H29z" />
+    <path android:fillColor="#26241F" android:pathData="M55,159h72v5H55z" />
+</vector>
