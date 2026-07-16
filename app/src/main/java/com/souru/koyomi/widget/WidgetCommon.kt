@@ -554,13 +554,23 @@ suspend fun loadUpcomingDaySections(
     val sections = mutableListOf<WidgetDaySection>()
     var date = today
     while (date.isBefore(today.plusDays(lookaheadDays)) && sections.size < maxDays) {
-        val events = eventsByDay[date].orEmpty()
+        val events = dropFinishedToday(eventsByDay[date].orEmpty(), date)
         if (events.isNotEmpty() || date == today) {
             sections += WidgetDaySection(date, events)
         }
         date = date.plusDays(1)
     }
     return sections
+}
+
+/**
+ * Today's timed events vanish from widgets once they have ended; all-day
+ * events stay for the whole day. Other days pass through untouched.
+ */
+fun dropFinishedToday(events: List<EventInstance>, date: LocalDate): List<EventInstance> {
+    if (date != LocalDate.now()) return events
+    val now = System.currentTimeMillis()
+    return events.filter { it.allDay || it.end > now }
 }
 
 /** 今日 / 明日 / "7月14日(火)" — for section headers in list widgets. */
@@ -589,7 +599,7 @@ suspend fun loadDaySections(context: Context, days: Int): List<WidgetDaySection>
     )
     return (0 until days).map { offset ->
         val date = today.plusDays(offset.toLong())
-        WidgetDaySection(date, eventsByDay[date].orEmpty())
+        WidgetDaySection(date, dropFinishedToday(eventsByDay[date].orEmpty(), date))
     }
 }
 

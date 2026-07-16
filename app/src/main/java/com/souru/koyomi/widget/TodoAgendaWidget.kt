@@ -64,12 +64,22 @@ class TodoAgendaWidget : GlanceAppWidget() {
         }
     }
 
-    /** Open to-dos due within two weeks; overdue ones come first. */
+    /**
+     * Open to-dos due within two weeks; overdue ones come first. Today's
+     * timed to-dos vanish once their time has passed (date-only ones stay).
+     */
     private suspend fun loadOpenTasks(context: Context, limit: Int = 10): List<Task> {
         val app = context.applicationContext as KoyomiApplication
-        val horizon = LocalDate.now().plusDays(14)
+        val today = LocalDate.now()
+        val horizon = today.plusDays(14)
+        val nowMinutes = java.time.LocalTime.now().let { it.hour * 60 + it.minute }
         return app.container.taskRepository.loadAllTasks()
             .filter { !it.done && !it.dueDate.isAfter(horizon) }
+            .filterNot { task ->
+                task.dueDate == today &&
+                    task.timeMinutes != null &&
+                    task.timeMinutes < nowMinutes
+            }
             .take(limit)
     }
 
