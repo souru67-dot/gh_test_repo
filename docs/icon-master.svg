@@ -1,12 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- こよみ Play Console icon master (弐・障子格子). Full-bleed 512×512;
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
+  <!-- こよみ Play Console icon master (壱・日めくり). Full-bleed 512×512;
        Google Play applies its own rounded mask. -->
-  <rect width="512" height="512" fill="#F8F3EA"/>
-  <!-- 朱: today cell -->
-  <rect x="192" y="192" width="64" height="64" fill="#B24A34"/>
-  <!-- 藍: shōji lattice (4×4) -->
-  <g stroke="#294863" stroke-width="9" fill="none">
-    <path d="M128 128V384 M192 128V384 M256 128V384 M320 128V384 M384 128V384"/>
-    <path d="M128 128H384 M128 192H384 M128 256H384 M128 320H384 M128 384H384"/>
+  <rect width="108" height="108" fill="#F8F3EA"/>
+  <!-- Page -->
+  <path fill="#FFFFFF" stroke="#E2DAC8" stroke-width="1"
+        d="M37,28h34a6,6 0 0 1 6,6v42a6,6 0 0 1 -6,6h-34a6,6 0 0 1 -6,-6v-42a6,6 0 0 1 6,-6z"/>
+  <!-- 朱: top band -->
+  <path fill="#A8503C"
+        d="M37,28h34a6,6 0 0 1 6,6v8h-46v-8a6,6 0 0 1 6,-6z"/>
+  <!-- Binding rings (墨) -->
+  <g stroke="#343B46" stroke-width="2.5" fill="none">
+    <circle cx="44" cy="29" r="4"/>
+    <circle cx="64" cy="29" r="4"/>
   </g>
+  <!-- Ring holes punched through the band -->
+  <circle cx="44" cy="33" r="2.2" fill="#F8F3EA"/>
+  <circle cx="64" cy="33" r="2.2" fill="#F8F3EA"/>
+  <!-- 藍墨: the day numeral "1" -->
+  <path fill="#343B46" d="M59.5,48h-8l-9.5,7.5v7l8,-6v19.5h9.5z"/>
 </svg>

@@ -4,19 +4,40 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!--
-      こよみ brand mark (弐・障子格子): a month grid drawn like a shōji lattice.
-      藍 (indigo) lines on the washi background, with a single 朱 (vermilion)
-      cell marking "today". Kept within the adaptive-icon safe zone (24..84).
+      こよみ brand mark (壱・日めくり): a tear-off daily calendar page.
+      White page on the washi background, 朱 (vermilion) top band with two
+      binding rings, and a bold 藍墨 (ink) "1". Safe zone 24..84.
     -->
-    <!-- 朱: today cell -->
+    <!-- Page -->
     <path
-        android:fillColor="#B24A34"
-        android:pathData="M40,40h13v13h-13z" />
-    <!-- 藍: shōji lattice (4x4) -->
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#E2DAC8"
+        android:strokeWidth="1"
+        android:pathData="M37,28h34a6,6 0 0 1 6,6v42a6,6 0 0 1 -6,6h-34a6,6 0 0 1 -6,-6v-42a6,6 0 0 1 6,-6z" />
+    <!-- 朱: top band -->
     <path
-        android:strokeColor="#294863"
-        android:strokeWidth="2"
-        android:strokeLineCap="butt"
+        android:fillColor="#A8503C"
+        android:pathData="M37,28h34a6,6 0 0 1 6,6v8h-46v-8a6,6 0 0 1 6,-6z" />
+    <!-- Binding rings (墨) -->
+    <path
+        android:strokeColor="#343B46"
+        android:strokeWidth="2.5"
         android:fillColor="#00000000"
-        android:pathData="M24,24L24,84 M39,24L39,84 M54,24L54,84 M69,24L69,84 M84,24L84,84 M24,24L84,24 M24,39L84,39 M24,54L84,54 M24,69L84,69 M24,84L84,84" />
+        android:pathData="M44,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
+    <path
+        android:strokeColor="#343B46"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M64,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
+    <!-- Ring holes punched through the band -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M44,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M64,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
+    <!-- 藍墨: the day numeral "1" -->
+    <path
+        android:fillColor="#343B46"
+        android:pathData="M59.5,48h-8l-9.5,7.5v7l8,-6v19.5h9.5z" />
 </vector>
