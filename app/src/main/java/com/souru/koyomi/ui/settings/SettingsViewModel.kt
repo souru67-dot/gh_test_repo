@@ -42,6 +42,7 @@ data class SettingsUiState(
     val showLunarDate: Boolean = false,
     val showMoonAge: Boolean = false,
     val useJapaneseEra: Boolean = false,
+    val customThemeColor: Int = SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
 )
 
 class SettingsViewModel(
@@ -74,6 +75,7 @@ class SettingsViewModel(
         val showLunarDate: Boolean,
         val showMoonAge: Boolean,
         val useJapaneseEra: Boolean,
+        val customThemeColor: Int,
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -108,7 +110,8 @@ class SettingsViewModel(
             settingsRepository.showLunarDate,
             settingsRepository.showMoonAge,
             settingsRepository.useJapaneseEra,
-        ) { terms, lunar, moon, era -> AlmanacPrefs(terms, lunar, moon, era) },
+            settingsRepository.customThemeColor,
+        ) { terms, lunar, moon, era, custom -> AlmanacPrefs(terms, lunar, moon, era, custom) },
     ) { base, extras, hidden, calendars, almanac ->
         base.copy(
             calendars = calendars,
@@ -122,6 +125,7 @@ class SettingsViewModel(
             showLunarDate = almanac.showLunarDate,
             showMoonAge = almanac.showMoonAge,
             useJapaneseEra = almanac.useJapaneseEra,
+            customThemeColor = almanac.customThemeColor,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -170,6 +174,14 @@ class SettingsViewModel(
 
     fun setThemePack(pack: ThemePack) {
         viewModelScope.launch { settingsRepository.setThemePack(pack) }
+    }
+
+    /** Picking a custom color also selects the CUSTOM pack so it takes effect. */
+    fun setCustomThemeColor(argb: Int) {
+        viewModelScope.launch {
+            settingsRepository.setCustomThemeColor(argb)
+            settingsRepository.setThemePack(ThemePack.CUSTOM)
+        }
     }
 
     fun setShowWeekNumbers(enabled: Boolean) {

@@ -32,6 +32,9 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = false)
             val themePack by settings.themePack
                 .collectAsStateWithLifecycle(initialValue = ThemePack.SUMI)
+            val customColor by settings.customThemeColor.collectAsStateWithLifecycle(
+                initialValue = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
+            )
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 dynamicColor = dynamicColor,
                 themePack = themePack,
+                customColor = customColor,
             ) {
                 AppNavHost(
                     deepLinkEpochDay = epochDay,

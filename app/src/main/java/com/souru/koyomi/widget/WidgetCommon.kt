@@ -62,6 +62,7 @@ data class WidgetLook(
     val theme: ThemeMode,
     val opacityPercent: Int,
     val pack: ThemePack = ThemePack.SUMI,
+    val customColor: Int = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
 )
 
 /**
@@ -77,7 +78,13 @@ suspend fun resolveWidgetLook(context: Context, glanceId: GlanceId): WidgetLook 
     val opacity = settings.widgetOpacity(appWidgetId).first()
         ?: settings.widgetOpacityPercent.first()
     val pack = settings.themePack.first()
-    return WidgetLook(theme = theme, opacityPercent = opacity, pack = pack)
+    val customColor = settings.customThemeColor.first()
+    return WidgetLook(
+        theme = theme,
+        opacityPercent = opacity,
+        pack = pack,
+        customColor = customColor,
+    )
 }
 
 /** Color scheme for the chosen widget theme (SYSTEM = dynamic on Android 12+). */
@@ -88,16 +95,16 @@ fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when 
             GlanceTheme.colors
         } else {
             ColorProviders(
-                light = koyomiColorScheme(look.pack, darkTheme = false),
-                dark = koyomiColorScheme(look.pack, darkTheme = true),
+                light = koyomiColorScheme(look.pack, darkTheme = false, customColor = look.customColor),
+                dark = koyomiColorScheme(look.pack, darkTheme = true, customColor = look.customColor),
             )
         }
     ThemeMode.LIGHT -> {
-        val scheme = koyomiColorScheme(look.pack, darkTheme = false)
+        val scheme = koyomiColorScheme(look.pack, darkTheme = false, customColor = look.customColor)
         ColorProviders(light = scheme, dark = scheme)
     }
     ThemeMode.DARK -> {
-        val scheme = koyomiColorScheme(look.pack, darkTheme = true)
+        val scheme = koyomiColorScheme(look.pack, darkTheme = true, customColor = look.customColor)
         ColorProviders(light = scheme, dark = scheme)
     }
 }
@@ -109,8 +116,8 @@ fun widgetBackground(look: WidgetLook): androidx.glance.unit.ColorProvider {
         return GlanceTheme.colors.surface
     }
     val alpha = look.opacityPercent / 100f
-    val lightSurface = koyomiColorScheme(look.pack, darkTheme = false).surface
-    val darkSurface = koyomiColorScheme(look.pack, darkTheme = true).surface
+    val lightSurface = koyomiColorScheme(look.pack, darkTheme = false, customColor = look.customColor).surface
+    val darkSurface = koyomiColorScheme(look.pack, darkTheme = true, customColor = look.customColor).surface
     return when (look.theme) {
         ThemeMode.SYSTEM -> ColorProvider(
             lightSurface.copy(alpha = alpha),

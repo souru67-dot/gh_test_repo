@@ -151,12 +151,20 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SectionLabel(stringResource(R.string.settings_theme_pack))
             for (pack in com.souru.koyomi.data.ThemePack.entries) {
+                if (pack == com.souru.koyomi.data.ThemePack.CUSTOM) continue
                 ThemePackRow(
                     pack = pack,
                     selected = state.themePack == pack && !state.dynamicColor,
                     onClick = { viewModel.setThemePack(pack) },
                 )
             }
+            CustomThemeSection(
+                selected = state.themePack == com.souru.koyomi.data.ThemePack.CUSTOM &&
+                    !state.dynamicColor,
+                color = state.customThemeColor,
+                onSelect = { viewModel.setThemePack(com.souru.koyomi.data.ThemePack.CUSTOM) },
+                onColorChange = viewModel::setCustomThemeColor,
+            )
 
             SectionLabel(stringResource(R.string.settings_theme))
             RadioRow(
@@ -383,6 +391,7 @@ private fun ThemePackRow(
         com.souru.koyomi.data.ThemePack.WAKABA -> R.string.pack_wakaba
         com.souru.koyomi.data.ThemePack.AI -> R.string.pack_ai
         com.souru.koyomi.data.ThemePack.MOMIJI -> R.string.pack_momiji
+        com.souru.koyomi.data.ThemePack.CUSTOM -> R.string.pack_custom
     }
     Row(
         modifier = Modifier
@@ -408,6 +417,113 @@ private fun ThemePackRow(
             style = MaterialTheme.typography.bodyLarge,
         )
     }
+}
+
+// 和の伝統色 — preset seeds for the custom theme.
+private val CustomPresetColors = listOf(
+    0xFF5654A2.toInt(), // 桔梗
+    0xFF2B5F9E.toInt(), // 瑠璃
+    0xFF2A8A94.toInt(), // 浅葱
+    0xFF33636B.toInt(), // 納戸
+    0xFF4A6D48.toInt(), // 松葉
+    0xFF6C6A2D.toInt(), // 鶯
+    0xFFC7802D.toInt(), // 山吹
+    0xFF8D5347.toInt(), // 小豆
+    0xFFA94550.toInt(), // 茜
+    0xFFC9767A.toInt(), // 珊瑚
+    0xFF745399.toInt(), // 江戸紫
+    0xFFA58F94.toInt(), // 桜鼠
+)
+
+/**
+ * The CUSTOM pack row + its picker. Selecting the row switches to the
+ * custom theme; the presets (traditional Japanese colors) and the hue
+ * slider re-seed the derived palette.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun CustomThemeSection(
+    selected: Boolean,
+    color: Int,
+    onSelect: () -> Unit,
+    onColorChange: (Int) -> Unit,
+) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val scheme = com.souru.koyomi.ui.theme.koyomiColorScheme(
+        com.souru.koyomi.data.ThemePack.CUSTOM,
+        dark,
+        customColor = color,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onSelect)
+        Row(modifier = Modifier.padding(start = 4.dp, end = 10.dp)) {
+            for (swatch in listOf(scheme.surface, scheme.primary, scheme.tertiary)) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(16.dp)
+                        .background(swatch, CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.pack_custom),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+    if (!selected) return
+
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 56.dp, end = 20.dp, top = 4.dp),
+    ) {
+        for (preset in CustomPresetColors) {
+            val isCurrent = preset == color
+            Box(
+                modifier = Modifier
+                    .padding(end = 10.dp, bottom = 10.dp)
+                    .size(28.dp)
+                    .background(Color(preset), CircleShape)
+                    .border(
+                        width = if (isCurrent) 2.dp else 1.dp,
+                        color = if (isCurrent) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                        shape = CircleShape,
+                    )
+                    .clickable { onColorChange(preset) },
+            )
+        }
+    }
+    // Fine adjustment: sweep the hue, keeping a washi-friendly tone.
+    val hsvArray = FloatArray(3)
+    android.graphics.Color.colorToHSV(color, hsvArray)
+    var hue by androidx.compose.runtime.remember(color) {
+        androidx.compose.runtime.mutableFloatStateOf(hsvArray[0])
+    }
+    androidx.compose.material3.Slider(
+        value = hue,
+        onValueChange = { hue = it },
+        onValueChangeFinished = {
+            onColorChange(
+                android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.55f, 0.60f)),
+            )
+        },
+        valueRange = 0f..360f,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 56.dp, end = 20.dp),
+    )
 }
 
 /** ICS export/import with the system document picker. */

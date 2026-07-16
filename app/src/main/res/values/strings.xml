@@ -97,6 +97,7 @@
     <string name="pack_wakaba">Fresh Leaf</string>
     <string name="pack_ai">Indigo</string>
     <string name="pack_momiji">Autumn Maple</string>
+    <string name="pack_custom">Custom color</string>
     <string name="settings_week_numbers">Show week numbers</string>
     <string name="settings_rokuyo">Show rokuyō (Japanese lucky days)</string>
     <string name="settings_solar_terms">Show 24 solar terms (risshun, geshi…)</string>

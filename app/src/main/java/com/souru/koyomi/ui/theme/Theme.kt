@@ -209,12 +209,70 @@ internal val MomijiDarkColors = darkColorScheme(
 )
 
 /** The pack's color scheme; used by the app theme and the widgets alike. */
-fun koyomiColorScheme(pack: ThemePack, darkTheme: Boolean) = when (pack) {
+fun koyomiColorScheme(
+    pack: ThemePack,
+    darkTheme: Boolean,
+    customColor: Int = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
+) = when (pack) {
     ThemePack.SUMI -> if (darkTheme) KoyomiDarkColors else KoyomiLightColors
     ThemePack.SAKURA -> if (darkTheme) SakuraDarkColors else SakuraLightColors
     ThemePack.WAKABA -> if (darkTheme) WakabaDarkColors else WakabaLightColors
     ThemePack.AI -> if (darkTheme) AiDarkColors else AiLightColors
     ThemePack.MOMIJI -> if (darkTheme) MomijiDarkColors else MomijiLightColors
+    ThemePack.CUSTOM -> customColorScheme(customColor, darkTheme)
+}
+
+/** HSV helper: build an opaque color from the seed's hue with fixed s/v. */
+private fun hsv(hueDegrees: Float, saturation: Float, value: Float): Color =
+    Color(android.graphics.Color.HSVToColor(floatArrayOf(hueDegrees, saturation, value)))
+
+/**
+ * Derives a whole washi-style palette from one user-picked seed color.
+ * The recipe mirrors the hand-made packs: paper-toned surface faintly
+ * tinted toward the seed's hue, an ink-deep primary in that hue, and the
+ * seed's saturation only nudges intensity so any pick stays legible.
+ */
+internal fun customColorScheme(seedArgb: Int, darkTheme: Boolean): androidx.compose.material3.ColorScheme {
+    val hsvArray = FloatArray(3)
+    android.graphics.Color.colorToHSV(seedArgb, hsvArray)
+    val hue = hsvArray[0]
+    // Muted picks stay muted; vivid picks cap out below neon.
+    val strength = hsvArray[1].coerceIn(0.15f, 0.85f)
+    return if (!darkTheme) {
+        lightColorScheme(
+            primary = hsv(hue, 0.35f + 0.25f * strength, 0.42f + 0.10f * strength),
+            onPrimary = hsv(hue, 0.03f, 0.97f),
+            primaryContainer = hsv(hue, 0.10f + 0.06f * strength, 0.92f),
+            onPrimaryContainer = hsv(hue, 0.40f, 0.20f),
+            secondary = hsv(hue, 0.16f, 0.44f),
+            secondaryContainer = hsv(hue, 0.09f, 0.93f),
+            onSecondaryContainer = hsv(hue, 0.30f, 0.20f),
+            tertiary = Color(0xFFA8503C),
+            surface = hsv(hue, 0.035f, 0.965f),
+            onSurface = Color(0xFF26241F),
+            surfaceVariant = hsv(hue, 0.06f, 0.93f),
+            onSurfaceVariant = hsv(hue, 0.13f, 0.36f),
+            outline = hsv(hue, 0.10f, 0.55f),
+            outlineVariant = hsv(hue, 0.09f, 0.86f),
+        )
+    } else {
+        darkColorScheme(
+            primary = hsv(hue, 0.18f + 0.14f * strength, 0.82f),
+            onPrimary = hsv(hue, 0.35f, 0.18f),
+            primaryContainer = hsv(hue, 0.28f, 0.31f),
+            onPrimaryContainer = hsv(hue, 0.12f, 0.91f),
+            secondary = hsv(hue, 0.14f, 0.78f),
+            secondaryContainer = hsv(hue, 0.20f, 0.26f),
+            onSecondaryContainer = hsv(hue, 0.09f, 0.90f),
+            tertiary = Color(0xFFD08A77),
+            surface = hsv(hue, 0.08f, 0.095f),
+            onSurface = hsv(hue, 0.04f, 0.90f),
+            surfaceVariant = hsv(hue, 0.10f, 0.17f),
+            onSurfaceVariant = hsv(hue, 0.07f, 0.70f),
+            outline = hsv(hue, 0.06f, 0.50f),
+            outlineVariant = hsv(hue, 0.08f, 0.24f),
+        )
+    }
 }
 
 @Composable
@@ -222,6 +280,7 @@ fun KoyomiTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     themePack: ThemePack = ThemePack.SUMI,
+    customColor: Int = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -229,7 +288,7 @@ fun KoyomiTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        else -> koyomiColorScheme(themePack, darkTheme)
+        else -> koyomiColorScheme(themePack, darkTheme, customColor)
     }
     val calendarColors = if (darkTheme) {
         CalendarColors(sunday = Color(0xFFD08E85), saturday = Color(0xFF93A8C4))

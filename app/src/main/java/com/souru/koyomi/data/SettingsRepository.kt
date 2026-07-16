@@ -16,8 +16,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** 季節の彩り — theme packs. SUMI (墨と和紙) is the brand default. */
-enum class ThemePack { SUMI, SAKURA, WAKABA, AI, MOMIJI }
+/** 季節の彩り — theme packs. SUMI (墨と和紙) is the brand default; CUSTOM derives a palette from a user-picked color. */
+enum class ThemePack { SUMI, SAKURA, WAKABA, AI, MOMIJI, CUSTOM }
 
 /** App preferences. Event data itself lives in CalendarProvider, never here. */
 class SettingsRepository(private val context: Context) {
@@ -41,6 +41,7 @@ class SettingsRepository(private val context: Context) {
         val SHOW_LUNAR_DATE = booleanPreferencesKey("show_lunar_date")
         val SHOW_MOON_AGE = booleanPreferencesKey("show_moon_age")
         val USE_JAPANESE_ERA = booleanPreferencesKey("use_japanese_era")
+        val CUSTOM_THEME_COLOR = stringPreferencesKey("custom_theme_color")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -110,6 +111,15 @@ class SettingsRepository(private val context: Context) {
             it[Keys.THEME_PACK] = pack.name
             it[Keys.DYNAMIC_COLOR] = false
         }
+    }
+
+    /** Seed color (ARGB) for [ThemePack.CUSTOM]; the palette derives from its hue. */
+    val customThemeColor: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[Keys.CUSTOM_THEME_COLOR]?.toIntOrNull() ?: DEFAULT_CUSTOM_THEME_COLOR
+    }
+
+    suspend fun setCustomThemeColor(argb: Int) {
+        context.dataStore.edit { it[Keys.CUSTOM_THEME_COLOR] = argb.toString() }
     }
 
     /** Month view: ISO week numbers in a narrow left rail. */
@@ -248,5 +258,10 @@ class SettingsRepository(private val context: Context) {
                 current - calendarId.toString()
             }
         }
+    }
+
+    companion object {
+        /** 藍鼠 — the out-of-the-box seed for the custom theme. */
+        const val DEFAULT_CUSTOM_THEME_COLOR = 0xFF56698D.toInt()
     }
 }

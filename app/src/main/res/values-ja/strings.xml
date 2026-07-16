@@ -96,6 +96,7 @@
     <string name="pack_wakaba">若葉</string>
     <string name="pack_ai">藍</string>
     <string name="pack_momiji">紅葉</string>
+    <string name="pack_custom">カスタム</string>
     <string name="settings_week_numbers">週番号を表示</string>
     <string name="settings_rokuyo">六曜を表示(大安・仏滅など)</string>
     <string name="settings_solar_terms">二十四節気を表示(立春・夏至など)</string>
