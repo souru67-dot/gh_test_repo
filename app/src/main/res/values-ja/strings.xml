@@ -148,6 +148,8 @@
     <string name="template_add">テンプレートから追加</string>
     <string name="templates_title">テンプレート</string>
     <string name="template_empty">保存されたテンプレートはありません</string>
+    <string name="event_created">予定を作成しました</string>
+    <string name="event_create_failed">予定を作成できませんでした。書き込み可能なカレンダーを追加してください。</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">月カレンダー</string>

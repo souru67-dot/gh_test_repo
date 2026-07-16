@@ -244,10 +244,18 @@ class MonthViewModel(
         }
     }
 
+    private val _templateApplied =
+        kotlinx.coroutines.channels.Channel<Boolean>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    val templateApplied = _templateApplied.receiveAsFlow()
+
     /** Creates an event from [template] on [date]. */
     fun applyTemplate(template: com.souru.koyomi.data.template.EventTemplate, date: LocalDate) {
         viewModelScope.launch {
-            val calendarId = resolveWritableCalendar(template.calendarId) ?: return@launch
+            val calendarId = resolveWritableCalendar(template.calendarId)
+            if (calendarId == null) {
+                _templateApplied.send(false)
+                return@launch
+            }
             val zone = java.time.ZoneId.systemDefault()
             val draft = if (template.allDay) {
                 val startMs = date.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -283,8 +291,12 @@ class MonthViewModel(
                     },
                 )
             }
-            calendarRepository.createEvent(draft)?.let {
+            val created = calendarRepository.createEvent(draft)
+            if (created != null) {
                 settingsRepository.setLastUsedCalendarId(calendarId)
+                _templateApplied.send(true)
+            } else {
+                _templateApplied.send(false)
             }
         }
     }

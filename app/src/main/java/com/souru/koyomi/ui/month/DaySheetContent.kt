@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -190,6 +191,14 @@ private fun DayEventList(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
+            if (hasTemplates) {
+                IconButton(onClick = onOpenTemplates) {
+                    Icon(
+                        imageVector = Icons.Outlined.Bookmarks,
+                        contentDescription = stringResource(R.string.template_add),
+                    )
+                }
+            }
             IconButton(onClick = onAdd) {
                 Icon(
                     imageVector = Icons.Filled.Add,

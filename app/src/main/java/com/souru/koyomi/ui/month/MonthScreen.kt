@@ -141,6 +141,13 @@ fun MonthScreen(
             if (ok) snackbarHostState.showSnackbar(templateSavedMsg)
         }
     }
+    val eventCreatedMsg = stringResource(R.string.event_created)
+    val eventCreateFailedMsg = stringResource(R.string.event_create_failed)
+    LaunchedEffect(Unit) {
+        viewModel.templateApplied.collect { ok ->
+            snackbarHostState.showSnackbar(if (ok) eventCreatedMsg else eventCreateFailedMsg)
+        }
+    }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()

@@ -149,6 +149,8 @@
     <string name="template_add">Add from template</string>
     <string name="templates_title">Templates</string>
     <string name="template_empty">No saved templates</string>
+    <string name="event_created">Event created</string>
+    <string name="event_create_failed">Couldn\'t create the event. Add a writable calendar first.</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">Month calendar</string>
