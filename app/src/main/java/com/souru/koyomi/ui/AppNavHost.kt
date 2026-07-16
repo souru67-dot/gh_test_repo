@@ -16,6 +16,7 @@ import com.souru.koyomi.ui.month.MonthScreen
 import com.souru.koyomi.ui.onboarding.OnboardingScreen
 import com.souru.koyomi.ui.search.SearchScreen
 import com.souru.koyomi.ui.settings.SettingsScreen
+import com.souru.koyomi.ui.tasks.TasksScreen
 import com.souru.koyomi.ui.timeline.TimelineScreen
 import java.time.LocalDate
 
@@ -24,6 +25,7 @@ object Routes {
     const val MONTH = "month"
     const val SETTINGS = "settings"
     const val SEARCH = "search"
+    const val TASKS = "tasks"
     const val EDITOR =
         "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}" +
             "&dateEpochDay={dateEpochDay}&taskId={taskId}"
@@ -90,6 +92,7 @@ fun AppNavHost(
                 },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
+                onOpenTasks = { navController.navigate(Routes.TASKS) },
                 deepLinkEpochDay = deepLinkEpochDay,
                 onDeepLinkConsumed = onDeepLinkConsumed,
             )
@@ -114,6 +117,14 @@ fun AppNavHost(
                 onBack = { navController.popIfCurrent(Routes.TIMELINE) },
                 onEditEvent = { eventId, beginMs, endMs ->
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
+                },
+            )
+        }
+        composable(Routes.TASKS) {
+            TasksScreen(
+                onBack = { navController.popIfCurrent(Routes.TASKS) },
+                onEditTask = { taskId ->
+                    navController.navigate(Routes.editorForTask(taskId))
                 },
             )
         }

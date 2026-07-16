@@ -133,6 +133,11 @@
     <string name="event_label">予定</string>
     <string name="task_date">日付</string>
     <string name="task_time">時刻</string>
+    <string name="tasks_list">ToDoリスト</string>
+    <string name="tasks_overdue">期限切れ</string>
+    <string name="tasks_upcoming">今後</string>
+    <string name="tasks_done">完了</string>
+    <string name="tasks_empty">ToDoはありません</string>
 
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>

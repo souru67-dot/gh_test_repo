@@ -91,6 +91,7 @@ fun MonthScreen(
     onOpenTimeline: (mode: String, date: LocalDate) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenTasks: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
 ) {
@@ -236,6 +237,7 @@ fun MonthScreen(
                 onOpenTimeline = { mode -> onOpenTimeline(mode, selectedDate) },
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
+                onOpenTasks = onOpenTasks,
                 onMonthClick = { showMonthJump = true },
             )
         },
@@ -619,6 +621,7 @@ private fun MonthTopBar(
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenTasks: () -> Unit,
     onMonthClick: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
@@ -643,6 +646,7 @@ private fun MonthTopBar(
                 onOpenTimeline = onOpenTimeline,
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
+                onOpenTasks = onOpenTasks,
                 onMonthClick = onMonthClick,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
@@ -659,6 +663,7 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onOpenTimeline: (mode: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenTasks: () -> Unit,
     onMonthClick: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
@@ -732,6 +737,13 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
                 onClick = {
                     onViewMenuChange(false)
                     onOpenTimeline("day")
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tasks_list)) },
+                onClick = {
+                    onViewMenuChange(false)
+                    onOpenTasks()
                 },
             )
         }

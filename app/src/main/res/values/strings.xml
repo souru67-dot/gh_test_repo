@@ -134,6 +134,11 @@
     <string name="event_label">Event</string>
     <string name="task_date">Date</string>
     <string name="task_time">Time</string>
+    <string name="tasks_list">To-do list</string>
+    <string name="tasks_overdue">Overdue</string>
+    <string name="tasks_upcoming">Upcoming</string>
+    <string name="tasks_done">Completed</string>
+    <string name="tasks_empty">No to-dos yet</string>
 
     <!-- Drag & drop -->
     <string name="drop_title">Move or copy?</string>

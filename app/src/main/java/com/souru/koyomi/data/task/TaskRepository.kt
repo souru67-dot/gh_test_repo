@@ -75,6 +75,23 @@ class TaskRepository(private val context: Context) {
         result
     }
 
+    /** Every task, oldest due date first; open tasks before completed ones. */
+    suspend fun loadAllTasks(): List<Task> = withContext(Dispatchers.IO) {
+        val result = mutableListOf<Task>()
+        helper.readableDatabase.query(
+            TABLE,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "done ASC, due_epoch_day ASC, time_minutes ASC, _id ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) result.add(cursor.toTask())
+        }
+        result
+    }
+
     suspend fun getTask(taskId: Long): Task? = withContext(Dispatchers.IO) {
         helper.readableDatabase.query(
             TABLE,
