@@ -2,6 +2,8 @@ package com.souru.koyomi.notifications
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.provider.CalendarContract
@@ -28,31 +30,66 @@ class ReminderReceiver : BroadcastReceiver() {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         val projection = arrayOf(
+            CalendarContract.CalendarAlerts._ID,
             CalendarContract.CalendarAlerts.EVENT_ID,
             CalendarContract.CalendarAlerts.TITLE,
             CalendarContract.CalendarAlerts.EVENT_LOCATION,
             CalendarContract.CalendarAlerts.BEGIN,
             CalendarContract.CalendarAlerts.ALL_DAY,
         )
+        // Only pick up alerts that have not been shown yet. CalendarProvider can
+        // re-broadcast the same alarm (on reboot, sync, or repeated firings);
+        // filtering out already-fired/dismissed alerts and marking each one
+        // dismissed after posting keeps a reminder to a single notification.
+        val selection = "${CalendarContract.CalendarAlerts.ALARM_TIME} = ? AND " +
+            "${CalendarContract.CalendarAlerts.STATE} = ?"
+        val selectionArgs = arrayOf(
+            alarmTime.toString(),
+            CalendarContract.CalendarAlerts.STATE_SCHEDULED.toString(),
+        )
+        // Guard against duplicate alert rows for the same event+time.
+        val postedKeys = HashSet<Long>()
         runCatching {
             context.contentResolver.query(
                 CalendarContract.CalendarAlerts.CONTENT_URI,
                 projection,
-                "${CalendarContract.CalendarAlerts.ALARM_TIME} = ?",
-                arrayOf(alarmTime.toString()),
+                selection,
+                selectionArgs,
                 null,
             )?.use { cursor ->
                 while (cursor.moveToNext()) {
+                    val alertId = cursor.getLong(0)
+                    val eventId = cursor.getLong(1)
+                    val begin = cursor.getLong(4)
+                    markAlertDismissed(context, alertId)
+                    if (!postedKeys.add(eventId xor begin)) continue
                     postNotification(
                         context = context,
-                        eventId = cursor.getLong(0),
-                        title = cursor.getString(1).orEmpty(),
-                        location = cursor.getString(2),
-                        begin = cursor.getLong(3),
-                        allDay = cursor.getInt(4) != 0,
+                        eventId = eventId,
+                        title = cursor.getString(2).orEmpty(),
+                        location = cursor.getString(3),
+                        begin = begin,
+                        allDay = cursor.getInt(5) != 0,
                     )
                 }
             }
+        }
+    }
+
+    /** Marks the alert as dismissed so it is never re-broadcast into a notification. */
+    private fun markAlertDismissed(context: Context, alertId: Long) {
+        runCatching {
+            val values = ContentValues().apply {
+                put(
+                    CalendarContract.CalendarAlerts.STATE,
+                    CalendarContract.CalendarAlerts.STATE_DISMISSED,
+                )
+            }
+            val uri = ContentUris.withAppendedId(
+                CalendarContract.CalendarAlerts.CONTENT_URI,
+                alertId,
+            )
+            context.contentResolver.update(uri, values, null, null)
         }
     }
 
@@ -91,6 +128,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setContentText(text)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .build()
 
