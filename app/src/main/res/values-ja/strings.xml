@@ -139,6 +139,15 @@
     <string name="drop_message">「%1$s」をどうしますか?</string>
     <string name="drop_move">ここに移動</string>
     <string name="drop_copy">ここに複製</string>
+    <string name="undo">元に戻す</string>
+    <string name="batch_copy">複数日に複製</string>
+    <string name="batch_copy_confirm">複製(%1$d日)</string>
+    <string name="batch_copied">%1$d日に複製しました</string>
+    <string name="template_save">テンプレート保存</string>
+    <string name="template_saved">テンプレートに保存しました</string>
+    <string name="template_add">テンプレートから追加</string>
+    <string name="templates_title">テンプレート</string>
+    <string name="template_empty">保存されたテンプレートはありません</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">月カレンダー</string>

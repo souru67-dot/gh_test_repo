@@ -552,9 +552,17 @@ class CalendarRepository(private val context: Context) {
     }
 
     /** Drag & drop copy: duplicates an event, shifted by [days] whole days. */
-    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean {
-        val newId = duplicateEvent(eventId) ?: return false
-        return if (days == 0L) true else moveEventByDays(newId, days)
+    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean =
+        duplicateEventToReturningId(eventId, days) != null
+
+    /** Like [duplicateEventTo] but returns the new event id (for batch undo). */
+    suspend fun duplicateEventToReturningId(eventId: Long, days: Long): Long? {
+        val newId = duplicateEvent(eventId) ?: return null
+        if (days != 0L && !moveEventByDays(newId, days)) {
+            deleteEvent(newId)
+            return null
+        }
+        return newId
     }
 
     /** Copies an event (single copy at the same time; the copy does not repeat). */

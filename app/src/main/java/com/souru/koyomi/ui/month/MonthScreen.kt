@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CalendarViewMonth
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
@@ -56,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -113,7 +115,32 @@ fun MonthScreen(
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
     var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
     var pendingDuplicate by remember { mutableStateOf<EventInstance?>(null) }
+    var pendingBatchCopy by remember { mutableStateOf<EventInstance?>(null) }
+    var showTemplatePicker by remember { mutableStateOf(false) }
     var showMonthJump by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val templates by viewModel.templates.collectAsStateWithLifecycle()
+
+    // Batch-copy result: a snackbar with an undo that deletes the copies made.
+    val undoLabel = stringResource(R.string.undo)
+    LaunchedEffect(Unit) {
+        viewModel.batchCopied.collect { count ->
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.batch_copied, count),
+                actionLabel = undoLabel,
+                duration = androidx.compose.material3.SnackbarDuration.Short,
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                viewModel.undoBatchCopy()
+            }
+        }
+    }
+    val templateSavedMsg = stringResource(R.string.template_saved)
+    LaunchedEffect(Unit) {
+        viewModel.templateSaved.collect { ok ->
+            if (ok) snackbarHostState.showSnackbar(templateSavedMsg)
+        }
+    }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -177,6 +204,7 @@ fun MonthScreen(
 
     BottomSheetScaffold(
         scaffoldState = rememberBottomSheetScaffoldState(),
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         sheetPeekHeight = SheetPeekHeight,
         sheetDragHandle = {
             // Slim brand handle instead of the stock Material pill.
@@ -248,6 +276,10 @@ fun MonthScreen(
                     onEditEvent(event.eventId, event.begin, event.end)
                 },
                 onDuplicate = { event -> pendingDuplicate = event },
+                onBatchDuplicate = { event -> pendingBatchCopy = event },
+                onSaveTemplate = { event -> viewModel.saveTemplateFromEvent(event.eventId) },
+                hasTemplates = templates.isNotEmpty(),
+                onOpenTemplates = { showTemplatePicker = true },
                 onDeleteRequest = { event ->
                     // `detail` belongs to the event shown in the sheet, so its
                     // RRULE tells us whether this is a recurring series.
@@ -392,6 +424,31 @@ fun MonthScreen(
                 pendingDuplicate = null
                 closeDetail()
             },
+        )
+    }
+
+    pendingBatchCopy?.let { source ->
+        BatchCopyDialog(
+            source = source,
+            weekStart = weekStart,
+            onDismiss = { pendingBatchCopy = null },
+            onConfirm = { targets ->
+                viewModel.batchDuplicate(source, targets)
+                pendingBatchCopy = null
+                closeDetail()
+            },
+        )
+    }
+
+    if (showTemplatePicker) {
+        TemplatePickerDialog(
+            templates = templates,
+            onDismiss = { showTemplatePicker = false },
+            onPick = { template ->
+                viewModel.applyTemplate(template, selectedDate)
+                showTemplatePicker = false
+            },
+            onDelete = { template -> viewModel.deleteTemplate(template.id) },
         )
     }
 
@@ -679,6 +736,162 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/**
+ * 複数日への一括複製: a mini month where the user taps several days to place
+ * copies of [source] on all of them at once (e.g. shift work).
+ */
+@Composable
+private fun BatchCopyDialog(
+    source: EventInstance,
+    weekStart: DayOfWeek,
+    onDismiss: () -> Unit,
+    onConfirm: (List<LocalDate>) -> Unit,
+) {
+    var month by remember { mutableStateOf(YearMonth.from(source.startDate)) }
+    val selected = remember { androidx.compose.runtime.mutableStateListOf<LocalDate>() }
+    val days = remember(month, weekStart) {
+        com.souru.koyomi.util.monthGridDays(month, weekStart)
+    }
+    val locale = Locale.getDefault()
+    val monthLabel = if (locale.language == "ja") "${month.year}年${month.monthValue}月" else
+        month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.batch_copy)) },
+        text = {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { month = month.minusMonths(1) }) {
+                        Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.previous_period))
+                    }
+                    Text(
+                        text = monthLabel,
+                        style = MaterialTheme.typography.titleSmall,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { month = month.plusMonths(1) }) {
+                        Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.next_period))
+                    }
+                }
+                for (week in 0 until 6) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        for (i in 0 until 7) {
+                            val date = days[week * 7 + i]
+                            val inMonth = YearMonth.from(date) == month
+                            val isSel = date in selected
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(2.dp)
+                                    .size(34.dp)
+                                    .background(
+                                        if (isSel) MaterialTheme.colorScheme.tertiary else Color.Transparent,
+                                        CircleShape,
+                                    )
+                                    .clickable {
+                                        if (isSel) selected.remove(date) else selected.add(date)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = date.dayOfMonth.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = when {
+                                        isSel -> MaterialTheme.colorScheme.onTertiary
+                                        !inMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(selected.toList()) },
+                enabled = selected.isNotEmpty(),
+            ) { Text(stringResource(R.string.batch_copy_confirm, selected.size)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+/** Lists saved templates; tap to place on the selected day, trash to remove. */
+@Composable
+private fun TemplatePickerDialog(
+    templates: List<com.souru.koyomi.data.template.EventTemplate>,
+    onDismiss: () -> Unit,
+    onPick: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
+    onDelete: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.templates_title)) },
+        text = {
+            if (templates.isEmpty()) {
+                Text(
+                    stringResource(R.string.template_empty),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Column {
+                    for (template in templates) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(template) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = template.title.ifBlank {
+                                        stringResource(R.string.untitled)
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    text = if (template.allDay) {
+                                        stringResource(R.string.all_day)
+                                    } else {
+                                        "%02d:%02d".format(
+                                            template.startMinutes / 60,
+                                            template.startMinutes % 60,
+                                        )
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { onDelete(template) }) {
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = stringResource(R.string.delete),
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+    )
 }
 
 /** Year stepper + 12-month grid; jumps the pager to the chosen month. */

@@ -17,6 +17,7 @@ import com.souru.koyomi.util.monthGridDays
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,9 +26,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -45,7 +48,8 @@ data class MonthUiState(
 class MonthViewModel(
     private val calendarRepository: CalendarRepository,
     private val taskRepository: TaskRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
+    private val templateRepository: com.souru.koyomi.data.template.EventTemplateRepository,
 ) : ViewModel() {
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
@@ -162,6 +166,143 @@ class MonthViewModel(
         viewModelScope.launch { calendarRepository.duplicateEventTo(eventId, days) }
     }
 
+    // ---- 複数日への一括複製 ----
+    private val _batchCopied = kotlinx.coroutines.channels.Channel<Int>(
+        kotlinx.coroutines.channels.Channel.BUFFERED,
+    )
+    val batchCopied = _batchCopied.receiveAsFlow()
+    private var batchUndoIds: List<Long> = emptyList()
+
+    /** Copies [event] onto each of [targets] (new events); result sent to UI. */
+    fun batchDuplicate(event: EventInstance, targets: List<LocalDate>) {
+        if (targets.isEmpty()) return
+        viewModelScope.launch {
+            val ids = mutableListOf<Long>()
+            for (target in targets) {
+                val days = ChronoUnit.DAYS.between(event.startDate, target)
+                calendarRepository.duplicateEventToReturningId(event.eventId, days)
+                    ?.let { ids += it }
+            }
+            batchUndoIds = ids
+            _batchCopied.send(ids.size)
+        }
+    }
+
+    /** Deletes the events created by the last batch copy. */
+    fun undoBatchCopy() {
+        val ids = batchUndoIds
+        batchUndoIds = emptyList()
+        viewModelScope.launch { ids.forEach { calendarRepository.deleteEvent(it) } }
+    }
+
+    // ---- #7 予定テンプレート ----
+    val templates: StateFlow<List<com.souru.koyomi.data.template.EventTemplate>> =
+        templateRepository.changes
+            .mapLatest { templateRepository.loadTemplates() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _templateSaved =
+        kotlinx.coroutines.channels.Channel<Boolean>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    val templateSaved = _templateSaved.receiveAsFlow()
+
+    /** Saves the given event as a reusable template. */
+    fun saveTemplateFromEvent(eventId: Long) {
+        viewModelScope.launch {
+            val details = calendarRepository.loadEventDetails(eventId)
+            if (details == null) {
+                _templateSaved.send(false)
+                return@launch
+            }
+            val zone = java.time.ZoneId.systemDefault()
+            val startMinutes = if (details.allDay) {
+                DEFAULT_TEMPLATE_START
+            } else {
+                val t = java.time.Instant.ofEpochMilli(details.dtStart).atZone(zone).toLocalTime()
+                t.hour * 60 + t.minute
+            }
+            val durationMinutes = if (details.allDay) {
+                24 * 60
+            } else {
+                val end = details.dtEnd ?: (details.dtStart + 60 * 60_000L)
+                ((end - details.dtStart) / 60_000L).toInt().coerceAtLeast(15)
+            }
+            templateRepository.save(
+                com.souru.koyomi.data.template.EventTemplate(
+                    id = 0L,
+                    title = details.title,
+                    allDay = details.allDay,
+                    startMinutes = startMinutes,
+                    durationMinutes = durationMinutes,
+                    calendarId = details.calendarId,
+                    color = details.eventColor.takeIf { it != 0 },
+                    location = details.location,
+                    description = details.description,
+                    reminderMinutes = details.reminderMinutes,
+                ),
+            )
+            _templateSaved.send(true)
+        }
+    }
+
+    /** Creates an event from [template] on [date]. */
+    fun applyTemplate(template: com.souru.koyomi.data.template.EventTemplate, date: LocalDate) {
+        viewModelScope.launch {
+            val calendarId = resolveWritableCalendar(template.calendarId) ?: return@launch
+            val zone = java.time.ZoneId.systemDefault()
+            val draft = if (template.allDay) {
+                val startMs = date.atStartOfDay(zone).toInstant().toEpochMilli()
+                com.souru.koyomi.data.model.EventDraft(
+                    calendarId = calendarId,
+                    title = template.title,
+                    allDay = true,
+                    startMillis = startMs,
+                    endMillis = startMs,
+                    location = template.location.orEmpty(),
+                    description = template.description.orEmpty(),
+                    reminderMinutes = template.reminderMinutes,
+                    eventColor = template.color?.let {
+                        com.souru.koyomi.data.model.EventColor(null, it)
+                    },
+                )
+            } else {
+                val start = date.atTime(template.startMinutes / 60, template.startMinutes % 60)
+                val startMs = start.atZone(zone).toInstant().toEpochMilli()
+                val endMs = start.plusMinutes(template.durationMinutes.toLong())
+                    .atZone(zone).toInstant().toEpochMilli()
+                com.souru.koyomi.data.model.EventDraft(
+                    calendarId = calendarId,
+                    title = template.title,
+                    allDay = false,
+                    startMillis = startMs,
+                    endMillis = endMs,
+                    location = template.location.orEmpty(),
+                    description = template.description.orEmpty(),
+                    reminderMinutes = template.reminderMinutes,
+                    eventColor = template.color?.let {
+                        com.souru.koyomi.data.model.EventColor(null, it)
+                    },
+                )
+            }
+            calendarRepository.createEvent(draft)?.let {
+                settingsRepository.setLastUsedCalendarId(calendarId)
+            }
+        }
+    }
+
+    fun deleteTemplate(id: Long) {
+        viewModelScope.launch { templateRepository.delete(id) }
+    }
+
+    /** A writable calendar: the preferred one if usable, else last-used, else first. */
+    private suspend fun resolveWritableCalendar(preferred: Long?): Long? {
+        val writable = calendarRepository.loadCalendars().filter { it.isWritable }
+        if (writable.isEmpty()) return null
+        preferred?.let { p -> if (writable.any { it.id == p }) return p }
+        val last = settingsRepository.lastUsedCalendarId.first()
+        last?.let { l -> if (writable.any { it.id == l }) return l }
+        return writable.first().id
+    }
+
     /** Nudge the sync framework so remote Google Calendar changes come in. */
     fun syncNow() {
         if (calendarRepository.hasReadPermission()) calendarRepository.requestSync()
@@ -180,6 +321,8 @@ class MonthViewModel(
     }
 
     companion object {
+        private const val DEFAULT_TEMPLATE_START = 9 * 60
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
@@ -188,6 +331,7 @@ class MonthViewModel(
                     calendarRepository = app.container.calendarRepository,
                     taskRepository = app.container.taskRepository,
                     settingsRepository = app.container.settingsRepository,
+                    templateRepository = app.container.templateRepository,
                 )
             }
         }

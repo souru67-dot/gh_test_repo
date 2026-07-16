@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -88,7 +89,11 @@ fun DaySheetContent(
     onAdd: () -> Unit,
     onEdit: (EventInstance) -> Unit,
     onDuplicate: (EventInstance) -> Unit,
+    onBatchDuplicate: (EventInstance) -> Unit,
+    onSaveTemplate: (EventInstance) -> Unit,
     onDeleteRequest: (EventInstance) -> Unit,
+    hasTemplates: Boolean,
+    onOpenTemplates: () -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
@@ -109,6 +114,8 @@ fun DaySheetContent(
                 moonAge = moonAge,
                 events = events,
                 tasks = tasks,
+                hasTemplates = hasTemplates,
+                onOpenTemplates = onOpenTemplates,
                 onEventClick = onEventClick,
                 onAdd = onAdd,
                 onAddTask = onAddTask,
@@ -124,6 +131,8 @@ fun DaySheetContent(
                 onClose = onCloseDetail,
                 onEdit = { onEdit(shownDetail) },
                 onDuplicate = { onDuplicate(shownDetail) },
+                onBatchDuplicate = { onBatchDuplicate(shownDetail) },
+                onSaveTemplate = { onSaveTemplate(shownDetail) },
                 onDelete = { onDeleteRequest(shownDetail) },
             )
         }
@@ -140,6 +149,8 @@ private fun DayEventList(
     moonAge: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
+    hasTemplates: Boolean,
+    onOpenTemplates: () -> Unit,
     onEventClick: (EventInstance) -> Unit,
     onAdd: () -> Unit,
     onAddTask: (String) -> Unit,
@@ -252,6 +263,24 @@ private fun DayEventList(
             }
             item(key = "task-add") {
                 AddTaskRow(onAddTask = onAddTask)
+            }
+            if (hasTemplates) {
+                item(key = "template-add") {
+                    androidx.compose.material3.TextButton(
+                        onClick = onOpenTemplates,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.template_add),
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -431,6 +460,8 @@ private fun EventDetailPane(
     onClose: () -> Unit,
     onEdit: () -> Unit,
     onDuplicate: () -> Unit,
+    onBatchDuplicate: () -> Unit,
+    onSaveTemplate: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val zone = ZoneId.systemDefault()
@@ -528,6 +559,26 @@ private fun EventDetailPane(
             ) {
                 Icon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.delete), modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+
+        // Secondary actions: 複数日への一括複製 と テンプレート保存。
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.TextButton(onClick = onBatchDuplicate) {
+                Icon(Icons.Outlined.ContentCopy, null, Modifier.size(16.dp))
+                Text(
+                    stringResource(R.string.batch_copy),
+                    modifier = Modifier.padding(start = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            androidx.compose.material3.TextButton(onClick = onSaveTemplate) {
+                Icon(Icons.Outlined.BookmarkAdd, null, Modifier.size(16.dp))
+                Text(
+                    stringResource(R.string.template_save),
+                    modifier = Modifier.padding(start = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         }
 
