@@ -598,8 +598,19 @@ private fun EventDetailPane(
                 .padding(top = 4.dp, bottom = 12.dp),
         ) {
             if (!instance.location.isNullOrBlank()) {
-                DetailRow(icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) }) {
-                    Text(instance.location, style = MaterialTheme.typography.bodyMedium)
+                val context = androidx.compose.ui.platform.LocalContext.current
+                DetailRow(
+                    icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) },
+                    modifier = Modifier.clickable {
+                        openLocationInMaps(context, instance.location)
+                    },
+                ) {
+                    Text(
+                        text = instance.location,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                    )
                 }
             }
             if (!detail?.description.isNullOrBlank()) {
@@ -612,15 +623,39 @@ private fun EventDetailPane(
 }
 
 @Composable
-private fun DetailRow(icon: @Composable () -> Unit, content: @Composable () -> Unit) {
+private fun DetailRow(
+    icon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.padding(end = 12.dp)) { icon() }
         content()
+    }
+}
+
+/** Opens [location] in a maps app (Google Maps when installed), or the browser. */
+private fun openLocationInMaps(context: android.content.Context, location: String) {
+    val encoded = android.net.Uri.encode(location)
+    val geoIntent = android.content.Intent(
+        android.content.Intent.ACTION_VIEW,
+        android.net.Uri.parse("geo:0,0?q=$encoded"),
+    )
+    runCatching { context.startActivity(geoIntent) }.onFailure {
+        // No maps app — fall back to Google Maps in the browser.
+        runCatching {
+            context.startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://www.google.com/maps/search/?api=1&query=$encoded"),
+                ),
+            )
+        }
     }
 }
 
