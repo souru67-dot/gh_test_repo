@@ -42,6 +42,7 @@ class SettingsRepository(private val context: Context) {
         val SHOW_MOON_AGE = booleanPreferencesKey("show_moon_age")
         val USE_JAPANESE_ERA = booleanPreferencesKey("use_japanese_era")
         val CUSTOM_THEME_COLOR = stringPreferencesKey("custom_theme_color")
+        val SHOW_LUCKY_DAYS = booleanPreferencesKey("show_lucky_days")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -138,6 +139,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowRokuyo(enabled: Boolean) {
         context.dataStore.edit { it[Keys.SHOW_ROKUYO] = enabled }
+    }
+
+    /** 開運日 (一粒万倍日・天赦日・寅の日・巳の日) in month view + day sheet. */
+    val showLuckyDays: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SHOW_LUCKY_DAYS] ?: false
+    }
+
+    suspend fun setShowLuckyDays(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_LUCKY_DAYS] = enabled }
     }
 
     /** Month view: 二十四節気 (立春・夏至...) on their day. */

@@ -106,6 +106,7 @@ fun MonthScreen(
     val showWeekNumbers by viewModel.showWeekNumbers.collectAsStateWithLifecycle()
     val showRokuyo by viewModel.showRokuyo.collectAsStateWithLifecycle()
     val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
+    val showLuckyDays by viewModel.showLuckyDays.collectAsStateWithLifecycle()
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -256,6 +257,11 @@ fun MonthScreen(
                 } else {
                     null
                 },
+                luckyDays = if (showLuckyDays) {
+                    com.souru.koyomi.data.rokuyo.Kyureki.luckyDaysFor(selectedDate)
+                } else {
+                    emptyList()
+                },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -357,6 +363,7 @@ fun MonthScreen(
                     showWeekNumbers = showWeekNumbers,
                     showRokuyo = showRokuyo,
                     showSolarTerms = showSolarTerms,
+                    showLuckyDays = showLuckyDays,
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
@@ -392,6 +399,7 @@ fun MonthScreen(
                         showWeekNumbers = showWeekNumbers,
                         showRokuyo = showRokuyo,
                         showSolarTerms = showSolarTerms,
+                        showLuckyDays = showLuckyDays,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),
@@ -577,6 +585,7 @@ private fun VerticalMonthList(
     showWeekNumbers: Boolean,
     showRokuyo: Boolean,
     showSolarTerms: Boolean,
+    showLuckyDays: Boolean,
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
@@ -604,6 +613,7 @@ private fun VerticalMonthList(
                 showWeekNumbers = showWeekNumbers,
                 showRokuyo = showRokuyo,
                 showSolarTerms = showSolarTerms,
+                showLuckyDays = showLuckyDays,
                 // Same cell density as the pager: a fixed compact height made
                 // the chips overflow their cells in continuous scroll mode.
                 modifier = Modifier

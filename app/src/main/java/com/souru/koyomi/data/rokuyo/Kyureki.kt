@@ -103,6 +103,82 @@ object Kyureki {
         else -> null
     }
 
+    // ---------- 開運日 (lucky days) ----------
+
+    /**
+     * Sexagenary (干支) index of the day, 0..59 with 0 = 甲子. Anchored on
+     * 2024-01-01 = 甲子, cross-checked against published 天赦日/一粒万倍日
+     * lists for 2024 and 2026.
+     */
+    fun sexagenaryDayIndex(date: LocalDate): Int =
+        (((date.toEpochDay() + 2440637) % 60 + 60) % 60).toInt()
+
+    /**
+     * 節月 1..12 (正月 = from 立春). The 節 day itself belongs to the new
+     * month, so the boundary is read from the sun's longitude at the END of
+     * the day (the term moment falls somewhere inside it).
+     */
+    private fun setsugetsuFor(date: LocalDate): Int {
+        val lonAtDayEnd = sunLongitude(jdeAtJstMidnight(date.plusDays(1)))
+        return (floor(angleForward(315.0, lonAtDayEnd) / 30.0).toInt() % 12) + 1
+    }
+
+    /**
+     * 一粒万倍日: two zodiac day-signs per 節月. The table is the classical
+     * one, verified against the published 2026 dates.
+     */
+    private val MANBAI_SHI = mapOf(
+        1 to setOf(1, 6),   // 正月(立春〜): 丑・午
+        2 to setOf(2, 9),   // 二月(啓蟄〜): 寅・酉
+        3 to setOf(0, 3),   // 三月(清明〜): 子・卯
+        4 to setOf(3, 4),   // 四月(立夏〜): 卯・辰
+        5 to setOf(5, 6),   // 五月(芒種〜): 巳・午
+        6 to setOf(6, 9),   // 六月(小暑〜): 午・酉
+        7 to setOf(0, 7),   // 七月(立秋〜): 子・未
+        8 to setOf(3, 8),   // 八月(白露〜): 卯・申
+        9 to setOf(6, 9),   // 九月(寒露〜): 午・酉
+        10 to setOf(9, 10), // 十月(立冬〜): 酉・戌
+        11 to setOf(11, 0), // 十一月(大雪〜): 亥・子
+        12 to setOf(0, 3),  // 十二月(小寒〜): 子・卯
+    )
+
+    /** 天赦日: one fixed 干支 per season (season = 節月 group). */
+    private fun tenshaIndexFor(setsugetsu: Int): Int = when (setsugetsu) {
+        1, 2, 3 -> 14   // 春 (立春〜立夏前): 戊寅
+        4, 5, 6 -> 30   // 夏 (立夏〜立秋前): 甲午
+        7, 8, 9 -> 44   // 秋 (立秋〜立冬前): 戊申
+        else -> 0       // 冬 (立冬〜立春前): 甲子
+    }
+
+    /**
+     * 開運日 labels for [date]: 天赦日 / 一粒万倍日 / 寅の日 / 巳の日 (most
+     * auspicious first). Empty when none. 1900..2099.
+     */
+    fun luckyDaysFor(date: LocalDate): List<String> {
+        if (date.year < 1900 || date.year > 2099) return emptyList()
+        val kanshi = sexagenaryDayIndex(date)
+        val shi = kanshi % 12
+        val setsugetsu = setsugetsuFor(date)
+        return buildList {
+            if (kanshi == tenshaIndexFor(setsugetsu)) add("天赦日")
+            if (shi in MANBAI_SHI.getValue(setsugetsu)) add("一粒万倍日")
+            if (shi == 2) add("寅の日")
+            if (shi == 5) add("巳の日")
+        }
+    }
+
+    /** Short month-grid marker for the day's best 開運日, or null. */
+    fun luckyMarkFor(date: LocalDate): String? {
+        val lucky = luckyDaysFor(date)
+        return when {
+            "天赦日" in lucky -> "天赦"
+            "一粒万倍日" in lucky -> "万倍"
+            "寅の日" in lucky -> "寅の日"
+            "巳の日" in lucky -> "巳の日"
+            else -> null
+        }
+    }
+
     private val cache = ConcurrentHashMap<Long, LunarDate>()
 
     fun lunarDateFor(date: LocalDate): LunarDate? {

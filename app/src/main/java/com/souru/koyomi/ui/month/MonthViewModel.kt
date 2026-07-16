@@ -78,6 +78,9 @@ class MonthViewModel(
     val showSolarTerms: StateFlow<Boolean> = settingsRepository.showSolarTerms
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val showLuckyDays: StateFlow<Boolean> = settingsRepository.showLuckyDays
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 

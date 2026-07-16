@@ -185,6 +185,7 @@ fun MonthGrid(
     showWeekNumbers: Boolean = false,
     showRokuyo: Boolean = false,
     showSolarTerms: Boolean = false,
+    showLuckyDays: Boolean = false,
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
@@ -217,9 +218,12 @@ fun MonthGrid(
     val solarTermByDay = remember(days, showSolarTerms) {
         if (showSolarTerms) days.associateWith { Kyureki.solarTermFor(it) } else emptyMap()
     }
-    // A calendar sub-line under each day (六曜 and/or 二十四節気); reserved with
+    val luckyByDay = remember(days, showLuckyDays) {
+        if (showLuckyDays) days.associateWith { Kyureki.luckyMarkFor(it) } else emptyMap()
+    }
+    // A calendar sub-line under each day (六曜・二十四節気・開運日); reserved with
     // a fixed height so multi-day bars stay aligned even on days without a term.
-    val subLine = showRokuyo || showSolarTerms
+    val subLine = showRokuyo || showSolarTerms || showLuckyDays
     val today = LocalDate.now()
     val dragState = remember { EventDragState() }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -278,6 +282,7 @@ fun MonthGrid(
                                 tasks = tasksByDay[date].orEmpty(),
                                 rokuyo = rokuyoByDay[date],
                                 solarTerm = solarTermByDay[date],
+                                luckyMark = luckyByDay[date],
                                 reserveSubLine = subLine,
                                 onSelect = onSelect,
                                 onCreateNew = onCreateNew,
@@ -363,6 +368,7 @@ private fun DayCell(
     tasks: List<Task>,
     rokuyo: String?,
     solarTerm: String?,
+    luckyMark: String?,
     reserveSubLine: Boolean,
     onSelect: (LocalDate) -> Unit,
     onCreateNew: (LocalDate) -> Unit,
@@ -433,7 +439,7 @@ private fun DayCell(
                 modifier = Modifier.height(10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                val termLabel = solarTerm
+                val termLabel = solarTerm ?: luckyMark
                 val label = termLabel ?: rokuyo
                 if (label != null) {
                     Text(

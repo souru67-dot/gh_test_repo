@@ -43,6 +43,7 @@ data class SettingsUiState(
     val showMoonAge: Boolean = false,
     val useJapaneseEra: Boolean = false,
     val customThemeColor: Int = SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
+    val showLuckyDays: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -76,6 +77,7 @@ class SettingsViewModel(
         val showMoonAge: Boolean,
         val useJapaneseEra: Boolean,
         val customThemeColor: Int,
+        val showLuckyDays: Boolean,
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -110,8 +112,14 @@ class SettingsViewModel(
             settingsRepository.showLunarDate,
             settingsRepository.showMoonAge,
             settingsRepository.useJapaneseEra,
-            settingsRepository.customThemeColor,
-        ) { terms, lunar, moon, era, custom -> AlmanacPrefs(terms, lunar, moon, era, custom) },
+            // combine() tops out at 5 typed flows; pair the last two.
+            combine(
+                settingsRepository.customThemeColor,
+                settingsRepository.showLuckyDays,
+            ) { custom, lucky -> custom to lucky },
+        ) { terms, lunar, moon, era, (custom, lucky) ->
+            AlmanacPrefs(terms, lunar, moon, era, custom, lucky)
+        },
     ) { base, extras, hidden, calendars, almanac ->
         base.copy(
             calendars = calendars,
@@ -126,6 +134,7 @@ class SettingsViewModel(
             showMoonAge = almanac.showMoonAge,
             useJapaneseEra = almanac.useJapaneseEra,
             customThemeColor = almanac.customThemeColor,
+            showLuckyDays = almanac.showLuckyDays,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -206,6 +215,10 @@ class SettingsViewModel(
 
     fun setUseJapaneseEra(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setUseJapaneseEra(enabled) }
+    }
+
+    fun setShowLuckyDays(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowLuckyDays(enabled) }
     }
 
     /** Writes all shown calendars to [uri] as .ics; -1 on failure. */

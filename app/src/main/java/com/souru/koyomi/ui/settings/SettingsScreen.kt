@@ -134,6 +134,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onChange = viewModel::setShowSolarTerms,
             )
             SwitchRow(
+                label = stringResource(R.string.settings_lucky_days),
+                checked = state.showLuckyDays,
+                onChange = viewModel::setShowLuckyDays,
+            )
+            SwitchRow(
                 label = stringResource(R.string.settings_lunar_date),
                 checked = state.showLunarDate,
                 onChange = viewModel::setShowLunarDate,

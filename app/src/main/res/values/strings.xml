@@ -102,6 +102,7 @@
     <string name="settings_week_numbers">Show week numbers</string>
     <string name="settings_rokuyo">Show rokuyō (Japanese lucky days)</string>
     <string name="settings_solar_terms">Show 24 solar terms (risshun, geshi…)</string>
+    <string name="settings_lucky_days">Show lucky days (ichiryū-manbai, tensha…)</string>
     <string name="settings_lunar_date">Show lunar (kyūreki) date</string>
     <string name="settings_moon_age">Show moon age</string>
     <string name="settings_japanese_era">Japanese era year (Reiwa 8)</string>
