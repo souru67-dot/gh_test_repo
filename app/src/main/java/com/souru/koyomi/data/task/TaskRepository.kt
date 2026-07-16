@@ -131,6 +131,7 @@ class TaskRepository(private val context: Context) {
         }
         scheduleReminder(task.copy(id = id))
         _changes.tryEmit(Unit)
+        refreshWidgets()
         id
     }
 
@@ -139,12 +140,23 @@ class TaskRepository(private val context: Context) {
         helper.writableDatabase.update(TABLE, values, "_id = ?", arrayOf(taskId.toString()))
         if (done) cancelReminder(taskId) else getTask(taskId)?.let { scheduleReminder(it) }
         _changes.tryEmit(Unit)
+        refreshWidgets()
     }
 
     suspend fun deleteTask(taskId: Long) = withContext(Dispatchers.IO) {
         helper.writableDatabase.delete(TABLE, "_id = ?", arrayOf(taskId.toString()))
         cancelReminder(taskId)
         _changes.tryEmit(Unit)
+        refreshWidgets()
+    }
+
+    /** Tasks live outside CalendarProvider, so its widget trigger never fires. */
+    private fun refreshWidgets() {
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "koyomi_widget_task_change",
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<com.souru.koyomi.widget.WidgetUpdateWorker>().build(),
+        )
     }
 
     /**

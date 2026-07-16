@@ -169,6 +169,8 @@
     <string name="widget_month_today_description">This month\'s calendar with today\'s events underneath.</string>
     <string name="widget_agenda_month_label">Today + mini calendar</string>
     <string name="widget_agenda_month_description">Today\'s events beside a dotted mini month.</string>
+    <string name="widget_todo_agenda_label">To-dos + events + calendar</string>
+    <string name="widget_todo_agenda_description">Your to-dos and the coming days\' events (scrollable) beside a mini month.</string>
     <string name="settings_widget_opacity">Widget background opacity</string>
     <string name="widget_config_title">Widget settings</string>
     <string name="events_count">%1$d events</string>
