@@ -460,7 +460,7 @@ fun GlanceMiniMonth(
                             context = context,
                             date = date,
                             isToday = date == today,
-                            hasEvents = !data.dayEvents[date].isNullOrEmpty(),
+                            dotColor = data.dayEvents[date]?.firstOrNull()?.second,
                         )
                     } else {
                         // Adjacent-month day: keep the column, show nothing.
@@ -477,7 +477,7 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
     context: Context,
     date: LocalDate,
     isToday: Boolean,
-    hasEvents: Boolean,
+    dotColor: Int?,
 ) {
     val dayColor = when {
         isToday -> GlanceTheme.colors.onPrimary
@@ -512,15 +512,14 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
                 ),
             )
         }
-        // A single 朱 dot marks days that have events. One restrained accent
-        // instead of per-calendar colors, which read as random rainbow tints.
+        // A calendar-color dot marks days that have events.
         Box(
             modifier = GlanceModifier
                 .size(3.dp)
                 .cornerRadius(2.dp)
                 .then(
-                    if (hasEvents) {
-                        GlanceModifier.background(GlanceTheme.colors.tertiary)
+                    if (dotColor != null) {
+                        GlanceModifier.background(eventColorProvider(dotColor))
                     } else {
                         GlanceModifier
                     },
