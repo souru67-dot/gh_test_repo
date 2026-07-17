@@ -382,11 +382,13 @@ class MonthViewModel(
         viewModelScope.launch { templateRepository.delete(id) }
     }
 
-    /** A writable calendar: the preferred one if usable, else last-used, else first. */
+    /** A writable calendar: preferred > settings default > last-used > first. */
     private suspend fun resolveWritableCalendar(preferred: Long?): Long? {
         val writable = calendarRepository.loadCalendars().filter { it.isWritable }
         if (writable.isEmpty()) return null
         preferred?.let { p -> if (writable.any { it.id == p }) return p }
+        val chosen = settingsRepository.defaultCalendarId.first()
+        chosen?.let { c -> if (writable.any { it.id == c }) return c }
         val last = settingsRepository.lastUsedCalendarId.first()
         last?.let { l -> if (writable.any { it.id == l }) return l }
         return writable.first().id

@@ -265,6 +265,21 @@ fun SettingsScreen(
                 onLockedAction = onOpenPremium,
             )
 
+            SectionLabel(stringResource(R.string.settings_default_calendar))
+            RadioRow(
+                label = stringResource(R.string.default_calendar_last_used),
+                selected = state.defaultCalendarId == null ||
+                    state.calendars.none { it.id == state.defaultCalendarId },
+                onClick = { viewModel.setDefaultCalendar(null) },
+            )
+            for (calendar in state.calendars.filter { it.isWritable }) {
+                RadioRow(
+                    label = calendar.displayName,
+                    selected = state.defaultCalendarId == calendar.id,
+                    onClick = { viewModel.setDefaultCalendar(calendar.id) },
+                )
+            }
+
             SectionLabel(stringResource(R.string.settings_calendars))
             if (state.calendars.isEmpty()) {
                 Text(

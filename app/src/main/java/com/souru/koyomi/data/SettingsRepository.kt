@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
         val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
         val TASK_CALENDAR_ID = stringPreferencesKey("task_calendar_id")
+        val DEFAULT_CALENDAR_ID = stringPreferencesKey("default_calendar_id")
         val THEME_PACK = stringPreferencesKey("theme_pack")
         val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
         val SHOW_ROKUYO = booleanPreferencesKey("show_rokuyo")
@@ -207,6 +208,21 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLastUsedCalendarId(calendarId: Long) {
         context.dataStore.edit { it[Keys.LAST_USED_CALENDAR_ID] = calendarId.toString() }
+    }
+
+    /** Calendar preselected for NEW events; null = follow the last-used one. */
+    val defaultCalendarId: Flow<Long?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.DEFAULT_CALENDAR_ID]?.toLongOrNull()
+    }
+
+    suspend fun setDefaultCalendarId(calendarId: Long?) {
+        context.dataStore.edit { prefs ->
+            if (calendarId == null) {
+                prefs.remove(Keys.DEFAULT_CALENDAR_ID)
+            } else {
+                prefs[Keys.DEFAULT_CALENDAR_ID] = calendarId.toString()
+            }
+        }
     }
 
     /** Calendar new tasks are created in; null = follow last-used calendar. */

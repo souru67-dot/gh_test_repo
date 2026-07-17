@@ -189,9 +189,12 @@ class EventEditViewModel(
             LocalTime.of(9, 0)
         }
         val start = LocalDateTime.of(date, startTime)
-        // Preselect the calendar the user last saved to, if it still exists.
+        // Preselect: the calendar chosen in settings, else the one the user
+        // last saved to, else the first writable one.
+        val preferredId = settingsRepository.defaultCalendarId.first()
         val lastUsedId = settingsRepository.lastUsedCalendarId.first()
-        val defaultCalendar = writableCalendars.find { it.id == lastUsedId }
+        val defaultCalendar = writableCalendars.find { it.id == preferredId }
+            ?: writableCalendars.find { it.id == lastUsedId }
             ?: writableCalendars.firstOrNull()
         _uiState.value = EditorUiState(
             loading = false,

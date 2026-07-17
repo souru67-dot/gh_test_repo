@@ -44,6 +44,8 @@ data class SettingsUiState(
     val useJapaneseEra: Boolean = false,
     val customThemeColor: Int = SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
     val showLuckyDays: Boolean = false,
+    /** Calendar preselected for new events; null = last-used. */
+    val defaultCalendarId: Long? = null,
 )
 
 class SettingsViewModel(
@@ -139,6 +141,7 @@ class SettingsViewModel(
         val useJapaneseEra: Boolean,
         val customThemeColor: Int,
         val showLuckyDays: Boolean,
+        val defaultCalendarId: Long?,
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -173,13 +176,14 @@ class SettingsViewModel(
             settingsRepository.showLunarDate,
             settingsRepository.showMoonAge,
             settingsRepository.useJapaneseEra,
-            // combine() tops out at 5 typed flows; pair the last two.
+            // combine() tops out at 5 typed flows; bundle the rest.
             combine(
                 settingsRepository.customThemeColor,
                 settingsRepository.showLuckyDays,
-            ) { custom, lucky -> custom to lucky },
-        ) { terms, lunar, moon, era, (custom, lucky) ->
-            AlmanacPrefs(terms, lunar, moon, era, custom, lucky)
+                settingsRepository.defaultCalendarId,
+            ) { custom, lucky, defaultCal -> Triple(custom, lucky, defaultCal) },
+        ) { terms, lunar, moon, era, (custom, lucky, defaultCal) ->
+            AlmanacPrefs(terms, lunar, moon, era, custom, lucky, defaultCal)
         },
     ) { base, extras, hidden, calendars, almanac ->
         base.copy(
@@ -196,6 +200,7 @@ class SettingsViewModel(
             useJapaneseEra = almanac.useJapaneseEra,
             customThemeColor = almanac.customThemeColor,
             showLuckyDays = almanac.showLuckyDays,
+            defaultCalendarId = almanac.defaultCalendarId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -280,6 +285,10 @@ class SettingsViewModel(
 
     fun setShowLuckyDays(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowLuckyDays(enabled) }
+    }
+
+    fun setDefaultCalendar(calendarId: Long?) {
+        viewModelScope.launch { settingsRepository.setDefaultCalendarId(calendarId) }
     }
 
     /** Writes all shown calendars to [uri] as .ics; -1 on failure. */

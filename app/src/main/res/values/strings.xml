@@ -106,6 +106,8 @@
     <string name="settings_lunar_date">Show lunar (kyūreki) date</string>
     <string name="settings_moon_age">Show moon age</string>
     <string name="settings_japanese_era">Japanese era year (Reiwa 8)</string>
+    <string name="settings_default_calendar">Calendar for new events</string>
+    <string name="default_calendar_last_used">Last used calendar</string>
     <string name="settings_calendars">Calendars to show</string>
 
     <!-- Data (ICS) -->
