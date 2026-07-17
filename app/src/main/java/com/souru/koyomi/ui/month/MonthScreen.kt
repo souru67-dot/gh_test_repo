@@ -59,6 +59,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -177,6 +179,52 @@ fun MonthScreen(
         initialPage = MonthPages.pageOf(YearMonth.now()),
         pageCount = { MonthPages.COUNT },
     )
+    // Cross-month drag & drop: one shared drag state; each composed month
+    // grid registers a window-space drop resolver, and a drop is answered by
+    // whichever month the finger is actually over.
+    val dragState = remember { EventDragState() }
+    val dropResolvers = remember {
+        androidx.compose.runtime.mutableStateMapOf<YearMonth, (androidx.compose.ui.geometry.Offset) -> LocalDate?>()
+    }
+    val resolveDropAcrossMonths: (androidx.compose.ui.geometry.Offset) -> LocalDate? = { pos ->
+        dropResolvers.values.firstNotNullOfOrNull { it(pos) }
+    }
+    var pagerCoords by remember {
+        mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null)
+    }
+    val edgePx = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
+    // Holding a drag against the left/right edge flips to the previous/next
+    // month after a short dwell (repeatable to travel further).
+    LaunchedEffect(dragState.event != null) {
+        if (dragState.event == null) return@LaunchedEffect
+        var dwell = 0
+        while (dragState.event != null) {
+            val coords = pagerCoords?.takeIf { it.isAttached }
+            if (coords != null && !verticalScroll) {
+                val left = coords.positionInWindow().x
+                val right = left + coords.size.width
+                val x = dragState.position.x
+                when {
+                    x - left < edgePx && pagerState.currentPage > 0 -> {
+                        dwell++
+                        if (dwell >= 4) {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                            dwell = 0
+                        }
+                    }
+                    right - x < edgePx && pagerState.currentPage < MonthPages.COUNT - 1 -> {
+                        dwell++
+                        if (dwell >= 4) {
+                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            dwell = 0
+                        }
+                    }
+                    else -> dwell = 0
+                }
+            }
+            kotlinx.coroutines.delay(100)
+        }
+    }
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = MonthPages.pageOf(YearMonth.now()),
     )
@@ -407,12 +455,17 @@ fun MonthScreen(
             } else {
                 HorizontalPager(
                     state = pagerState,
-                    beyondViewportPageCount = 1,
+                    // 2 pages each side stay composed so a drag survives up to
+                    // two edge flips without its source chip being disposed.
+                    beyondViewportPageCount = 2,
                     key = { it },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { pagerCoords = it },
                 ) { page ->
+                    val gridMonth = MonthPages.monthAt(page)
                     MonthGrid(
-                        month = MonthPages.monthAt(page),
+                        month = gridMonth,
                         weekStart = weekStart,
                         eventsByDay = state.eventsByDay,
                         tasksByDay = state.tasksByDay,
@@ -434,6 +487,15 @@ fun MonthScreen(
                         showSolarTerms = showSolarTerms,
                         showLuckyDays = showLuckyDays,
                         weatherByDay = weatherByDay,
+                        dragState = dragState,
+                        resolveDropDate = resolveDropAcrossMonths,
+                        onRegisterDropResolver = { resolver ->
+                            if (resolver != null) {
+                                dropResolvers[gridMonth] = resolver
+                            } else {
+                                dropResolvers.remove(gridMonth)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 4.dp),

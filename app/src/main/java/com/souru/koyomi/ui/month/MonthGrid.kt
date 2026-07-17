@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,8 +96,12 @@ fun WeekdayHeader(
     }
 }
 
-/** Drag & drop state shared between the grid and its chips. */
-private class EventDragState {
+/**
+ * Drag & drop state. [position] is in WINDOW coordinates so a drag that
+ * started on one month page stays meaningful after the pager flips to a
+ * neighboring month; hoist one instance above the pager to share it.
+ */
+class EventDragState {
     var event by mutableStateOf<EventInstance?>(null)
     var sourceDate by mutableStateOf<LocalDate?>(null)
     var position by mutableStateOf(Offset.Zero)
@@ -188,6 +193,13 @@ fun MonthGrid(
     showSolarTerms: Boolean = false,
     showLuckyDays: Boolean = false,
     weatherByDay: Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather> = emptyMap(),
+    dragState: EventDragState = remember { EventDragState() },
+    /** Window-space drag position updates (for edge auto-paging). */
+    onDragMoved: (Offset) -> Unit = {},
+    /** Resolves a drop across all visible months; null = this grid only. */
+    resolveDropDate: ((Offset) -> LocalDate?)? = null,
+    /** Registers/unregisters this grid's own resolver with the screen. */
+    onRegisterDropResolver: (((Offset) -> LocalDate?)?) -> Unit = {},
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
     // them keeps drag/selection recompositions from redoing date math.
@@ -227,7 +239,6 @@ fun MonthGrid(
     // a fixed height so multi-day bars stay aligned even on days without a term.
     val subLine = showRokuyo || showSolarTerms || showLuckyDays
     val today = LocalDate.now()
-    val dragState = remember { EventDragState() }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
     val railPx = if (showWeekNumbers) {
@@ -236,16 +247,29 @@ fun MonthGrid(
         0f
     }
 
-    fun dateAt(position: Offset): LocalDate? {
+    fun dateAtWindow(windowPos: Offset): LocalDate? {
+        val coords = gridCoords?.takeIf { it.isAttached } ?: return null
         if (gridSize.width == 0 || gridSize.height == 0) return null
+        val local = coords.windowToLocal(windowPos)
+        if (local.x < 0f || local.y < 0f ||
+            local.x > gridSize.width || local.y > gridSize.height
+        ) {
+            return null
+        }
         val cellsWidth = gridSize.width - railPx
         if (cellsWidth <= 0f) return null
-        val col = ((position.x - railPx) / (cellsWidth / 7f)).toInt().coerceIn(0, 6)
-        val row = (position.y / (gridSize.height / 6f)).toInt().coerceIn(0, 5)
+        val col = ((local.x - railPx) / (cellsWidth / 7f)).toInt().coerceIn(0, 6)
+        val row = (local.y / (gridSize.height / 6f)).toInt().coerceIn(0, 5)
         return days[row * 7 + col]
     }
 
-    val dropTarget = if (dragState.event != null) dateAt(dragState.position) else null
+    // Let the screen route drops from OTHER months into this grid.
+    DisposableEffect(month, weekStart, showWeekNumbers) {
+        onRegisterDropResolver(::dateAtWindow)
+        onDispose { onRegisterDropResolver(null) }
+    }
+
+    val dropTarget = if (dragState.event != null) dateAtWindow(dragState.position) else null
 
     Box(
         modifier = modifier.onGloballyPositioned {
@@ -290,11 +314,11 @@ fun MonthGrid(
                                 onSelect = onSelect,
                                 onCreateNew = onCreateNew,
                                 dragState = dragState,
-                                gridCoords = { gridCoords },
+                                onDragMoved = onDragMoved,
                                 onDrop = { event, source, target ->
                                     onMoveEvent(event, ChronoUnit.DAYS.between(source, target))
                                 },
-                                dropTargetOf = ::dateAt,
+                                dropTargetOf = resolveDropDate ?: ::dateAtWindow,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxSize(),
@@ -321,17 +345,25 @@ fun MonthGrid(
             }
         }
 
-        // Floating chip that follows the finger while dragging.
+        // Floating chip that follows the finger; drawn only by the grid the
+        // finger is currently over, so page flips hand the ghost over cleanly.
         dragState.event?.let { event ->
-            Box(
-                modifier = Modifier.offset {
-                    IntOffset(
-                        (dragState.position.x - 40.dp.toPx()).roundToInt(),
-                        (dragState.position.y - 24.dp.toPx()).roundToInt(),
-                    )
-                },
+            val coords = gridCoords?.takeIf { it.isAttached }
+            val local = coords?.windowToLocal(dragState.position)
+            if (local != null &&
+                local.x in 0f..gridSize.width.toFloat() &&
+                local.y in 0f..gridSize.height.toFloat()
             ) {
-                DragGhostChip(event)
+                Box(
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            (local.x - 40.dp.toPx()).roundToInt(),
+                            (local.y - 24.dp.toPx()).roundToInt(),
+                        )
+                    },
+                ) {
+                    DragGhostChip(event)
+                }
             }
         }
     }
@@ -377,7 +409,7 @@ private fun DayCell(
     onSelect: (LocalDate) -> Unit,
     onCreateNew: (LocalDate) -> Unit,
     dragState: EventDragState,
-    gridCoords: () -> LayoutCoordinates?,
+    onDragMoved: (Offset) -> Unit,
     onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
     dropTargetOf: (Offset) -> LocalDate?,
     modifier: Modifier = Modifier,
@@ -498,7 +530,7 @@ private fun DayCell(
                     cellDate = date,
                     dimmed = !inCurrentMonth,
                     dragState = dragState,
-                    gridCoords = gridCoords,
+                    onDragMoved = onDragMoved,
                     onDrop = onDrop,
                     dropTargetOf = dropTargetOf,
                 )
@@ -620,7 +652,7 @@ private fun DraggableEventChip(
     cellDate: LocalDate,
     dimmed: Boolean,
     dragState: EventDragState,
-    gridCoords: () -> LayoutCoordinates?,
+    onDragMoved: (Offset) -> Unit,
     onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
     dropTargetOf: (Offset) -> LocalDate?,
 ) {
@@ -637,18 +669,19 @@ private fun DraggableEventChip(
             .pointerInput(event.eventId, event.begin) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { startOffset ->
-                        val grid = gridCoords()
                         val chip = chipCoords
-                        if (grid != null && chip != null && grid.isAttached && chip.isAttached) {
+                        if (chip != null && chip.isAttached) {
                             dragState.event = event
                             dragState.sourceDate = cellDate
-                            dragState.position = grid.localPositionOf(chip, startOffset)
+                            dragState.position = chip.localToWindow(startOffset)
+                            onDragMoved(dragState.position)
                         }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
                         if (dragState.event != null) {
                             dragState.position += dragAmount
+                            onDragMoved(dragState.position)
                         }
                     },
                     onDragEnd = {
