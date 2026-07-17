@@ -400,7 +400,7 @@ fun MonthScreen(
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
                     onDropEvent = { event, days ->
-                        if (days != 0L) pendingDrop = PendingDrop(event, days)
+                        if (days != 0L) premiumOr { pendingDrop = PendingDrop(event, days) }
                     },
                 )
             } else {
@@ -425,7 +425,7 @@ fun MonthScreen(
                             onCreateEvent(date)
                         },
                         onMoveEvent = { event, days ->
-                            if (days != 0L) pendingDrop = PendingDrop(event, days)
+                            if (days != 0L) premiumOr { pendingDrop = PendingDrop(event, days) }
                         },
                         multiDayBars = multiDayBars,
                         showWeekNumbers = showWeekNumbers,

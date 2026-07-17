@@ -185,7 +185,7 @@
     <string name="premium_feature_weather">カレンダーに2週間の天気</string>
     <string name="premium_feature_themes">きせかえ全テーマ+カスタムカラー</string>
     <string name="premium_feature_widgets">すべてのウィジェット</string>
-    <string name="premium_feature_shortcuts">テンプレート・複数日一括複製・スタンプ予定</string>
+    <string name="premium_feature_shortcuts">テンプレート・複数日一括複製・スタンプ予定・ドラッグ&amp;ドロップ移動</string>
     <string name="premium_feature_backup">機種変更の引き継ぎバックアップ</string>
     <string name="premium_buy">解除する</string>
     <string name="premium_buy_price">%1$sで解除する</string>

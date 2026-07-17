@@ -186,7 +186,7 @@
     <string name="premium_feature_weather">Two-week weather on your calendar</string>
     <string name="premium_feature_themes">All theme packs + custom color</string>
     <string name="premium_feature_widgets">All home-screen widgets</string>
-    <string name="premium_feature_shortcuts">Templates, multi-day copy and stamp events</string>
+    <string name="premium_feature_shortcuts">Templates, multi-day copy, stamp events and drag &amp; drop</string>
     <string name="premium_feature_backup">Transfer backup for a new phone</string>
     <string name="premium_buy">Unlock</string>
     <string name="premium_buy_price">Unlock for %1$s</string>
