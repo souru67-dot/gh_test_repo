@@ -194,10 +194,38 @@ fun MonthScreen(
     }
     val edgePx = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
     // Holding a drag against the left/right edge flips to the previous/next
-    // month after a short dwell (repeatable to travel further).
+    // month after a short dwell. The drag dies if its source month page gets
+    // disposed, so flips are capped at 2 months away from the source — going
+    // BACK toward the source is always allowed — and hitting the cap tells
+    // the user once, quietly, instead of the drag silently breaking.
+    val dragLimitMsg = stringResource(R.string.drag_month_limit)
     LaunchedEffect(dragState.event != null) {
         if (dragState.event == null) return@LaunchedEffect
         var dwell = 0
+        var limitNotified = false
+        val sourcePage = dragState.sourceDate?.let { MonthPages.pageOf(YearMonth.from(it)) }
+
+        suspend fun flipTo(targetPage: Int) {
+            if (sourcePage != null && abs(targetPage - sourcePage) > 2) {
+                dwell = 0
+                if (!limitNotified) {
+                    limitNotified = true
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = dragLimitMsg,
+                            duration = androidx.compose.material3.SnackbarDuration.Short,
+                        )
+                    }
+                }
+                return
+            }
+            dwell++
+            if (dwell >= 4) {
+                pagerState.animateScrollToPage(targetPage)
+                dwell = 0
+            }
+        }
+
         while (dragState.event != null) {
             val coords = pagerCoords?.takeIf { it.isAttached }
             if (coords != null && !verticalScroll) {
@@ -205,20 +233,10 @@ fun MonthScreen(
                 val right = left + coords.size.width
                 val x = dragState.position.x
                 when {
-                    x - left < edgePx && pagerState.currentPage > 0 -> {
-                        dwell++
-                        if (dwell >= 4) {
-                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                            dwell = 0
-                        }
-                    }
-                    right - x < edgePx && pagerState.currentPage < MonthPages.COUNT - 1 -> {
-                        dwell++
-                        if (dwell >= 4) {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                            dwell = 0
-                        }
-                    }
+                    x - left < edgePx && pagerState.currentPage > 0 ->
+                        flipTo(pagerState.currentPage - 1)
+                    right - x < edgePx && pagerState.currentPage < MonthPages.COUNT - 1 ->
+                        flipTo(pagerState.currentPage + 1)
                     else -> dwell = 0
                 }
             }

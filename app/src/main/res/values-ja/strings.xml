@@ -206,6 +206,7 @@
     <string name="drop_move">ここに移動</string>
     <string name="drop_copy">ここに複製</string>
     <string name="undo">元に戻す</string>
+    <string name="drag_month_limit">ドラッグで送れるのは2ヶ月先まで。ここで一度置いてから続きをどうぞ</string>
     <string name="batch_copy">複数日に複製</string>
     <string name="batch_copy_confirm">複製(%1$d日)</string>
     <string name="batch_copied">%1$d日に複製しました</string>

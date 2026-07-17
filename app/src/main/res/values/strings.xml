@@ -207,6 +207,7 @@
     <string name="drop_move">Move here</string>
     <string name="drop_copy">Copy here</string>
     <string name="undo">Undo</string>
+    <string name="drag_month_limit">Drag reaches up to 2 months away — drop here, then drag again</string>
     <string name="batch_copy">Copy to multiple days</string>
     <string name="batch_copy_confirm">Copy (%1$d days)</string>
     <string name="batch_copied">Copied to %1$d days</string>
