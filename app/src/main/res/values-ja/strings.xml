@@ -158,6 +158,21 @@
     <string name="diary_last_year">去年の今日</string>
     <string name="diary_years_ago">%1$d年前の今日</string>
 
+    <!-- Stamps -->
+    <string name="stamp_title">スタンプ予定</string>
+    <string name="stamp_trash">ゴミの日</string>
+    <string name="stamp_payday">給料日</string>
+    <string name="stamp_hospital">通院</string>
+    <string name="stamp_exercise">運動</string>
+    <string name="stamp_lesson">習い事</string>
+    <string name="stamp_eatout">外食</string>
+    <string name="stamp_hair">美容院</string>
+    <string name="stamp_bill">支払い</string>
+    <string name="stamp_shopping">買い出し</string>
+    <string name="stamp_outing">お出かけ</string>
+    <string name="stamp_trip">旅行</string>
+    <string name="stamp_hobby">趣味</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>
     <string name="drop_message">「%1$s」をどうしますか?</string>

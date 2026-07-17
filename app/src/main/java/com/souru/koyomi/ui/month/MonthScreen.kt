@@ -112,6 +112,7 @@ fun MonthScreen(
     val anniversaries by viewModel.anniversaries.collectAsStateWithLifecycle()
     val diary by viewModel.diary.collectAsStateWithLifecycle()
     var showDiaryEditor by remember { mutableStateOf(false) }
+    var showStampPicker by remember { mutableStateOf(false) }
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -283,6 +284,7 @@ fun MonthScreen(
                 diaryText = diary.text,
                 diaryPast = diary.past,
                 onEditDiary = { showDiaryEditor = true },
+                onOpenStamps = { showStampPicker = true },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -491,6 +493,16 @@ fun MonthScreen(
                 showTemplatePicker = false
             },
             onDelete = { template -> viewModel.deleteTemplate(template.id) },
+        )
+    }
+
+    if (showStampPicker) {
+        StampPickerDialog(
+            onDismiss = { showStampPicker = false },
+            onPick = { title ->
+                viewModel.createStampEvent(title, selectedDate)
+                showStampPicker = false
+            },
         )
     }
 
@@ -929,6 +941,61 @@ private fun BatchCopyDialog(
                 enabled = selected.isNotEmpty(),
             ) { Text(stringResource(R.string.batch_copy_confirm, selected.size)) }
         },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+/** Preset stamps: one tap places an all-day event on the selected day. */
+private val STAMPS = listOf(
+    "🗑" to R.string.stamp_trash,
+    "💰" to R.string.stamp_payday,
+    "💊" to R.string.stamp_hospital,
+    "🏃" to R.string.stamp_exercise,
+    "📚" to R.string.stamp_lesson,
+    "🍽" to R.string.stamp_eatout,
+    "💇" to R.string.stamp_hair,
+    "🧾" to R.string.stamp_bill,
+    "🛒" to R.string.stamp_shopping,
+    "🌸" to R.string.stamp_outing,
+    "🧳" to R.string.stamp_trip,
+    "🎮" to R.string.stamp_hobby,
+)
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun StampPickerDialog(
+    onDismiss: () -> Unit,
+    onPick: (title: String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.stamp_title)) },
+        text = {
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                for ((emoji, labelRes) in STAMPS) {
+                    val label = stringResource(labelRes)
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier
+                            .padding(end = 8.dp, bottom = 8.dp)
+                            .clickable { onPick("$emoji $label") },
+                    ) {
+                        Text(
+                            text = "$emoji $label",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },

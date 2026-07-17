@@ -126,6 +126,30 @@ class MonthViewModel(
         viewModelScope.launch { diaryRepository.save(date, text) }
     }
 
+    /** One-tap stamp: an all-day event titled like "🗑 ゴミの日" on [date]. */
+    fun createStampEvent(title: String, date: LocalDate) {
+        viewModelScope.launch {
+            val calendarId = resolveWritableCalendar(null)
+            if (calendarId == null) {
+                _templateApplied.send(false)
+                return@launch
+            }
+            val zone = java.time.ZoneId.systemDefault()
+            val startMs = date.atStartOfDay(zone).toInstant().toEpochMilli()
+            val created = calendarRepository.createEvent(
+                com.souru.koyomi.data.model.EventDraft(
+                    calendarId = calendarId,
+                    title = title,
+                    allDay = true,
+                    startMillis = startMs,
+                    endMillis = startMs,
+                ),
+            )
+            if (created != null) settingsRepository.setLastUsedCalendarId(calendarId)
+            _templateApplied.send(created != null)
+        }
+    }
+
     val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 

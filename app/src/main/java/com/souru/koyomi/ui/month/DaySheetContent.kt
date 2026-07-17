@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -84,6 +85,7 @@ fun DaySheetContent(
     diaryText: String? = null,
     diaryPast: List<Pair<Int, String>> = emptyList(),
     onEditDiary: () -> Unit = {},
+    onOpenStamps: () -> Unit = {},
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -123,6 +125,7 @@ fun DaySheetContent(
                 diaryText = diaryText,
                 diaryPast = diaryPast,
                 onEditDiary = onEditDiary,
+                onOpenStamps = onOpenStamps,
                 lunarDate = lunarDate,
                 moonAge = moonAge,
                 events = events,
@@ -164,6 +167,7 @@ private fun DayEventList(
     diaryText: String?,
     diaryPast: List<Pair<Int, String>>,
     onEditDiary: () -> Unit,
+    onOpenStamps: () -> Unit,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -209,6 +213,12 @@ private fun DayEventList(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onOpenStamps) {
+                Icon(
+                    imageVector = Icons.Outlined.AddReaction,
+                    contentDescription = stringResource(R.string.stamp_title),
+                )
+            }
             if (hasTemplates) {
                 IconButton(onClick = onOpenTemplates) {
                     Icon(
