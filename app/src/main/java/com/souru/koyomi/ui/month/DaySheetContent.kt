@@ -81,6 +81,9 @@ fun DaySheetContent(
     luckyDays: List<String> = emptyList(),
     weather: String? = null,
     anniversaryLabels: List<String> = emptyList(),
+    diaryText: String? = null,
+    diaryPast: List<Pair<Int, String>> = emptyList(),
+    onEditDiary: () -> Unit = {},
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -117,6 +120,9 @@ fun DaySheetContent(
                 luckyDays = luckyDays,
                 weather = weather,
                 anniversaryLabels = anniversaryLabels,
+                diaryText = diaryText,
+                diaryPast = diaryPast,
+                onEditDiary = onEditDiary,
                 lunarDate = lunarDate,
                 moonAge = moonAge,
                 events = events,
@@ -155,6 +161,9 @@ private fun DayEventList(
     luckyDays: List<String>,
     weather: String?,
     anniversaryLabels: List<String>,
+    diaryText: String?,
+    diaryPast: List<Pair<Int, String>>,
+    onEditDiary: () -> Unit,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -301,6 +310,64 @@ private fun DayEventList(
                             modifier = Modifier.padding(start = 6.dp),
                         )
                     }
+                }
+            }
+
+            // ひとこと日記 + 過去の今日.
+            item(key = "diary-header") {
+                Text(
+                    text = stringResource(R.string.diary_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 2.dp),
+                )
+            }
+            item(key = "diary-entry") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onEditDiary)
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = diaryText ?: stringResource(R.string.diary_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (diaryText != null) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.edit),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            items(diaryPast, key = { "diary-past-${it.first}" }) { (yearsAgo, text) ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = if (yearsAgo == 1) {
+                            stringResource(R.string.diary_last_year)
+                        } else {
+                            stringResource(R.string.diary_years_ago, yearsAgo)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

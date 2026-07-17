@@ -110,6 +110,8 @@ fun MonthScreen(
     val showLuckyDays by viewModel.showLuckyDays.collectAsStateWithLifecycle()
     val weatherByDay by viewModel.weatherByDay.collectAsStateWithLifecycle()
     val anniversaries by viewModel.anniversaries.collectAsStateWithLifecycle()
+    val diary by viewModel.diary.collectAsStateWithLifecycle()
+    var showDiaryEditor by remember { mutableStateOf(false) }
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -278,6 +280,9 @@ fun MonthScreen(
                             anniversary.title
                         }
                     },
+                diaryText = diary.text,
+                diaryPast = diary.past,
+                onEditDiary = { showDiaryEditor = true },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -486,6 +491,38 @@ fun MonthScreen(
                 showTemplatePicker = false
             },
             onDelete = { template -> viewModel.deleteTemplate(template.id) },
+        )
+    }
+
+    if (showDiaryEditor) {
+        var diaryDraft by remember(selectedDate, diary.text) {
+            mutableStateOf(diary.text.orEmpty())
+        }
+        AlertDialog(
+            onDismissRequest = { showDiaryEditor = false },
+            title = { Text(stringResource(R.string.diary_title)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = diaryDraft,
+                    onValueChange = { diaryDraft = it },
+                    placeholder = { Text(stringResource(R.string.diary_hint)) },
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.saveDiary(selectedDate, diaryDraft)
+                        showDiaryEditor = false
+                    },
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiaryEditor = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
         )
     }
 

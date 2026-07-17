@@ -152,6 +152,12 @@
     <string name="anniversary_days_left">あと%1$d日</string>
     <string name="anniversary_days_ago">%1$d日前</string>
 
+    <!-- Diary -->
+    <string name="diary_title">ひとこと日記</string>
+    <string name="diary_hint">今日のひとことを書く…</string>
+    <string name="diary_last_year">去年の今日</string>
+    <string name="diary_years_ago">%1$d年前の今日</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>
     <string name="drop_message">「%1$s」をどうしますか?</string>

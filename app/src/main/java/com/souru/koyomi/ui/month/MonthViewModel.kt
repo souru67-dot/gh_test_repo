@@ -52,6 +52,7 @@ class MonthViewModel(
     private val templateRepository: com.souru.koyomi.data.template.EventTemplateRepository,
     private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
     private val anniversaryRepository: com.souru.koyomi.data.anniversary.AnniversaryRepository,
+    private val diaryRepository: com.souru.koyomi.data.diary.DiaryRepository,
 ) : ViewModel() {
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
@@ -98,6 +99,32 @@ class MonthViewModel(
         anniversaryRepository.changes
             .mapLatest { anniversaryRepository.loadAll() }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    data class DiaryUi(
+        /** Today's note (null = none yet). */
+        val text: String? = null,
+        /** 過去の今日: (years ago, note) for the same date in earlier years. */
+        val past: List<Pair<Int, String>> = emptyList(),
+    )
+
+    /** The selected day's diary note plus the same date 1..3 years back. */
+    val diary: StateFlow<DiaryUi> =
+        combine(_selectedDate, diaryRepository.changes) { date, _ -> date }
+            .mapLatest { date ->
+                DiaryUi(
+                    text = diaryRepository.entryFor(date),
+                    past = (1..3).mapNotNull { yearsAgo ->
+                        val pastDate = runCatching { date.minusYears(yearsAgo.toLong()) }
+                            .getOrNull() ?: return@mapNotNull null
+                        diaryRepository.entryFor(pastDate)?.let { yearsAgo to it }
+                    },
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DiaryUi())
+
+    fun saveDiary(date: LocalDate, text: String) {
+        viewModelScope.launch { diaryRepository.save(date, text) }
+    }
 
     val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -367,6 +394,7 @@ class MonthViewModel(
                     templateRepository = app.container.templateRepository,
                     weatherRepository = app.container.weatherRepository,
                     anniversaryRepository = app.container.anniversaryRepository,
+                    diaryRepository = app.container.diaryRepository,
                 )
             }
         }

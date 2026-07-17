@@ -153,6 +153,12 @@
     <string name="anniversary_days_left">%1$d days left</string>
     <string name="anniversary_days_ago">%1$d days ago</string>
 
+    <!-- Diary -->
+    <string name="diary_title">Daily note</string>
+    <string name="diary_hint">One line about today…</string>
+    <string name="diary_last_year">This day last year</string>
+    <string name="diary_years_ago">This day %1$d years ago</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">Move or copy?</string>
     <string name="drop_message">What should happen to "%1$s"?</string>
