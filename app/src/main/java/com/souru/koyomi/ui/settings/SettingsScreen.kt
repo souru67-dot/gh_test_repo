@@ -667,6 +667,25 @@ private fun DataSection(
         }
     }
 
+    val backupExportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri?.let {
+            viewModel.exportBackup(it) { ok ->
+                report(if (ok) 0 else -1, R.string.backup_done, R.string.export_failed)
+            }
+        }
+    }
+    val backupImportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            viewModel.importBackup(it) { count ->
+                report(count, R.string.restore_done, R.string.import_failed)
+            }
+        }
+    }
+
     SectionLabel(stringResource(R.string.settings_data))
     TextActionRow(stringResource(R.string.export_ics)) {
         val suggested = "koyomi-" +
@@ -676,6 +695,15 @@ private fun DataSection(
     }
     TextActionRow(stringResource(R.string.import_ics)) {
         importLauncher.launch(arrayOf("text/calendar", "text/plain", "application/octet-stream"))
+    }
+    TextActionRow(stringResource(R.string.backup_export)) {
+        val suggested = "koyomi-backup-" +
+            java.time.LocalDate.now()
+                .format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".json"
+        backupExportLauncher.launch(suggested)
+    }
+    TextActionRow(stringResource(R.string.backup_import)) {
+        backupImportLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
     }
 
     pendingImportUri?.let { uri ->

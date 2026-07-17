@@ -116,6 +116,10 @@
     <string name="import_done">%1$d件の予定を取り込みました</string>
     <string name="import_failed">取り込みに失敗しました</string>
     <string name="import_choose_calendar">取り込み先のカレンダー</string>
+    <string name="backup_export">引き継ぎデータを書き出す(.json)</string>
+    <string name="backup_import">引き継ぎデータを読み込む</string>
+    <string name="backup_done">引き継ぎデータを保存しました</string>
+    <string name="restore_done">%1$d件を復元しました</string>
 
     <!-- Sync & notifications -->
     <string name="settings_sync">Googleカレンダーの同期</string>

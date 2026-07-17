@@ -50,8 +50,39 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val calendarRepository: CalendarRepository,
     private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
+    private val backupManager: com.souru.koyomi.data.backup.BackupManager,
     private val appContext: Context,
 ) : ViewModel() {
+
+    /** Writes the transfer backup (settings/ToDo/templates/記念日/日記) to [uri]. */
+    fun exportBackup(uri: Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    val json = backupManager.exportJson()
+                    appContext.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(json.toByteArray(Charsets.UTF_8))
+                    } ?: error("no stream")
+                }
+            }.isSuccess
+            onDone(ok)
+        }
+    }
+
+    /** Restores from a backup at [uri]; -1 on failure, else records restored. */
+    fun importBackup(uri: Uri, onDone: (Int) -> Unit) {
+        viewModelScope.launch {
+            val count = runCatching {
+                withContext(Dispatchers.IO) {
+                    val json = appContext.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.readBytes().toString(Charsets.UTF_8)
+                    } ?: error("no stream")
+                    backupManager.importJson(json)
+                }
+            }.getOrDefault(-1)
+            onDone(count)
+        }
+    }
 
     /** The place the forecast is fetched for; null = weather off. */
     val weatherPlace: StateFlow<com.souru.koyomi.data.weather.WeatherPlace?> =
@@ -292,6 +323,7 @@ class SettingsViewModel(
                     settingsRepository = app.container.settingsRepository,
                     calendarRepository = app.container.calendarRepository,
                     weatherRepository = app.container.weatherRepository,
+                    backupManager = app.container.backupManager,
                     appContext = app.applicationContext,
                 )
             }

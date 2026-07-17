@@ -56,6 +56,12 @@ class DiaryRepository(context: Context) {
         _changes.tryEmit(Unit)
     }
 
+    /** Backup restore: wipe before re-inserting the imported set. */
+    suspend fun deleteAll(): Unit = withContext(Dispatchers.IO) {
+        helper.writableDatabase.delete(TABLE, null, null)
+        _changes.tryEmit(Unit)
+    }
+
     /** Every entry, for backup export. */
     suspend fun loadAll(): Map<LocalDate, String> = withContext(Dispatchers.IO) {
         val result = mutableMapOf<LocalDate, String>()

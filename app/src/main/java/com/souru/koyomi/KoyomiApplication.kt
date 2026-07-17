@@ -30,6 +30,13 @@ class AppContainer(context: Context) {
     val anniversaryRepository =
         com.souru.koyomi.data.anniversary.AnniversaryRepository(context)
     val diaryRepository = com.souru.koyomi.data.diary.DiaryRepository(context)
+    val backupManager = com.souru.koyomi.data.backup.BackupManager(
+        context = context,
+        taskRepository = taskRepository,
+        templateRepository = templateRepository,
+        anniversaryRepository = anniversaryRepository,
+        diaryRepository = diaryRepository,
+    )
 }
 
 class KoyomiApplication : Application() {

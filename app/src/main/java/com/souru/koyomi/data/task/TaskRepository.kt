@@ -150,6 +150,18 @@ class TaskRepository(private val context: Context) {
         refreshWidgets()
     }
 
+    /** Backup restore: wipe before re-inserting the imported set. */
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        helper.readableDatabase.query(
+            TABLE, arrayOf("_id"), null, null, null, null, null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) cancelReminder(cursor.getLong(0))
+        }
+        helper.writableDatabase.delete(TABLE, null, null)
+        _changes.tryEmit(Unit)
+        refreshWidgets()
+    }
+
     /** Tasks live outside CalendarProvider, so its widget trigger never fires. */
     private fun refreshWidgets() {
         WorkManager.getInstance(context).enqueueUniqueWork(

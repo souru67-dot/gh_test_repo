@@ -117,6 +117,10 @@
     <string name="import_done">Imported %1$d events</string>
     <string name="import_failed">Import failed</string>
     <string name="import_choose_calendar">Calendar to import into</string>
+    <string name="backup_export">Export transfer backup (.json)</string>
+    <string name="backup_import">Restore transfer backup</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="restore_done">Restored %1$d records</string>
 
     <!-- Sync & notifications -->
     <string name="settings_sync">Google Calendar sync</string>

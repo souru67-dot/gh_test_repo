@@ -108,6 +108,12 @@ class AnniversaryRepository(context: Context) {
         _changes.tryEmit(Unit)
     }
 
+    /** Backup restore: wipe before re-inserting the imported set. */
+    suspend fun deleteAll(): Unit = withContext(Dispatchers.IO) {
+        helper.writableDatabase.delete(TABLE, null, null)
+        _changes.tryEmit(Unit)
+    }
+
     private class DbHelper(context: Context) :
         SQLiteOpenHelper(context, "anniversaries.db", null, 1) {
 

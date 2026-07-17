@@ -81,6 +81,13 @@ class EventTemplateRepository(context: Context) {
         Unit
     }
 
+    /** Backup restore: wipe before re-inserting the imported set. */
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        helper.writableDatabase.delete(TABLE, null, null)
+        _changes.tryEmit(Unit)
+        Unit
+    }
+
     private fun Cursor.toTemplate() = EventTemplate(
         id = getLong(getColumnIndexOrThrow("_id")),
         title = getString(getColumnIndexOrThrow("title")),
