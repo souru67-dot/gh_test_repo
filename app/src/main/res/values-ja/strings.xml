@@ -142,6 +142,16 @@
     <string name="tasks_done">完了</string>
     <string name="tasks_empty">ToDoはありません</string>
 
+    <!-- Anniversaries -->
+    <string name="anniversaries_title">記念日</string>
+    <string name="anniversaries_empty">記念日はまだありません</string>
+    <string name="anniversary_add">記念日を追加</string>
+    <string name="anniversary_title_hint">結婚記念日、誕生日など</string>
+    <string name="anniversary_yearly">毎年繰り返す</string>
+    <string name="anniversary_today">今日!</string>
+    <string name="anniversary_days_left">あと%1$d日</string>
+    <string name="anniversary_days_ago">%1$d日前</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>
     <string name="drop_message">「%1$s」をどうしますか?</string>

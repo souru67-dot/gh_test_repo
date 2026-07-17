@@ -51,6 +51,7 @@ class MonthViewModel(
     private val settingsRepository: SettingsRepository,
     private val templateRepository: com.souru.koyomi.data.template.EventTemplateRepository,
     private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
+    private val anniversaryRepository: com.souru.koyomi.data.anniversary.AnniversaryRepository,
 ) : ViewModel() {
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
@@ -91,6 +92,12 @@ class MonthViewModel(
     fun refreshWeather() {
         viewModelScope.launch { weatherRepository.refreshIfStale() }
     }
+
+    /** All saved anniversaries; the sheet shows the ones falling on a day. */
+    val anniversaries: StateFlow<List<com.souru.koyomi.data.anniversary.Anniversary>> =
+        anniversaryRepository.changes
+            .mapLatest { anniversaryRepository.loadAll() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -359,6 +366,7 @@ class MonthViewModel(
                     settingsRepository = app.container.settingsRepository,
                     templateRepository = app.container.templateRepository,
                     weatherRepository = app.container.weatherRepository,
+                    anniversaryRepository = app.container.anniversaryRepository,
                 )
             }
         }

@@ -143,6 +143,16 @@
     <string name="tasks_done">Completed</string>
     <string name="tasks_empty">No to-dos yet</string>
 
+    <!-- Anniversaries -->
+    <string name="anniversaries_title">Anniversaries</string>
+    <string name="anniversaries_empty">No anniversaries yet</string>
+    <string name="anniversary_add">Add anniversary</string>
+    <string name="anniversary_title_hint">Wedding day, birthday…</string>
+    <string name="anniversary_yearly">Repeats every year</string>
+    <string name="anniversary_today">Today!</string>
+    <string name="anniversary_days_left">%1$d days left</string>
+    <string name="anniversary_days_ago">%1$d days ago</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">Move or copy?</string>
     <string name="drop_message">What should happen to "%1$s"?</string>

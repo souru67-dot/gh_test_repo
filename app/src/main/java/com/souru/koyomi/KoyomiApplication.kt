@@ -27,6 +27,8 @@ class AppContainer(context: Context) {
     val templateRepository =
         com.souru.koyomi.data.template.EventTemplateRepository(context)
     val weatherRepository = com.souru.koyomi.data.weather.WeatherRepository(context)
+    val anniversaryRepository =
+        com.souru.koyomi.data.anniversary.AnniversaryRepository(context)
 }
 
 class KoyomiApplication : Application() {

@@ -80,6 +80,7 @@ fun DaySheetContent(
     solarTerm: String?,
     luckyDays: List<String> = emptyList(),
     weather: String? = null,
+    anniversaryLabels: List<String> = emptyList(),
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -115,6 +116,7 @@ fun DaySheetContent(
                 solarTerm = solarTerm,
                 luckyDays = luckyDays,
                 weather = weather,
+                anniversaryLabels = anniversaryLabels,
                 lunarDate = lunarDate,
                 moonAge = moonAge,
                 events = events,
@@ -152,6 +154,7 @@ private fun DayEventList(
     solarTerm: String?,
     luckyDays: List<String>,
     weather: String?,
+    anniversaryLabels: List<String>,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -217,6 +220,7 @@ private fun DayEventList(
         // wrapping so any combination fits.
         val almanac = buildList {
             weather?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            for (label in anniversaryLabels) add("🎉$label" to MaterialTheme.colorScheme.tertiary)
             solarTerm?.let { add(it to MaterialTheme.colorScheme.tertiary) }
             for (lucky in luckyDays) add(lucky to MaterialTheme.colorScheme.tertiary)
             rokuyo?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }

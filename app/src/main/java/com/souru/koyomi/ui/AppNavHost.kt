@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.souru.koyomi.KoyomiApplication
+import com.souru.koyomi.ui.anniversary.AnniversaryScreen
 import com.souru.koyomi.ui.event.EventEditScreen
 import com.souru.koyomi.ui.month.MonthScreen
 import com.souru.koyomi.ui.onboarding.OnboardingScreen
@@ -28,6 +29,7 @@ object Routes {
     const val SEARCH = "search"
     const val TASKS = "tasks"
     const val YEAR = "year"
+    const val ANNIVERSARIES = "anniversaries"
     const val EDITOR =
         "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}" +
             "&dateEpochDay={dateEpochDay}&taskId={taskId}"
@@ -104,6 +106,7 @@ fun AppNavHost(
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenTasks = { navController.navigate(Routes.TASKS) },
                 onOpenYear = { navController.navigate(Routes.YEAR) },
+                onOpenAnniversaries = { navController.navigate(Routes.ANNIVERSARIES) },
                 deepLinkEpochDay = deepLinkEpochDay ?: yearPick,
                 onDeepLinkConsumed = {
                     onDeepLinkConsumed()
@@ -146,6 +149,9 @@ fun AppNavHost(
                     navController.navigate(Routes.editorForEdit(eventId, beginMs, endMs))
                 },
             )
+        }
+        composable(Routes.ANNIVERSARIES) {
+            AnniversaryScreen(onBack = { navController.popIfCurrent(Routes.ANNIVERSARIES) })
         }
         composable(Routes.TASKS) {
             TasksScreen(

@@ -93,6 +93,7 @@ fun MonthScreen(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenAnniversaries: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
 ) {
@@ -108,6 +109,7 @@ fun MonthScreen(
     val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
     val showLuckyDays by viewModel.showLuckyDays.collectAsStateWithLifecycle()
     val weatherByDay by viewModel.weatherByDay.collectAsStateWithLifecycle()
+    val anniversaries by viewModel.anniversaries.collectAsStateWithLifecycle()
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -243,6 +245,7 @@ fun MonthScreen(
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
                 onOpenYear = onOpenYear,
+                onOpenAnniversaries = onOpenAnniversaries,
                 onMonthClick = { showMonthJump = true },
             )
         },
@@ -265,6 +268,16 @@ fun MonthScreen(
                     emptyList()
                 },
                 weather = weatherByDay[selectedDate]?.let { "${it.emoji} ${it.tempLabel}" },
+                anniversaryLabels = anniversaries
+                    .filter { it.fallsOn(selectedDate) }
+                    .map { anniversary ->
+                        val years = anniversary.yearsOn(selectedDate)
+                        if (anniversary.repeatYearly && years > 0) {
+                            "${anniversary.title}(${years}年目)"
+                        } else {
+                            anniversary.title
+                        }
+                    },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -642,6 +655,7 @@ private fun MonthTopBar(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenAnniversaries: () -> Unit,
     onMonthClick: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
@@ -668,6 +682,7 @@ private fun MonthTopBar(
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
                 onOpenYear = onOpenYear,
+                onOpenAnniversaries = onOpenAnniversaries,
                 onMonthClick = onMonthClick,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
@@ -686,6 +701,7 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenAnniversaries: () -> Unit,
     onMonthClick: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
@@ -773,6 +789,13 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
                 onClick = {
                     onViewMenuChange(false)
                     onOpenTasks()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.anniversaries_title)) },
+                onClick = {
+                    onViewMenuChange(false)
+                    onOpenAnniversaries()
                 },
             )
         }
