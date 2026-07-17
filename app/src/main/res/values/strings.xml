@@ -178,6 +178,23 @@
     <string name="stamp_trip">Trip</string>
     <string name="stamp_hobby">Hobby</string>
 
+    <!-- Premium -->
+    <string name="premium_title">Koyomi Premium</string>
+    <string name="premium_banner">One-time unlock for the full experience</string>
+    <string name="premium_lead">A single purchase unlocks everything, forever. No subscription.</string>
+    <string name="premium_feature_koyomi">Japanese almanac: rokuyō, solar terms, lucky days, lunar date, moon age, era year</string>
+    <string name="premium_feature_weather">Two-week weather on your calendar</string>
+    <string name="premium_feature_themes">All theme packs + custom color</string>
+    <string name="premium_feature_widgets">All home-screen widgets</string>
+    <string name="premium_feature_shortcuts">Templates, multi-day copy and stamp events</string>
+    <string name="premium_feature_backup">Transfer backup for a new phone</string>
+    <string name="premium_buy">Unlock</string>
+    <string name="premium_buy_price">Unlock for %1$s</string>
+    <string name="premium_restore">Restore purchase</string>
+    <string name="premium_owned">Premium is unlocked. Thank you!</string>
+    <string name="premium_note">Purchases are handled by Google Play and shared across your devices.</string>
+    <string name="widget_premium_lock">This widget is part of Koyomi Premium.\nOpen the app to unlock.</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">Move or copy?</string>
     <string name="drop_message">What should happen to "%1$s"?</string>

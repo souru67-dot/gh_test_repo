@@ -44,11 +44,19 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenPremium: () -> Unit = {},
+) {
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     val snackbarHostState = androidx.compose.runtime.remember {
         androidx.compose.material3.SnackbarHostState()
+    }
+    // Premium-only settings: switching ON needs the unlock, OFF is always fine.
+    fun gateOn(setter: (Boolean) -> Unit): (Boolean) -> Unit = { value ->
+        if (!value || isPremium) setter(value) else onOpenPremium()
     }
 
     Scaffold(
@@ -73,6 +81,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            PremiumBannerRow(isPremium = isPremium, onClick = onOpenPremium)
+
             SectionLabel(stringResource(R.string.settings_week_start))
             RadioRow(
                 label = stringResource(R.string.week_start_sunday),
@@ -126,32 +136,32 @@ fun SettingsScreen(onBack: () -> Unit) {
             SwitchRow(
                 label = stringResource(R.string.settings_rokuyo),
                 checked = state.showRokuyo,
-                onChange = viewModel::setShowRokuyo,
+                onChange = gateOn(viewModel::setShowRokuyo),
             )
             SwitchRow(
                 label = stringResource(R.string.settings_solar_terms),
                 checked = state.showSolarTerms,
-                onChange = viewModel::setShowSolarTerms,
+                onChange = gateOn(viewModel::setShowSolarTerms),
             )
             SwitchRow(
                 label = stringResource(R.string.settings_lucky_days),
                 checked = state.showLuckyDays,
-                onChange = viewModel::setShowLuckyDays,
+                onChange = gateOn(viewModel::setShowLuckyDays),
             )
             SwitchRow(
                 label = stringResource(R.string.settings_lunar_date),
                 checked = state.showLunarDate,
-                onChange = viewModel::setShowLunarDate,
+                onChange = gateOn(viewModel::setShowLunarDate),
             )
             SwitchRow(
                 label = stringResource(R.string.settings_moon_age),
                 checked = state.showMoonAge,
-                onChange = viewModel::setShowMoonAge,
+                onChange = gateOn(viewModel::setShowMoonAge),
             )
             SwitchRow(
                 label = stringResource(R.string.settings_japanese_era),
                 checked = state.useJapaneseEra,
-                onChange = viewModel::setUseJapaneseEra,
+                onChange = gateOn(viewModel::setUseJapaneseEra),
             )
 
             SectionLabel(stringResource(R.string.settings_theme_pack))
@@ -160,15 +170,29 @@ fun SettingsScreen(onBack: () -> Unit) {
                 ThemePackRow(
                     pack = pack,
                     selected = state.themePack == pack && !state.dynamicColor,
-                    onClick = { viewModel.setThemePack(pack) },
+                    onClick = {
+                        if (pack == com.souru.koyomi.data.ThemePack.SUMI || isPremium) {
+                            viewModel.setThemePack(pack)
+                        } else {
+                            onOpenPremium()
+                        }
+                    },
                 )
             }
             CustomThemeSection(
                 selected = state.themePack == com.souru.koyomi.data.ThemePack.CUSTOM &&
                     !state.dynamicColor,
                 color = state.customThemeColor,
-                onSelect = { viewModel.setThemePack(com.souru.koyomi.data.ThemePack.CUSTOM) },
-                onColorChange = viewModel::setCustomThemeColor,
+                onSelect = {
+                    if (isPremium) {
+                        viewModel.setThemePack(com.souru.koyomi.data.ThemePack.CUSTOM)
+                    } else {
+                        onOpenPremium()
+                    }
+                },
+                onColorChange = { color ->
+                    if (isPremium) viewModel.setCustomThemeColor(color) else onOpenPremium()
+                },
             )
 
             SectionLabel(stringResource(R.string.settings_theme))
@@ -221,7 +245,11 @@ fun SettingsScreen(onBack: () -> Unit) {
             NotificationPermissionSection()
 
             SectionLabel(stringResource(R.string.settings_weather))
-            WeatherPlaceRow(viewModel = viewModel)
+            WeatherPlaceRow(
+                viewModel = viewModel,
+                enabled = isPremium,
+                onLocked = onOpenPremium,
+            )
 
             SectionLabel(stringResource(R.string.settings_widget_opacity))
             WidgetOpacitySlider(
@@ -229,7 +257,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onChange = viewModel::setWidgetOpacity,
             )
 
-            DataSection(viewModel = viewModel, state = state, snackbarHostState = snackbarHostState)
+            DataSection(
+                viewModel = viewModel,
+                state = state,
+                snackbarHostState = snackbarHostState,
+                premiumUnlocked = isPremium,
+                onLockedAction = onOpenPremium,
+            )
 
             SectionLabel(stringResource(R.string.settings_calendars))
             if (state.calendars.isEmpty()) {
@@ -427,12 +461,54 @@ private fun ThemePackRow(
     }
 }
 
+/** こよみ プレミアム banner: opens the paywall (or shows the owned state). */
+@Composable
+private fun PremiumBannerRow(isPremium: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.premium_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(
+                        if (isPremium) R.string.premium_owned else R.string.premium_banner,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = "◆",
+                color = MaterialTheme.colorScheme.tertiary,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+    }
+}
+
 /**
  * Forecast location: shows the chosen place; tapping opens a name search
  * (Open-Meteo geocoding). Clearing the place turns weather display off.
  */
 @Composable
-private fun WeatherPlaceRow(viewModel: SettingsViewModel) {
+private fun WeatherPlaceRow(
+    viewModel: SettingsViewModel,
+    enabled: Boolean,
+    onLocked: () -> Unit,
+) {
     val place by viewModel.weatherPlace.collectAsStateWithLifecycle()
     val results by viewModel.weatherResults.collectAsStateWithLifecycle()
     var showDialog by androidx.compose.runtime.remember {
@@ -441,7 +517,7 @@ private fun WeatherPlaceRow(viewModel: SettingsViewModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { showDialog = true }
+            .clickable { if (enabled) showDialog = true else onLocked() }
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -618,12 +694,14 @@ private fun CustomThemeSection(
     )
 }
 
-/** ICS export/import with the system document picker. */
+/** ICS export/import + transfer backup with the system document picker. */
 @Composable
 private fun DataSection(
     viewModel: SettingsViewModel,
     state: SettingsUiState,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
+    premiumUnlocked: Boolean,
+    onLockedAction: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -697,13 +775,23 @@ private fun DataSection(
         importLauncher.launch(arrayOf("text/calendar", "text/plain", "application/octet-stream"))
     }
     TextActionRow(stringResource(R.string.backup_export)) {
-        val suggested = "koyomi-backup-" +
-            java.time.LocalDate.now()
-                .format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".json"
-        backupExportLauncher.launch(suggested)
+        if (!premiumUnlocked) {
+            onLockedAction()
+        } else {
+            val suggested = "koyomi-backup-" +
+                java.time.LocalDate.now()
+                    .format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".json"
+            backupExportLauncher.launch(suggested)
+        }
     }
     TextActionRow(stringResource(R.string.backup_import)) {
-        backupImportLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+        if (!premiumUnlocked) {
+            onLockedAction()
+        } else {
+            backupImportLauncher.launch(
+                arrayOf("application/json", "application/octet-stream", "text/plain"),
+            )
+        }
     }
 
     pendingImportUri?.let { uri ->

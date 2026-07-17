@@ -15,6 +15,7 @@ import com.souru.koyomi.ui.anniversary.AnniversaryScreen
 import com.souru.koyomi.ui.event.EventEditScreen
 import com.souru.koyomi.ui.month.MonthScreen
 import com.souru.koyomi.ui.onboarding.OnboardingScreen
+import com.souru.koyomi.ui.premium.PremiumScreen
 import com.souru.koyomi.ui.search.SearchScreen
 import com.souru.koyomi.ui.settings.SettingsScreen
 import com.souru.koyomi.ui.tasks.TasksScreen
@@ -30,6 +31,7 @@ object Routes {
     const val TASKS = "tasks"
     const val YEAR = "year"
     const val ANNIVERSARIES = "anniversaries"
+    const val PREMIUM = "premium"
     const val EDITOR =
         "editor?eventId={eventId}&beginMs={beginMs}&endMs={endMs}" +
             "&dateEpochDay={dateEpochDay}&taskId={taskId}"
@@ -107,6 +109,7 @@ fun AppNavHost(
                 onOpenTasks = { navController.navigate(Routes.TASKS) },
                 onOpenYear = { navController.navigate(Routes.YEAR) },
                 onOpenAnniversaries = { navController.navigate(Routes.ANNIVERSARIES) },
+                onOpenPremium = { navController.navigate(Routes.PREMIUM) },
                 deepLinkEpochDay = deepLinkEpochDay ?: yearPick,
                 onDeepLinkConsumed = {
                     onDeepLinkConsumed()
@@ -162,7 +165,13 @@ fun AppNavHost(
             )
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popIfCurrent(Routes.SETTINGS) })
+            SettingsScreen(
+                onBack = { navController.popIfCurrent(Routes.SETTINGS) },
+                onOpenPremium = { navController.navigate(Routes.PREMIUM) },
+            )
+        }
+        composable(Routes.PREMIUM) {
+            PremiumScreen(onBack = { navController.popIfCurrent(Routes.PREMIUM) })
         }
         composable(
             route = Routes.EDITOR,

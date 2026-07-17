@@ -177,6 +177,23 @@
     <string name="stamp_trip">旅行</string>
     <string name="stamp_hobby">趣味</string>
 
+    <!-- Premium -->
+    <string name="premium_title">こよみ プレミアム</string>
+    <string name="premium_banner">買い切りですべての機能が使えます</string>
+    <string name="premium_lead">一度のご購入で、すべての機能がずっと使えます。サブスクリプションではありません。</string>
+    <string name="premium_feature_koyomi">和の暦: 六曜・二十四節気・開運日・旧暦・月齢・和暦</string>
+    <string name="premium_feature_weather">カレンダーに2週間の天気</string>
+    <string name="premium_feature_themes">きせかえ全テーマ+カスタムカラー</string>
+    <string name="premium_feature_widgets">すべてのウィジェット</string>
+    <string name="premium_feature_shortcuts">テンプレート・複数日一括複製・スタンプ予定</string>
+    <string name="premium_feature_backup">機種変更の引き継ぎバックアップ</string>
+    <string name="premium_buy">解除する</string>
+    <string name="premium_buy_price">%1$sで解除する</string>
+    <string name="premium_restore">購入を復元</string>
+    <string name="premium_owned">プレミアムは解除済みです。ありがとうございます!</string>
+    <string name="premium_note">購入はGoogle Playで処理され、同じアカウントの端末間で共有されます。</string>
+    <string name="widget_premium_lock">このウィジェットは「こよみ プレミアム」の機能です。\nアプリから解除できます。</string>
+
     <!-- Drag & drop -->
     <string name="drop_title">移動しますか、複製しますか?</string>
     <string name="drop_message">「%1$s」をどうしますか?</string>

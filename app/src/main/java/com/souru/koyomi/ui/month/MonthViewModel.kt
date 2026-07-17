@@ -53,7 +53,12 @@ class MonthViewModel(
     private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
     private val anniversaryRepository: com.souru.koyomi.data.anniversary.AnniversaryRepository,
     private val diaryRepository: com.souru.koyomi.data.diary.DiaryRepository,
+    billingRepository: com.souru.koyomi.data.billing.BillingRepository,
 ) : ViewModel() {
+
+    /** こよみ プレミアム entitlement; gates the premium-only shortcuts. */
+    val isPremium: StateFlow<Boolean> = billingRepository.isPremium
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
     val visibleMonth: StateFlow<YearMonth> = _visibleMonth.asStateFlow()
@@ -419,6 +424,7 @@ class MonthViewModel(
                     weatherRepository = app.container.weatherRepository,
                     anniversaryRepository = app.container.anniversaryRepository,
                     diaryRepository = app.container.diaryRepository,
+                    billingRepository = app.container.billingRepository,
                 )
             }
         }

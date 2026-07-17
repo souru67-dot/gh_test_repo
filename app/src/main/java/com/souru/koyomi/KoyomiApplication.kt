@@ -37,6 +37,7 @@ class AppContainer(context: Context) {
         anniversaryRepository = anniversaryRepository,
         diaryRepository = diaryRepository,
     )
+    val billingRepository = com.souru.koyomi.data.billing.BillingRepository(context)
 }
 
 class KoyomiApplication : Application() {
@@ -50,6 +51,8 @@ class KoyomiApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         createNotificationChannel()
+        // Re-sync the premium entitlement with Play on every cold start.
+        container.billingRepository.refresh()
         // Keep widgets fresh across date rollover and calendar changes.
         WidgetUpdateWorker.schedule(this)
         // Redraw widgets promptly when events or tasks change, instead of

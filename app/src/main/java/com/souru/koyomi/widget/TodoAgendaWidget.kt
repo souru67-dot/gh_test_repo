@@ -57,9 +57,14 @@ class TodoAgendaWidget : GlanceAppWidget() {
         val data = loadMonthGridData(context)
         val look = resolveWidgetLook(context, id)
 
+        val premium = isPremiumUnlocked(context)
         provideContent {
             GlanceTheme(colors = widgetColors(look)) {
-                Content(context, tasks, sections, data, look)
+                if (!premium) {
+                    WidgetPremiumLock(context, look)
+                } else {
+                    Content(context, tasks, sections, data, look)
+                }
             }
         }
     }

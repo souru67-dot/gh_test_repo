@@ -44,9 +44,14 @@ class ClockTodayWidget : GlanceAppWidget() {
         val sections = loadUpcomingDaySections(context, maxDays = 3, lookaheadDays = 14)
         val look = resolveWidgetLook(context, id)
 
+        val premium = isPremiumUnlocked(context)
         provideContent {
             GlanceTheme(colors = widgetColors(look)) {
-                Content(context, sections, look)
+                if (!premium) {
+                    WidgetPremiumLock(context, look)
+                } else {
+                    Content(context, sections, look)
+                }
             }
         }
     }

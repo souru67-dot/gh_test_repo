@@ -51,8 +51,13 @@ class SettingsViewModel(
     private val calendarRepository: CalendarRepository,
     private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
     private val backupManager: com.souru.koyomi.data.backup.BackupManager,
+    billingRepository: com.souru.koyomi.data.billing.BillingRepository,
     private val appContext: Context,
 ) : ViewModel() {
+
+    /** こよみ プレミアム entitlement; premium-only settings gate on it. */
+    val isPremium: StateFlow<Boolean> = billingRepository.isPremium
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Writes the transfer backup (settings/ToDo/templates/記念日/日記) to [uri]. */
     fun exportBackup(uri: Uri, onDone: (Boolean) -> Unit) {
@@ -324,6 +329,7 @@ class SettingsViewModel(
                     calendarRepository = app.container.calendarRepository,
                     weatherRepository = app.container.weatherRepository,
                     backupManager = app.container.backupManager,
+                    billingRepository = app.container.billingRepository,
                     appContext = app.applicationContext,
                 )
             }

@@ -56,9 +56,14 @@ class AgendaMonthWidget : GlanceAppWidget() {
         val sections = loadDaySections(context, days = 1)
         val look = resolveWidgetLook(context, id)
 
+        val premium = isPremiumUnlocked(context)
         provideContent {
             GlanceTheme(colors = widgetColors(look)) {
-                Content(context, sections.first(), data, look)
+                if (!premium) {
+                    WidgetPremiumLock(context, look)
+                } else {
+                    Content(context, sections.first(), data, look)
+                }
             }
         }
     }

@@ -61,10 +61,13 @@ class TodayWidget : GlanceAppWidget() {
         val sections = loadDaySections(context, days = 2)
         val look = resolveWidgetLook(context, id)
 
+        val premium = isPremiumUnlocked(context)
         provideContent {
             GlanceTheme(colors = widgetColors(look)) {
                 val size = LocalSize.current
-                if (size.width < 180.dp) {
+                if (!premium) {
+                    WidgetPremiumLock(context, look)
+                } else if (size.width < 180.dp) {
                     MiniContent(context, sections[0], look)
                 } else {
                     FullContent(context, sections[0], sections[1], look)

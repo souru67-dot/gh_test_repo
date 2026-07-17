@@ -87,6 +87,35 @@ suspend fun resolveWidgetLook(context: Context, glanceId: GlanceId): WidgetLook 
     )
 }
 
+/** Premium entitlement, readable from the widget process (DataStore mirror). */
+suspend fun isPremiumUnlocked(context: Context): Boolean {
+    val app = context.applicationContext as KoyomiApplication
+    return app.container.billingRepository.isPremium.first()
+}
+
+/** Shown in place of a premium widget until こよみ プレミアム is unlocked. */
+@Composable
+fun WidgetPremiumLock(context: Context, look: WidgetLook) {
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(widgetBackground(look))
+            .cornerRadius(28.dp)
+            .clickable(actionStartActivity(openDayIntent(context, LocalDate.now())))
+            .padding(14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = context.getString(R.string.widget_premium_lock),
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+            ),
+        )
+    }
+}
+
 /** Color scheme for the chosen widget theme (SYSTEM = dynamic on Android 12+). */
 @Composable
 fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when (look.theme) {

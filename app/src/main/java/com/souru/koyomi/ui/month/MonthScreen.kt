@@ -94,6 +94,7 @@ fun MonthScreen(
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
     onOpenAnniversaries: () -> Unit,
+    onOpenPremium: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
 ) {
@@ -111,8 +112,13 @@ fun MonthScreen(
     val weatherByDay by viewModel.weatherByDay.collectAsStateWithLifecycle()
     val anniversaries by viewModel.anniversaries.collectAsStateWithLifecycle()
     val diary by viewModel.diary.collectAsStateWithLifecycle()
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     var showDiaryEditor by remember { mutableStateOf(false) }
     var showStampPicker by remember { mutableStateOf(false) }
+    // Premium-only shortcuts fall through to the paywall when locked.
+    fun premiumOr(action: () -> Unit) {
+        if (isPremium) action() else onOpenPremium()
+    }
     val showLunarDate by viewModel.showLunarDate.collectAsStateWithLifecycle()
     val showMoonAge by viewModel.showMoonAge.collectAsStateWithLifecycle()
     val useJapaneseEra by viewModel.useJapaneseEra.collectAsStateWithLifecycle()
@@ -284,7 +290,7 @@ fun MonthScreen(
                 diaryText = diary.text,
                 diaryPast = diary.past,
                 onEditDiary = { showDiaryEditor = true },
-                onOpenStamps = { showStampPicker = true },
+                onOpenStamps = { premiumOr { showStampPicker = true } },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -316,10 +322,12 @@ fun MonthScreen(
                     onEditEvent(event.eventId, event.begin, event.end)
                 },
                 onDuplicate = { event -> pendingDuplicate = event },
-                onBatchDuplicate = { event -> pendingBatchCopy = event },
-                onSaveTemplate = { event -> viewModel.saveTemplateFromEvent(event.eventId) },
+                onBatchDuplicate = { event -> premiumOr { pendingBatchCopy = event } },
+                onSaveTemplate = { event ->
+                    premiumOr { viewModel.saveTemplateFromEvent(event.eventId) }
+                },
                 hasTemplates = templates.isNotEmpty(),
-                onOpenTemplates = { showTemplatePicker = true },
+                onOpenTemplates = { premiumOr { showTemplatePicker = true } },
                 onDeleteRequest = { event ->
                     // `detail` belongs to the event shown in the sheet, so its
                     // RRULE tells us whether this is a recurring series.
