@@ -131,6 +131,26 @@ class MonthViewModel(
         viewModelScope.launch { diaryRepository.save(date, text) }
     }
 
+    /** User-defined stamps (emoji, label), editable from the stamp picker. */
+    val customStamps: StateFlow<List<Pair<String, String>>> =
+        settingsRepository.customStamps
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun addCustomStamp(emoji: String, label: String) {
+        if (label.isBlank()) return
+        viewModelScope.launch {
+            settingsRepository.setCustomStamps(
+                customStamps.value + (emoji.ifBlank { "⭐" } to label.trim()),
+            )
+        }
+    }
+
+    fun removeCustomStamp(stamp: Pair<String, String>) {
+        viewModelScope.launch {
+            settingsRepository.setCustomStamps(customStamps.value - stamp)
+        }
+    }
+
     /** One-tap stamp: an all-day event titled like "🗑 ゴミの日" on [date]. */
     fun createStampEvent(title: String, date: LocalDate) {
         viewModelScope.launch {

@@ -178,6 +178,10 @@
     <string name="stamp_outing">お出かけ</string>
     <string name="stamp_trip">旅行</string>
     <string name="stamp_hobby">趣味</string>
+    <string name="stamp_add">スタンプを追加</string>
+    <string name="stamp_emoji">絵文字</string>
+    <string name="stamp_name">名前</string>
+    <string name="stamp_delete_hint">自作スタンプは長押しで削除できます</string>
 
     <!-- Premium -->
     <string name="premium_title">こよみ プレミアム</string>

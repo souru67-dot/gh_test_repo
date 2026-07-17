@@ -25,6 +25,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -505,12 +506,16 @@ fun MonthScreen(
     }
 
     if (showStampPicker) {
+        val customStamps by viewModel.customStamps.collectAsStateWithLifecycle()
         StampPickerDialog(
+            customStamps = customStamps,
             onDismiss = { showStampPicker = false },
             onPick = { title ->
                 viewModel.createStampEvent(title, selectedDate)
                 showStampPicker = false
             },
+            onAddStamp = { emoji, label -> viewModel.addCustomStamp(emoji, label) },
+            onDeleteStamp = { stamp -> viewModel.removeCustomStamp(stamp) },
         )
     }
 
@@ -971,35 +976,82 @@ private val STAMPS = listOf(
     "🎮" to R.string.stamp_hobby,
 )
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+)
 @Composable
 private fun StampPickerDialog(
+    customStamps: List<Pair<String, String>>,
     onDismiss: () -> Unit,
     onPick: (title: String) -> Unit,
+    onAddStamp: (emoji: String, label: String) -> Unit,
+    onDeleteStamp: (Pair<String, String>) -> Unit,
 ) {
+    var showAdd by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.stamp_title)) },
         text = {
-            androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                for ((emoji, labelRes) in STAMPS) {
-                    val label = stringResource(labelRes)
-                    androidx.compose.material3.Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier
-                            .padding(end = 8.dp, bottom = 8.dp)
-                            .clickable { onPick("$emoji $label") },
-                    ) {
-                        Text(
-                            text = "$emoji $label",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
+            Column {
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    // Custom stamps first — tap to use, long-press to delete.
+                    for (stamp in customStamps) {
+                        androidx.compose.material3.Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .padding(end = 8.dp, bottom = 8.dp)
+                                .combinedClickable(
+                                    onClick = { onPick("${stamp.first} ${stamp.second}") },
+                                    onLongClick = { pendingDelete = stamp },
+                                ),
+                        ) {
+                            Text(
+                                text = "${stamp.first} ${stamp.second}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 8.dp,
+                                ),
+                            )
+                        }
                     }
+                    for ((emoji, labelRes) in STAMPS) {
+                        val label = stringResource(labelRes)
+                        androidx.compose.material3.Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .padding(end = 8.dp, bottom = 8.dp)
+                                .clickable { onPick("$emoji $label") },
+                        ) {
+                            Text(
+                                text = "$emoji $label",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 8.dp,
+                                ),
+                            )
+                        }
+                    }
+                }
+                TextButton(onClick = { showAdd = true }) {
+                    Text(stringResource(R.string.stamp_add))
+                }
+                if (customStamps.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.stamp_delete_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
@@ -1008,6 +1060,70 @@ private fun StampPickerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+
+    if (showAdd) {
+        var emoji by remember { mutableStateOf("") }
+        var label by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAdd = false },
+            title = { Text(stringResource(R.string.stamp_add)) },
+            text = {
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = emoji,
+                        onValueChange = { emoji = it },
+                        label = { Text(stringResource(R.string.stamp_emoji)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = label,
+                        onValueChange = { label = it },
+                        label = { Text(stringResource(R.string.stamp_name)) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = label.isNotBlank(),
+                    onClick = {
+                        onAddStamp(emoji, label)
+                        showAdd = false
+                    },
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdd = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    pendingDelete?.let { stamp ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.delete)) },
+            text = { Text("${stamp.first} ${stamp.second}") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteStamp(stamp)
+                        pendingDelete = null
+                    },
+                ) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 }
 
 /** Lists saved templates; tap to place on the selected day, trash to remove. */

@@ -179,6 +179,10 @@
     <string name="stamp_outing">Outing</string>
     <string name="stamp_trip">Trip</string>
     <string name="stamp_hobby">Hobby</string>
+    <string name="stamp_add">Add a stamp</string>
+    <string name="stamp_emoji">Emoji</string>
+    <string name="stamp_name">Name</string>
+    <string name="stamp_delete_hint">Long-press your stamp to delete it</string>
 
     <!-- Premium -->
     <string name="premium_title">Koyomi Premium</string>
