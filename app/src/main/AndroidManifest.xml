@@ -118,6 +118,30 @@
         </receiver>
 
         <receiver
+            android:name=".widget.HimekuriWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_himekuri_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_himekuri_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MiniMonthWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_mini_month_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mini_month_info" />
+        </receiver>
+
+        <receiver
             android:name=".widget.TodoAgendaWidgetReceiver"
             android:exported="false"
             android:label="@string/widget_todo_agenda_label">

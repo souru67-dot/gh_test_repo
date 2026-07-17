@@ -43,6 +43,8 @@ class WidgetUpdateWorker(
             MonthTodayWidget().updateAll(context)
             AgendaMonthWidget().updateAll(context)
             TodoAgendaWidget().updateAll(context)
+            HimekuriWidget().updateAll(context)
+            MiniMonthWidget().updateAll(context)
         }
 
         fun schedule(context: Context) {

@@ -98,11 +98,14 @@ class TodoAgendaWidget : GlanceAppWidget() {
     ) {
         val today = LocalDate.now()
         Row(
+            // NOTE: no whole-widget clickable here — a click target wrapping
+            // the LazyColumn swallows the list's touch events on several
+            // launchers, which made the list unscrollable (events appeared
+            // cut off). Rows and the mini month carry their own taps.
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(widgetBackground(look))
                 .cornerRadius(28.dp)
-                .clickable(actionStartActivity(openDayIntent(context, today)))
                 .padding(14.dp),
         ) {
             LazyColumn(
@@ -112,7 +115,12 @@ class TodoAgendaWidget : GlanceAppWidget() {
             ) {
                 if (tasks.isNotEmpty()) {
                     item {
-                        WidgetSectionLabel(context.getString(R.string.tasks_list))
+                        WidgetSectionLabel(
+                            context.getString(R.string.tasks_list),
+                            modifier = GlanceModifier.clickable(
+                                actionStartActivity(openDayIntent(context, today)),
+                            ),
+                        )
                     }
                     for (task in tasks) {
                         item { TaskRow(context, task) }
@@ -124,7 +132,11 @@ class TodoAgendaWidget : GlanceAppWidget() {
                     item {
                         WidgetSectionLabel(
                             relativeDayLabel(context, section.date),
-                            modifier = GlanceModifier.padding(top = 2.dp),
+                            modifier = GlanceModifier
+                                .padding(top = 2.dp)
+                                .clickable(
+                                    actionStartActivity(openDayIntent(context, section.date)),
+                                ),
                         )
                     }
                     if (section.events.isEmpty()) {
@@ -135,7 +147,13 @@ class TodoAgendaWidget : GlanceAppWidget() {
                                     color = GlanceTheme.colors.onSurfaceVariant,
                                     fontSize = 11.sp,
                                 ),
-                                modifier = GlanceModifier.padding(vertical = 2.dp),
+                                modifier = GlanceModifier
+                                    .padding(vertical = 2.dp)
+                                    .clickable(
+                                        actionStartActivity(
+                                            openDayIntent(context, section.date),
+                                        ),
+                                    ),
                             )
                         }
                     } else {

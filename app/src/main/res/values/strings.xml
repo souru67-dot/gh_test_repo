@@ -231,6 +231,12 @@
     <string name="widget_agenda_month_description">Today\'s events beside a dotted mini month.</string>
     <string name="widget_todo_agenda_label">To-dos + events + calendar</string>
     <string name="widget_todo_agenda_description">Your to-dos and the coming days\' events (scrollable) beside a mini month.</string>
+    <string name="widget_himekuri_label">Daily page (2×2)</string>
+    <string name="widget_himekuri_description">Today\'s date large, with holiday, lucky day and the nearest countdown.</string>
+    <string name="widget_mini_month_label">Mini calendar (2×2)</string>
+    <string name="widget_mini_month_description">The smallest month view, events shown as dots.</string>
+    <string name="himekuri_countdown">%1$s in %2$d days</string>
+    <string name="himekuri_countdown_today">%1$s is today!</string>
     <string name="settings_weather">Weather</string>
     <string name="weather_place">Forecast location</string>
     <string name="weather_place_none">Not set</string>

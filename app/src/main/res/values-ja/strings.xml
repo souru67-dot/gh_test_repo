@@ -230,6 +230,12 @@
     <string name="widget_agenda_month_description">左に今日の予定、右に予定をドットで示す月カレンダーを並べます。</string>
     <string name="widget_todo_agenda_label">ToDo+予定+カレンダー</string>
     <string name="widget_todo_agenda_description">ToDoリストと今日からの予定(スクロールで先の日も)、ミニカレンダーをひとつに。</string>
+    <string name="widget_himekuri_label">日めくり(2×2)</string>
+    <string name="widget_himekuri_description">今日の日付を大きく。祝日・開運日・六曜と、いちばん近い記念日のカウントダウン。</string>
+    <string name="widget_mini_month_label">ミニカレンダー(2×2)</string>
+    <string name="widget_mini_month_description">いちばん小さな月カレンダー。予定はドットで表示します。</string>
+    <string name="himekuri_countdown">%1$sまであと%2$d日</string>
+    <string name="himekuri_countdown_today">今日は%1$s!</string>
     <string name="settings_weather">天気</string>
     <string name="weather_place">天気の地点</string>
     <string name="weather_place_none">未設定</string>

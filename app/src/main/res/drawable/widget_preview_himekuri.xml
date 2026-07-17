@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h94a28,28 0 0 1 28,28v94a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Month + weekday line -->
+    <path android:fillColor="#B0ACA3" android:pathData="M52,26h22v7H52z" />
+    <path android:fillColor="#A8503C" android:pathData="M80,26h18v7H80z" />
+    <!-- Big day numeral (藍墨): bold "15"-style blocks -->
+    <path android:fillColor="#343B46" android:pathData="M56,46h12v56H56z" />
+    <path android:fillColor="#343B46" android:pathData="M46,54l10,-8v12l-10,8z" />
+    <path android:fillColor="#343B46" android:pathData="M76,46h24v10H76zM76,68h22v10H76zM76,92h24v10H76zM76,46h10v26H76zM90,72h10v26H90z" />
+    <!-- Almanac line (朱) -->
+    <path android:fillColor="#A8503C" android:pathData="M56,112h38v7H56z" />
+</vector>
