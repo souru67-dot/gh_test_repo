@@ -3,26 +3,41 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Minimal calendar glyph -->
+    <!--
+      こよみ brand mark (壱・日めくり): a tear-off daily calendar page.
+      White page on the washi background, 朱 (vermilion) top band with two
+      binding rings, and a bold 藍墨 (ink) "1". Safe zone 24..84.
+    -->
+    <!-- Page -->
     <path
-        android:fillColor="#3D4A3D"
-        android:pathData="M36,32h36a6,6 0 0 1 6,6v34a6,6 0 0 1 -6,6H36a6,6 0 0 1 -6,-6V38a6,6 0 0 1 6,-6z"
-        android:fillAlpha="0.12" />
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#E2DAC8"
+        android:strokeWidth="1"
+        android:pathData="M37,28h34a6,6 0 0 1 6,6v42a6,6 0 0 1 -6,6h-34a6,6 0 0 1 -6,-6v-42a6,6 0 0 1 6,-6z" />
+    <!-- 朱: top band -->
     <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
+        android:fillColor="#A8503C"
+        android:pathData="M37,28h34a6,6 0 0 1 6,6v8h-46v-8a6,6 0 0 1 6,-6z" />
+    <!-- Binding rings (墨) -->
+    <path
+        android:strokeColor="#343B46"
+        android:strokeWidth="2.5"
         android:fillColor="#00000000"
-        android:pathData="M36,32h36a6,6 0 0 1 6,6v34a6,6 0 0 1 -6,6H36a6,6 0 0 1 -6,-6V38a6,6 0 0 1 6,-6z" />
+        android:pathData="M44,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
     <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
-        android:pathData="M30,44h48" />
+        android:strokeColor="#343B46"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M64,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
+    <!-- Ring holes punched through the band -->
     <path
-        android:strokeColor="#3D4A3D"
-        android:strokeWidth="3"
-        android:strokeLineCap="round"
-        android:pathData="M42,28v8M66,28v8" />
+        android:fillColor="#F8F3EA"
+        android:pathData="M44,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
     <path
-        android:fillColor="#C4574E"
-        android:pathData="M54,58m-5,0a5,5 0 1 1 10,0a5,5 0 1 1 -10,0" />
+        android:fillColor="#F8F3EA"
+        android:pathData="M64,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
+    <!-- 藍墨: the day numeral "1" -->
+    <path
+        android:fillColor="#343B46"
+        android:pathData="M59.5,48h-8l-9.5,7.5v7l8,-6v19.5h9.5z" />
 </vector>

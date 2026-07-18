@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.souru.koyomi.data.ThemeMode
+import com.souru.koyomi.data.ThemePack
 import com.souru.koyomi.ui.AppNavHost
 import com.souru.koyomi.ui.theme.KoyomiTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,13 +28,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by settings.themeMode
                 .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val dynamicColor by settings.dynamicColor
+                .collectAsStateWithLifecycle(initialValue = false)
+            val themePack by settings.themePack
+                .collectAsStateWithLifecycle(initialValue = ThemePack.SUMI)
+            val customColor by settings.customThemeColor.collectAsStateWithLifecycle(
+                initialValue = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
+            )
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
             val epochDay by deepLinkEpochDay.collectAsStateWithLifecycle()
-            KoyomiTheme(darkTheme = darkTheme) {
+            KoyomiTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColor,
+                themePack = themePack,
+                customColor = customColor,
+            ) {
                 AppNavHost(
                     deepLinkEpochDay = epochDay,
                     onDeepLinkConsumed = { deepLinkEpochDay.value = null },

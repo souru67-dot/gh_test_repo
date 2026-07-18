@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <!-- こよみ Play feature graphic 1024×500. Washi background, ink & vermilion. -->
+  <rect width="1024" height="500" fill="#F8F3EA"/>
+
+  <!-- Faint month grid on the right for calendar context (和紙に薄墨) -->
+  <g stroke="#E7DFCE" stroke-width="2" fill="none">
+    <path d="M690 96 H980 M690 164 H980 M690 232 H980 M690 300 H980 M690 368 H980 M690 404 H980"/>
+    <path d="M690 96 V404 M738 96 V404 M786 96 V404 M834 96 V404 M882 96 V404 M930 96 V404 M978 96 V404"/>
+  </g>
+  <!-- One 朱 "today" cell in the faint grid -->
+  <rect x="787" y="233" width="46" height="66" fill="#E9D9CF"/>
+
+  <!-- ===== 日めくり icon (left) ===== -->
+  <g transform="translate(96,140)">
+    <!-- Page -->
+    <rect x="0" y="12" width="196" height="220" rx="20" fill="#FFFFFF" stroke="#E2DAC8" stroke-width="2"/>
+    <!-- 朱 top band -->
+    <path d="M20,12 h156 a20,20 0 0 1 20,20 v34 h-196 v-34 a20,20 0 0 1 20,-20 z" fill="#A8503C"/>
+    <!-- Binding rings -->
+    <g stroke="#343B46" stroke-width="6" fill="none">
+      <circle cx="58" cy="14" r="14"/>
+      <circle cx="138" cy="14" r="14"/>
+    </g>
+    <circle cx="58" cy="30" r="7.5" fill="#F8F3EA"/>
+    <circle cx="138" cy="30" r="7.5" fill="#F8F3EA"/>
+    <!-- Big ink numeral "1" -->
+    <path d="M112,96 h-22 l-26,20 v20 l22,-16 v72 h26 z" fill="#343B46"/>
+  </g>
+
+  <!-- ===== Wordmark (center) ===== -->
+  <text x="352" y="238" font-family="'Hiragino Mincho ProN','Yu Mincho',serif"
+        font-size="132" fill="#343B46" letter-spacing="6">こよみ</text>
+  <!-- 朱 seal dot after the name -->
+  <circle cx="352" cy="150" r="9" fill="#A8503C"/>
+
+  <!-- Tagline -->
+  <text x="356" y="300" font-family="'Hiragino Sans','Yu Gothic',sans-serif"
+        font-size="34" fill="#6D6152" letter-spacing="4">和のカレンダー ・ Koyomi</text>
+  <!-- Sub-tagline -->
+  <text x="356" y="346" font-family="'Hiragino Sans','Yu Gothic',sans-serif"
+        font-size="24" fill="#8A8474" letter-spacing="2">墨と和紙の、静かなカレンダー</text>
+
+  <!-- 朱 underline accent -->
+  <rect x="356" y="366" width="150" height="4" rx="2" fill="#A8503C"/>
+</svg>

@@ -9,8 +9,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.data.CalendarRepository
+import com.souru.koyomi.data.SettingsRepository
 import com.souru.koyomi.data.model.CalendarInfo
+import com.souru.koyomi.data.model.EventColor
 import com.souru.koyomi.data.model.EventDraft
+import com.souru.koyomi.util.RepeatFreq
+import com.souru.koyomi.util.RepeatRule
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -21,22 +26,26 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class Repeat(val rrule: String?) {
-    NONE(null),
-    DAILY("FREQ=DAILY"),
-    WEEKLY("FREQ=WEEKLY"),
-    MONTHLY("FREQ=MONTHLY"),
-    YEARLY("FREQ=YEARLY"),
-    /** An RRULE we don't model; preserved untouched on save. */
-    CUSTOM(null),
-}
+/** How a save applies to a recurring event. */
+enum class SaveScope { ALL, THIS_ONLY }
+
+/** What the editor is editing: a calendar event or a local task. */
+enum class EditorMode { EVENT, TASK }
 
 data class EditorUiState(
     val loading: Boolean = true,
     val isNew: Boolean = true,
+    val mode: EditorMode = EditorMode.EVENT,
+    /** Existing items cannot switch between event and task. */
+    val modeLocked: Boolean = false,
+    /** Task mode: time of day, or null for a date-only task. */
+    val taskTime: LocalTime? = null,
+    /** The event being edited already repeats (drives the save-scope dialog). */
+    val isRecurring: Boolean = false,
     val title: String = "",
     val allDay: Boolean = false,
     val start: LocalDateTime = LocalDateTime.now(),
@@ -46,13 +55,25 @@ data class EditorUiState(
     val location: String = "",
     val description: String = "",
     val reminderMinutes: Int? = null,
-    val repeat: Repeat = Repeat.NONE,
+    val repeat: RepeatRule = RepeatRule(),
+    /** Selectable palette for the current calendar's account. */
+    val eventColors: List<EventColor> = emptyList(),
+    /** null = calendar default color. */
+    val eventColor: EventColor? = null,
     val saving: Boolean = false,
     val saved: Boolean = false,
 )
 
+/** Google's standard event palette, used when an account has no synced Colors. */
+private val FALLBACK_EVENT_COLORS = listOf(
+    0xFF7986CB, 0xFF33B679, 0xFF8E24AA, 0xFFE67C73, 0xFFF6BF26, 0xFFF4511E,
+    0xFF039BE5, 0xFF616161, 0xFF3F51B5, 0xFF0B8043, 0xFFD50000,
+).map { EventColor(key = null, color = it.toInt()) }
+
 class EventEditViewModel(
     private val repository: CalendarRepository,
+    private val settingsRepository: SettingsRepository,
+    private val taskRepository: com.souru.koyomi.data.task.TaskRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -60,12 +81,16 @@ class EventEditViewModel(
     private val beginMs: Long = savedStateHandle["beginMs"] ?: -1L
     private val endMs: Long = savedStateHandle["endMs"] ?: -1L
     private val dateEpochDay: Long = savedStateHandle["dateEpochDay"] ?: -1L
+    private val taskId: Long = savedStateHandle["taskId"] ?: -1L
+
+    /** Preserved when re-saving an existing task. */
+    private var taskDone: Boolean = false
 
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
-    /** RRULE carried through unmodified when repeat == CUSTOM. */
-    private var customRrule: String? = null
+    /** BEGIN of the instance being edited; identifies the exception occurrence. */
+    private var originalInstanceBegin: Long = -1L
 
     init {
         viewModelScope.launch { load() }
@@ -73,7 +98,32 @@ class EventEditViewModel(
 
     private suspend fun load() {
         val zone = ZoneId.systemDefault()
-        val writableCalendars = repository.loadCalendars().filter { it.isWritable }
+        // The editor only offers calendars the user can actually write to;
+        // read-only ones (holiday subscriptions etc.) stay out of the picker.
+        val allCalendars = repository.loadCalendars()
+        val writableCalendars = allCalendars.filter { it.isWritable }
+
+        // Existing local task.
+        if (taskId >= 0) {
+            val task = taskRepository.getTask(taskId)
+            if (task != null) {
+                taskDone = task.done
+                _uiState.value = EditorUiState(
+                    loading = false,
+                    isNew = false,
+                    mode = EditorMode.TASK,
+                    modeLocked = true,
+                    title = task.title,
+                    start = task.dueDate.atStartOfDay(),
+                    end = task.dueDate.atStartOfDay().plusHours(1),
+                    taskTime = task.time,
+                    reminderMinutes = task.reminderMinutes,
+                    eventColors = FALLBACK_EVENT_COLORS,
+                    eventColor = task.color?.let { EventColor(key = null, color = it) },
+                )
+                return
+            }
+        }
 
         if (eventId >= 0) {
             val details = repository.loadEventDetails(eventId)
@@ -95,19 +145,25 @@ class EventEditViewModel(
                     start = Instant.ofEpochMilli(b).atZone(zone).toLocalDateTime()
                     end = Instant.ofEpochMilli(e).atZone(zone).toLocalDateTime()
                 }
-                val repeat = when (details.rrule?.substringBefore(";")) {
-                    null, "" -> Repeat.NONE
-                    "FREQ=DAILY" -> if (details.rrule == "FREQ=DAILY") Repeat.DAILY else Repeat.CUSTOM
-                    "FREQ=WEEKLY" -> if (details.rrule == "FREQ=WEEKLY") Repeat.WEEKLY else Repeat.CUSTOM
-                    "FREQ=MONTHLY" -> if (details.rrule == "FREQ=MONTHLY") Repeat.MONTHLY else Repeat.CUSTOM
-                    "FREQ=YEARLY" -> if (details.rrule == "FREQ=YEARLY") Repeat.YEARLY else Repeat.CUSTOM
-                    else -> Repeat.CUSTOM
+                originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
+
+                val palette = loadPalette(
+                    allCalendars.find { it.id == details.calendarId },
+                )
+                val currentColor = when {
+                    !details.eventColorKey.isNullOrBlank() ->
+                        palette.find { it.key == details.eventColorKey }
+                            ?: EventColor(details.eventColorKey, details.eventColor)
+                    details.eventColor != 0 ->
+                        EventColor(null, details.eventColor)
+                    else -> null
                 }
-                if (repeat == Repeat.CUSTOM) customRrule = details.rrule
 
                 _uiState.value = EditorUiState(
                     loading = false,
                     isNew = false,
+                    modeLocked = true,
+                    isRecurring = !details.rrule.isNullOrBlank(),
                     title = details.title,
                     allDay = details.allDay,
                     start = start,
@@ -117,7 +173,9 @@ class EventEditViewModel(
                     location = details.location.orEmpty(),
                     description = details.description.orEmpty(),
                     reminderMinutes = details.reminderMinutes,
-                    repeat = repeat,
+                    repeat = RepeatRule.parse(details.rrule),
+                    eventColors = palette,
+                    eventColor = currentColor,
                 )
                 return
             }
@@ -131,26 +189,93 @@ class EventEditViewModel(
             LocalTime.of(9, 0)
         }
         val start = LocalDateTime.of(date, startTime)
+        // Preselect: the calendar chosen in settings, else the one the user
+        // last saved to, else the first writable one.
+        val preferredId = settingsRepository.defaultCalendarId.first()
+        val lastUsedId = settingsRepository.lastUsedCalendarId.first()
+        val defaultCalendar = writableCalendars.find { it.id == preferredId }
+            ?: writableCalendars.find { it.id == lastUsedId }
+            ?: writableCalendars.firstOrNull()
         _uiState.value = EditorUiState(
             loading = false,
             isNew = true,
             start = start,
             end = start.plusHours(1),
             calendars = writableCalendars,
-            calendarId = writableCalendars.firstOrNull()?.id,
+            calendarId = defaultCalendar?.id,
+            eventColors = loadPalette(defaultCalendar),
         )
     }
+
+    /** Synced palette for the calendar's account, or Google's standard 11 colors. */
+    private suspend fun loadPalette(calendar: CalendarInfo?): List<EventColor> {
+        val synced = calendar?.let { repository.loadEventColors(it.accountName) }.orEmpty()
+        return synced.ifEmpty { FALLBACK_EVENT_COLORS }
+    }
+
+    /** Switch between event and task (new items only). */
+    fun setMode(mode: EditorMode) = _uiState.update { state ->
+        if (state.modeLocked) state
+        else state.copy(
+            mode = mode,
+            // Tasks use the standalone palette; events use the calendar's.
+            eventColors = if (mode == EditorMode.TASK) FALLBACK_EVENT_COLORS else state.eventColors,
+            eventColor = null,
+        )
+    }
+
+    fun setTaskTime(time: LocalTime?) = _uiState.update { it.copy(taskTime = time) }
 
     fun setTitle(value: String) = _uiState.update { it.copy(title = value) }
     fun setLocation(value: String) = _uiState.update { it.copy(location = value) }
     fun setDescription(value: String) = _uiState.update { it.copy(description = value) }
     fun setAllDay(value: Boolean) = _uiState.update { it.copy(allDay = value) }
-    fun setCalendar(id: Long) = _uiState.update { it.copy(calendarId = id) }
     fun setReminder(minutes: Int?) = _uiState.update { it.copy(reminderMinutes = minutes) }
+    fun setEventColor(color: EventColor?) = _uiState.update { it.copy(eventColor = color) }
 
-    fun setRepeat(repeat: Repeat) {
-        if (repeat != Repeat.CUSTOM) customRrule = null
-        _uiState.update { it.copy(repeat = repeat) }
+    fun setCalendar(id: Long) {
+        val calendar = _uiState.value.calendars.find { it.id == id } ?: return
+        if (!calendar.isWritable) return
+        _uiState.update { it.copy(calendarId = id) }
+        // The palette (and the validity of a picked color key) is per-account.
+        viewModelScope.launch {
+            val calendar = _uiState.value.calendars.find { it.id == id }
+            val palette = loadPalette(calendar)
+            _uiState.update { state ->
+                state.copy(
+                    eventColors = palette,
+                    eventColor = state.eventColor?.let { current ->
+                        palette.find { it.color == current.color } // best-effort remap
+                    },
+                )
+            }
+        }
+    }
+
+    fun setRepeatFreq(freq: RepeatFreq) = _uiState.update { state ->
+        val byDays = if (freq == RepeatFreq.WEEKLY && state.repeat.byDays.isEmpty()) {
+            setOf(state.start.dayOfWeek)
+        } else {
+            state.repeat.byDays
+        }
+        state.copy(
+            repeat = state.repeat.copy(freq = freq, byDays = byDays, raw = null),
+        )
+    }
+
+    fun toggleRepeatDay(day: DayOfWeek) = _uiState.update { state ->
+        val current = state.repeat.byDays
+        val next = if (day in current) current - day else current + day
+        // Keep at least one day selected for a weekly rule.
+        state.copy(
+            repeat = state.repeat.copy(
+                byDays = if (next.isEmpty()) setOf(state.start.dayOfWeek) else next,
+            ),
+        )
+    }
+
+    fun setRepeatUntil(date: LocalDate?) = _uiState.update { state ->
+        state.copy(repeat = state.repeat.copy(until = date))
     }
 
     /** Moving the start keeps the event duration; the end follows. */
@@ -167,13 +292,18 @@ class EventEditViewModel(
         }
     }
 
-    fun save() {
+    fun save(scope: SaveScope = SaveScope.ALL) {
         val state = _uiState.value
-        val calendarId = state.calendarId ?: return
         if (state.saving) return
+        if (state.mode == EditorMode.TASK) {
+            saveTask(state)
+            return
+        }
+        val calendarId = state.calendarId ?: return
         _uiState.update { it.copy(saving = true) }
 
         val zone = ZoneId.systemDefault()
+        val thisOnly = scope == SaveScope.THIS_ONLY && state.isRecurring && eventId >= 0
         val draft = EventDraft(
             id = if (eventId >= 0) eventId else null,
             calendarId = calendarId,
@@ -192,16 +322,37 @@ class EventEditViewModel(
             },
             location = state.location.trim(),
             description = state.description.trim(),
-            rrule = if (state.repeat == Repeat.CUSTOM) customRrule else state.repeat.rrule,
+            rrule = if (thisOnly) null else state.repeat.toRRule(),
             reminderMinutes = state.reminderMinutes,
+            eventColor = state.eventColor,
         )
         viewModelScope.launch {
-            val ok = if (draft.id == null) {
-                repository.createEvent(draft) != null
-            } else {
-                repository.updateEvent(draft)
+            val ok = when {
+                draft.id == null -> repository.createEvent(draft) != null
+                thisOnly -> repository.updateEventInstance(eventId, originalInstanceBegin, draft)
+                else -> repository.updateEvent(draft)
             }
+            if (ok) settingsRepository.setLastUsedCalendarId(calendarId)
             _uiState.update { it.copy(saving = false, saved = ok) }
+        }
+    }
+
+    private fun saveTask(state: EditorUiState) {
+        if (state.title.isBlank()) return
+        _uiState.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            val id = taskRepository.saveTask(
+                com.souru.koyomi.data.task.Task(
+                    id = if (taskId >= 0) taskId else 0L,
+                    title = state.title,
+                    dueDate = state.start.toLocalDate(),
+                    timeMinutes = state.taskTime?.let { it.hour * 60 + it.minute },
+                    color = state.eventColor?.color,
+                    reminderMinutes = state.reminderMinutes,
+                    done = taskDone,
+                ),
+            )
+            _uiState.update { it.copy(saving = false, saved = id >= 0) }
         }
     }
 
@@ -212,6 +363,8 @@ class EventEditViewModel(
                     as KoyomiApplication
                 EventEditViewModel(
                     repository = app.container.calendarRepository,
+                    settingsRepository = app.container.settingsRepository,
+                    taskRepository = app.container.taskRepository,
                     savedStateHandle = createSavedStateHandle(),
                 )
             }

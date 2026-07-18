@@ -10,14 +10,14 @@ import java.util.concurrent.ConcurrentHashMap
  * holidays and citizens' holidays). Accurate for 1980..2099, including
  * the 2019-2021 one-off changes (enthronement, Olympic moves).
  */
-object JapaneseHolidays {
+object JapaneseHolidays : HolidayCalendar {
 
     private val cache = ConcurrentHashMap<Int, Map<LocalDate, String>>()
 
-    fun holidaysFor(year: Int): Map<LocalDate, String> =
+    override fun holidaysFor(year: Int): Map<LocalDate, String> =
         cache.getOrPut(year) { compute(year) }
 
-    fun nameFor(date: LocalDate): String? = holidaysFor(date.year)[date]
+    override fun nameFor(date: LocalDate): String? = holidaysFor(date.year)[date]
 
     fun isHoliday(date: LocalDate): Boolean = nameFor(date) != null
 

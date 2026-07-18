@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="120dp"
+    android:viewportWidth="250"
+    android:viewportHeight="120">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h194a28,28 0 0 1 28,28v64a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Big date number (藍墨) -->
+    <path
+        android:fillColor="#343B46"
+        android:pathData="M20,14h30v26H20z" />
+    <!-- Month / weekday + count (朱) labels -->
+    <path android:fillColor="#B0ACA3" android:pathData="M58,16h56v6H58z" />
+    <path android:fillColor="#A8503C" android:pathData="M58,28h40v6H58z" />
+    <!-- Hairline between header and agenda -->
+    <path android:fillColor="#EFE8DA" android:pathData="M20,48h210v1.5H20z" />
+    <!-- Event row 1 -->
+    <path android:fillColor="#4A6FA5" android:pathData="M20,58h3.5v20h-3.5z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M32,65h26v6H32z" />
+    <path android:fillColor="#26241F" android:pathData="M66,65h120v6H66z" />
+    <!-- Event row 2 -->
+    <path android:fillColor="#E67C73" android:pathData="M20,84h3.5v20h-3.5z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M32,91h26v6H32z" />
+    <path android:fillColor="#26241F" android:pathData="M66,91h96v6H66z" />
+</vector>

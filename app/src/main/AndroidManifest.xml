@@ -3,10 +3,15 @@
 
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Weather forecast (Open-Meteo). No location permission: the user picks a place by name. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".KoyomiApplication"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
@@ -23,6 +28,34 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Koyomi">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.TimeChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".notifications.ReminderReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.EVENT_REMINDER" />
+                <data android:scheme="content" android:host="com.android.calendar" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".widget.MonthWidgetReceiver"
@@ -46,6 +79,78 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_today_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClockTodayWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_clock_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_clock_today_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AgendaMonthWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_agenda_month_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_agenda_month_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MonthTodayWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_month_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_month_today_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.HimekuriWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_himekuri_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_himekuri_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MiniMonthWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_mini_month_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mini_month_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.TodoAgendaWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_todo_agenda_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_todo_agenda_info" />
         </receiver>
     </application>
 </manifest>

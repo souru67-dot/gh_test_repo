@@ -11,6 +11,18 @@
     <string name="add_event">Add event</string>
     <string name="permission_banner">Calendar access is not granted. Events cannot be shown.</string>
     <string name="open_settings">Open settings</string>
+    <string name="no_calendars_found">No calendar account was found on this device. Add a Google account or enable calendar sync.</string>
+    <string name="previous_period">Previous</string>
+    <string name="next_period">Next</string>
+    <string name="chosen_color">Selected color</string>
+
+    <!-- Search & agenda -->
+    <string name="search">Search</string>
+    <string name="search_hint">Search events</string>
+    <string name="search_no_results">No results</string>
+    <string name="agenda_upcoming">Coming up</string>
+    <string name="search_date_pattern">EEE, MMM d, yyyy</string>
+    <string name="jump_to_month">Jump to month</string>
 
     <!-- Event detail -->
     <string name="edit">Edit</string>
@@ -18,7 +30,15 @@
     <string name="delete">Delete</string>
     <string name="close">Close</string>
     <string name="delete_confirm_title">Delete this event?</string>
-    <string name="delete_confirm_message">"%1$s" will be removed from your calendar. Recurring events are deleted with all occurrences.</string>
+    <string name="delete_confirm_message">"%1$s" will be removed from your calendar.</string>
+    <string name="delete_recurring_title">Delete recurring event</string>
+    <string name="delete_recurring_message">"%1$s" repeats. What should be deleted?</string>
+    <string name="delete_this_occurrence">This event only</string>
+    <string name="delete_all_occurrences">All events in the series</string>
+    <string name="save_scope_title">Save recurring event</string>
+    <string name="save_scope_message">This event repeats. Where should the changes apply?</string>
+    <string name="save_this_occurrence">This event only</string>
+    <string name="save_all_occurrences">All events in the series</string>
     <string name="cancel">Cancel</string>
     <string name="untitled">(No title)</string>
 
@@ -37,6 +57,7 @@
     <string name="ok">OK</string>
     <string name="select_time">Select time</string>
     <string name="no_writable_calendar">No writable calendar was found. Add a calendar account to the device first.</string>
+    <string name="read_only">Read-only</string>
 
     <string name="reminder_none">None</string>
     <string name="reminder_at_time">At time of event</string>
@@ -50,28 +71,194 @@
     <string name="repeat_monthly">Every month</string>
     <string name="repeat_yearly">Every year</string>
     <string name="repeat_custom">Custom</string>
+    <string name="repeat_until">Ends on</string>
+    <string name="repeat_until_none">Never</string>
+    <string name="repeat_until_clear">Clear end date</string>
 
     <!-- Views & settings -->
     <string name="switch_view">Switch view</string>
     <string name="view_week">Week</string>
     <string name="view_day">Day</string>
+    <string name="view_year">Year</string>
     <string name="settings">Settings</string>
     <string name="settings_week_start">Week starts on</string>
     <string name="week_start_sunday">Sunday</string>
     <string name="week_start_monday">Monday</string>
     <string name="settings_month_scroll">Month view scrolling</string>
     <string name="settings_vertical_scroll">Continuous vertical scroll</string>
+    <string name="settings_multi_day_bars">Show multi-day events as bars</string>
     <string name="settings_theme">Theme</string>
     <string name="theme_system">Follow system</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Wallpaper colors (Material You)</string>
+    <string name="settings_theme_pack">Theme packs</string>
+    <string name="pack_sumi">Ink &amp; Washi</string>
+    <string name="pack_sakura">Sakura</string>
+    <string name="pack_wakaba">Fresh Leaf</string>
+    <string name="pack_ai">Indigo</string>
+    <string name="pack_momiji">Autumn Maple</string>
+    <string name="pack_custom">Custom color</string>
+    <string name="settings_week_numbers">Show week numbers</string>
+    <string name="settings_rokuyo">Show rokuyō (Japanese lucky days)</string>
+    <string name="settings_solar_terms">Show 24 solar terms (risshun, geshi…)</string>
+    <string name="settings_lucky_days">Show lucky days (ichiryū-manbai, tensha…)</string>
+    <string name="settings_lunar_date">Show lunar (kyūreki) date</string>
+    <string name="settings_moon_age">Show moon age</string>
+    <string name="settings_japanese_era">Japanese era year (Reiwa 8)</string>
+    <string name="settings_default_calendar">Calendar for new events</string>
+    <string name="default_calendar_last_used">Last used calendar</string>
+    <string name="settings_holiday_country">Public holidays</string>
+    <string name="holiday_country_auto">Follow device region</string>
+    <string name="holiday_country_jp">Japan</string>
+    <string name="holiday_country_us">United States</string>
+    <string name="holiday_country_gb">United Kingdom</string>
+    <string name="holiday_country_kr">South Korea</string>
+    <string name="holiday_country_none">Don\'t show</string>
     <string name="settings_calendars">Calendars to show</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">Data</string>
+    <string name="export_ics">Export events (.ics)</string>
+    <string name="import_ics">Import events (.ics)</string>
+    <string name="export_done">Exported %1$d events</string>
+    <string name="export_failed">Export failed</string>
+    <string name="import_done">Imported %1$d events</string>
+    <string name="import_failed">Import failed</string>
+    <string name="import_choose_calendar">Calendar to import into</string>
+    <string name="backup_export">Export transfer backup (.json)</string>
+    <string name="backup_import">Restore transfer backup</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="restore_done">Restored %1$d records</string>
+
+    <!-- Sync & notifications -->
+    <string name="settings_sync">Google Calendar sync</string>
+    <string name="sync_15min">Every 15 minutes</string>
+    <string name="sync_30min">Every 30 minutes</string>
+    <string name="sync_1hour">Every hour</string>
+    <string name="sync_system_only">System auto-sync only</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="notifications_enabled">Reminder notifications are on</string>
+    <string name="notifications_disabled">Reminder notifications are off</string>
+    <string name="notifications_allow">Allow</string>
+    <string name="notification_channel_reminders">Event reminders</string>
+
+    <!-- Tasks -->
+    <string name="tasks">Tasks</string>
+    <string name="add_task_hint">Add a task</string>
+    <string name="settings_task_calendar">Calendar for new tasks</string>
+    <string name="event_label">Event</string>
+    <string name="task_date">Date</string>
+    <string name="task_time">Time</string>
+    <string name="tasks_list">To-do list</string>
+    <string name="tasks_overdue">Overdue</string>
+    <string name="tasks_upcoming">Upcoming</string>
+    <string name="tasks_done">Completed</string>
+    <string name="tasks_empty">No to-dos yet</string>
+
+    <!-- Anniversaries -->
+    <string name="anniversaries_title">Anniversaries</string>
+    <string name="anniversaries_empty">No anniversaries yet</string>
+    <string name="anniversary_add">Add anniversary</string>
+    <string name="anniversary_title_hint">Wedding day, birthday…</string>
+    <string name="anniversary_yearly">Repeats every year</string>
+    <string name="anniversary_today">Today!</string>
+    <string name="anniversary_days_left">%1$d days left</string>
+    <string name="anniversary_days_ago">%1$d days ago</string>
+
+    <!-- Diary -->
+    <string name="diary_title">Daily note</string>
+    <string name="diary_hint">One line about today…</string>
+    <string name="diary_last_year">This day last year</string>
+    <string name="diary_years_ago">This day %1$d years ago</string>
+
+    <!-- Stamps -->
+    <string name="stamp_title">Stamp events</string>
+    <string name="stamp_trash">Trash day</string>
+    <string name="stamp_payday">Payday</string>
+    <string name="stamp_hospital">Clinic</string>
+    <string name="stamp_exercise">Workout</string>
+    <string name="stamp_lesson">Lesson</string>
+    <string name="stamp_eatout">Eating out</string>
+    <string name="stamp_hair">Hair salon</string>
+    <string name="stamp_bill">Payment due</string>
+    <string name="stamp_shopping">Groceries</string>
+    <string name="stamp_outing">Outing</string>
+    <string name="stamp_trip">Trip</string>
+    <string name="stamp_hobby">Hobby</string>
+    <string name="stamp_add">Add a stamp</string>
+    <string name="stamp_emoji">Emoji</string>
+    <string name="stamp_name">Name</string>
+    <string name="stamp_delete_hint">Long-press your stamp to delete it</string>
+
+    <!-- Premium -->
+    <string name="premium_title">Koyomi Premium</string>
+    <string name="premium_banner">One-time unlock for the full experience</string>
+    <string name="premium_lead">A single purchase unlocks everything, forever. No subscription.</string>
+    <string name="premium_feature_koyomi">Japanese almanac: rokuyō, solar terms, lucky days, lunar date, moon age, era year</string>
+    <string name="premium_feature_weather">Two-week weather on your calendar</string>
+    <string name="premium_feature_themes">All theme packs + custom color</string>
+    <string name="premium_feature_widgets">All home-screen widgets</string>
+    <string name="premium_feature_shortcuts">Templates, multi-day copy, stamp events and drag &amp; drop</string>
+    <string name="premium_feature_backup">Transfer backup for a new phone</string>
+    <string name="premium_buy">Unlock</string>
+    <string name="premium_buy_price">Unlock for %1$s</string>
+    <string name="premium_restore">Restore purchase</string>
+    <string name="premium_owned">Premium is unlocked. Thank you!</string>
+    <string name="premium_note">Purchases are handled by Google Play and shared across your devices.</string>
+    <string name="widget_premium_lock">This widget is part of Koyomi Premium.\nOpen the app to unlock.</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">Move or copy?</string>
+    <string name="drop_message">What should happen to "%1$s"?</string>
+    <string name="drop_move">Move here</string>
+    <string name="drop_copy">Copy here</string>
+    <string name="undo">Undo</string>
+    <string name="drag_month_limit">Drag reaches up to 2 months away — drop here, then drag again</string>
+    <string name="batch_copy">Copy to multiple days</string>
+    <string name="batch_copy_confirm">Copy (%1$d days)</string>
+    <string name="batch_copied">Copied to %1$d days</string>
+    <string name="template_save">Save template</string>
+    <string name="template_saved">Saved as a template</string>
+    <string name="template_add">Add from template</string>
+    <string name="templates_title">Templates</string>
+    <string name="template_empty">No saved templates</string>
+    <string name="event_created">Event created</string>
+    <string name="event_create_failed">Couldn\'t create the event. Add a writable calendar first.</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">Month calendar</string>
-    <string name="widget_month_description">This month at a glance, with dots on busy days.</string>
+    <string name="widget_month_description">This month at a glance, events tinted in their calendar colors.</string>
     <string name="widget_today_label">Today\'s events</string>
     <string name="widget_today_description">Today\'s and tomorrow\'s events with times.</string>
+    <string name="widget_clock_today_label">Clock + today</string>
+    <string name="widget_clock_today_description">A live clock next to today\'s events.</string>
+    <string name="widget_month_today_label">Calendar + today</string>
+    <string name="widget_month_today_description">This month\'s calendar with today\'s events underneath.</string>
+    <string name="widget_agenda_month_label">Today + mini calendar</string>
+    <string name="widget_agenda_month_description">Today\'s events beside a dotted mini month.</string>
+    <string name="widget_todo_agenda_label">To-dos + events + calendar</string>
+    <string name="widget_todo_agenda_description">Your to-dos and the coming days\' events (scrollable) beside a mini month.</string>
+    <string name="widget_himekuri_label">Daily page (2×2)</string>
+    <string name="widget_himekuri_description">Today\'s date large, with holiday, lucky day and the nearest countdown.</string>
+    <string name="widget_mini_month_label">Mini calendar (2×2)</string>
+    <string name="widget_mini_month_description">The smallest month view, events shown as dots.</string>
+    <string name="himekuri_countdown">%1$s in %2$d days</string>
+    <string name="himekuri_countdown_today">%1$s is today!</string>
+    <string name="settings_weather">Weather</string>
+    <string name="weather_place">Forecast location</string>
+    <string name="weather_place_none">Not set</string>
+    <string name="weather_search_hint">Search by city name</string>
+    <string name="weather_clear">Turn off</string>
+    <string name="settings_widget_opacity">Widget background opacity</string>
+    <string name="widget_config_title">Widget settings</string>
+    <string name="events_count">%1$d events</string>
+    <string name="no_more_today">That\'s all for today</string>
+    <string name="tomorrow_label">Tomorrow</string>
+
+    <!-- Event color -->
+    <string name="event_color">Color</string>
+    <string name="event_color_default">Calendar default</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">Your calendars, at a glance</string>

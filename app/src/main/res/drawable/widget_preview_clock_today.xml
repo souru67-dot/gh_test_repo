@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="120dp"
+    android:viewportWidth="250"
+    android:viewportHeight="120">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h194a28,28 0 0 1 28,28v64a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Left: big clock digits 12:34 (藍墨) -->
+    <path android:fillColor="#343B46" android:pathData="M20,34h14v28H20z" />
+    <path android:fillColor="#343B46" android:pathData="M40,34h14v28H40z" />
+    <!-- Colon dots -->
+    <path android:fillColor="#343B46" android:pathData="M60,42m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#343B46" android:pathData="M60,54m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#343B46" android:pathData="M68,34h14v28H68z" />
+    <path android:fillColor="#343B46" android:pathData="M88,34h14v28H88z" />
+    <!-- Date + weekday (朱) under the clock -->
+    <path android:fillColor="#B0ACA3" android:pathData="M20,70h44v6H20z" />
+    <path android:fillColor="#A8503C" android:pathData="M70,70h22v6H70z" />
+    <!-- Vertical hairline -->
+    <path android:fillColor="#EFE8DA" android:pathData="M118,16h1.5v88h-1.5z" />
+    <!-- Right: event rows -->
+    <path android:fillColor="#4A6FA5" android:pathData="M132,22h3v16h-3z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M141,23h22v5h-22z" />
+    <path android:fillColor="#26241F" android:pathData="M141,31h80v6h-80z" />
+    <path android:fillColor="#E67C73" android:pathData="M132,52h3v16h-3z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M141,53h22v5h-22z" />
+    <path android:fillColor="#26241F" android:pathData="M141,61h64v6h-64z" />
+    <path android:fillColor="#33B679" android:pathData="M132,82h3v16h-3z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M141,83h22v5h-22z" />
+    <path android:fillColor="#26241F" android:pathData="M141,91h72v6h-72z" />
+</vector>

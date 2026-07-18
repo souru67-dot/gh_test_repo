@@ -1,0 +1,268 @@
+<resources>
+    <string name="app_name">Koyomi</string>
+
+    <!-- Month screen -->
+    <string name="month_title_pattern">yyyy年M月</string>
+    <string name="sheet_date_pattern">M月d日 EEE</string>
+    <string name="back_to_today">今天</string>
+    <string name="no_events">沒有活動</string>
+    <string name="all_day">整天</string>
+    <string name="more_events">+%1$d</string>
+    <string name="add_event">新增活動</string>
+    <string name="permission_banner">未授予日曆存取權，無法顯示活動。</string>
+    <string name="open_settings">開啟設定</string>
+    <string name="no_calendars_found">此裝置上找不到日曆帳戶。請新增 Google 帳戶或啟用日曆同步。</string>
+    <string name="previous_period">上一個</string>
+    <string name="next_period">下一個</string>
+    <string name="chosen_color">已選顏色</string>
+
+    <!-- Search & agenda -->
+    <string name="search">搜尋</string>
+    <string name="search_hint">搜尋活動</string>
+    <string name="search_no_results">沒有結果</string>
+    <string name="agenda_upcoming">即將到來</string>
+    <string name="search_date_pattern">yyyy年M月d日 EEE</string>
+    <string name="jump_to_month">跳至指定月份</string>
+
+    <!-- Event detail -->
+    <string name="edit">編輯</string>
+    <string name="duplicate">複製</string>
+    <string name="delete">刪除</string>
+    <string name="close">關閉</string>
+    <string name="delete_confirm_title">刪除這個活動?</string>
+    <string name="delete_confirm_message">「%1$s」將從日曆中刪除。</string>
+    <string name="delete_recurring_title">刪除重複活動</string>
+    <string name="delete_recurring_message">「%1$s」是重複活動。要刪除哪些?</string>
+    <string name="delete_this_occurrence">僅這個活動</string>
+    <string name="delete_all_occurrences">所有重複活動</string>
+    <string name="save_scope_title">儲存重複活動</string>
+    <string name="save_scope_message">這是重複活動。變更要套用到哪些?</string>
+    <string name="save_this_occurrence">僅這個活動</string>
+    <string name="save_all_occurrences">所有重複活動</string>
+    <string name="cancel">取消</string>
+    <string name="untitled">(無標題)</string>
+
+    <!-- Editor -->
+    <string name="new_event">新增活動</string>
+    <string name="edit_event">編輯活動</string>
+    <string name="save">儲存</string>
+    <string name="title_hint">標題</string>
+    <string name="starts">開始</string>
+    <string name="ends">結束</string>
+    <string name="calendar">日曆</string>
+    <string name="location">地點</string>
+    <string name="notification">通知</string>
+    <string name="repeat">重複</string>
+    <string name="memo">備註</string>
+    <string name="ok">確定</string>
+    <string name="select_time">選擇時間</string>
+    <string name="no_writable_calendar">找不到可寫入的日曆。請先在裝置上新增日曆帳戶。</string>
+    <string name="read_only">唯讀</string>
+
+    <string name="reminder_none">無</string>
+    <string name="reminder_at_time">活動開始時</string>
+    <string name="reminder_minutes">%1$d 分鐘前</string>
+    <string name="reminder_hours">%1$d 小時前</string>
+    <string name="reminder_days">%1$d 天前</string>
+
+    <string name="repeat_none">不重複</string>
+    <string name="repeat_daily">每天</string>
+    <string name="repeat_weekly">每週</string>
+    <string name="repeat_monthly">每月</string>
+    <string name="repeat_yearly">每年</string>
+    <string name="repeat_custom">自訂</string>
+    <string name="repeat_until">結束於</string>
+    <string name="repeat_until_none">永不</string>
+    <string name="repeat_until_clear">清除結束日期</string>
+
+    <!-- Views & settings -->
+    <string name="switch_view">切換檢視</string>
+    <string name="view_week">週</string>
+    <string name="view_day">日</string>
+    <string name="view_year">年</string>
+    <string name="settings">設定</string>
+    <string name="settings_week_start">每週開始於</string>
+    <string name="week_start_sunday">週日</string>
+    <string name="week_start_monday">週一</string>
+    <string name="settings_month_scroll">月檢視捲動</string>
+    <string name="settings_vertical_scroll">連續垂直捲動</string>
+    <string name="settings_multi_day_bars">以長條顯示跨日活動</string>
+    <string name="settings_theme">主題</string>
+    <string name="theme_system">跟隨系統</string>
+    <string name="theme_light">淺色</string>
+    <string name="theme_dark">深色</string>
+    <string name="settings_dynamic_color">桌布取色 (Material You)</string>
+    <string name="settings_theme_pack">主題配色</string>
+    <string name="pack_sumi">墨與和紙</string>
+    <string name="pack_sakura">櫻</string>
+    <string name="pack_wakaba">嫩葉</string>
+    <string name="pack_ai">藍</string>
+    <string name="pack_momiji">紅葉</string>
+    <string name="pack_custom">自訂顏色</string>
+    <string name="settings_week_numbers">顯示週數</string>
+    <string name="settings_rokuyo">顯示六曜(日本吉凶日)</string>
+    <string name="settings_solar_terms">顯示二十四節氣(立春、夏至…)</string>
+    <string name="settings_lucky_days">顯示吉日(一粒萬倍日、天赦日…)</string>
+    <string name="settings_lunar_date">顯示農曆(舊曆)日期</string>
+    <string name="settings_moon_age">顯示月齡</string>
+    <string name="settings_japanese_era">以日本年號顯示(令和8年)</string>
+    <string name="settings_default_calendar">新增活動使用的日曆</string>
+    <string name="default_calendar_last_used">上次使用的日曆</string>
+    <string name="settings_holiday_country">國定假日</string>
+    <string name="holiday_country_auto">跟隨裝置地區</string>
+    <string name="holiday_country_jp">日本</string>
+    <string name="holiday_country_us">美國</string>
+    <string name="holiday_country_gb">英國</string>
+    <string name="holiday_country_kr">韓國</string>
+    <string name="holiday_country_none">不顯示</string>
+    <string name="settings_calendars">要顯示的日曆</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">資料</string>
+    <string name="export_ics">匯出活動 (.ics)</string>
+    <string name="import_ics">匯入活動 (.ics)</string>
+    <string name="export_done">已匯出 %1$d 個活動</string>
+    <string name="export_failed">匯出失敗</string>
+    <string name="import_done">已匯入 %1$d 個活動</string>
+    <string name="import_failed">匯入失敗</string>
+    <string name="import_choose_calendar">匯入到的日曆</string>
+    <string name="backup_export">匯出轉移備份 (.json)</string>
+    <string name="backup_import">還原轉移備份</string>
+    <string name="backup_done">備份已儲存</string>
+    <string name="restore_done">已還原 %1$d 筆記錄</string>
+
+    <!-- Sync & notifications -->
+    <string name="settings_sync">Google 日曆同步</string>
+    <string name="sync_15min">每 15 分鐘</string>
+    <string name="sync_30min">每 30 分鐘</string>
+    <string name="sync_1hour">每小時</string>
+    <string name="sync_system_only">僅系統自動同步</string>
+    <string name="settings_notifications">通知</string>
+    <string name="notifications_enabled">提醒通知已開啟</string>
+    <string name="notifications_disabled">提醒通知已關閉</string>
+    <string name="notifications_allow">允許</string>
+    <string name="notification_channel_reminders">活動提醒</string>
+
+    <!-- Tasks -->
+    <string name="tasks">工作</string>
+    <string name="add_task_hint">新增工作</string>
+    <string name="settings_task_calendar">新增工作使用的日曆</string>
+    <string name="event_label">活動</string>
+    <string name="task_date">日期</string>
+    <string name="task_time">時間</string>
+    <string name="tasks_list">待辦清單</string>
+    <string name="tasks_overdue">已逾期</string>
+    <string name="tasks_upcoming">即將</string>
+    <string name="tasks_done">已完成</string>
+    <string name="tasks_empty">沒有待辦</string>
+
+    <!-- Anniversaries -->
+    <string name="anniversaries_title">紀念日</string>
+    <string name="anniversaries_empty">沒有紀念日</string>
+    <string name="anniversary_add">新增紀念日</string>
+    <string name="anniversary_title_hint">結婚紀念日、生日…</string>
+    <string name="anniversary_yearly">每年重複</string>
+    <string name="anniversary_today">就是今天!</string>
+    <string name="anniversary_days_left">還有 %1$d 天</string>
+    <string name="anniversary_days_ago">%1$d 天前</string>
+
+    <!-- Diary -->
+    <string name="diary_title">一句話日記</string>
+    <string name="diary_hint">寫下今天的一句話…</string>
+    <string name="diary_last_year">去年今天</string>
+    <string name="diary_years_ago">%1$d 年前的今天</string>
+
+    <!-- Stamps -->
+    <string name="stamp_title">快速活動</string>
+    <string name="stamp_trash">倒垃圾</string>
+    <string name="stamp_payday">發薪日</string>
+    <string name="stamp_hospital">看診</string>
+    <string name="stamp_exercise">運動</string>
+    <string name="stamp_lesson">才藝課</string>
+    <string name="stamp_eatout">外出用餐</string>
+    <string name="stamp_hair">剪髮</string>
+    <string name="stamp_bill">繳費</string>
+    <string name="stamp_shopping">採買</string>
+    <string name="stamp_outing">出遊</string>
+    <string name="stamp_trip">旅行</string>
+    <string name="stamp_hobby">興趣</string>
+    <string name="stamp_add">新增快速項目</string>
+    <string name="stamp_emoji">表情符號</string>
+    <string name="stamp_name">名稱</string>
+    <string name="stamp_delete_hint">長按自訂項目即可刪除</string>
+
+    <!-- Premium -->
+    <string name="premium_title">Koyomi 進階版</string>
+    <string name="premium_banner">一次買斷，解鎖全部功能</string>
+    <string name="premium_lead">一次購買，永久解鎖全部功能。非訂閱制。</string>
+    <string name="premium_feature_koyomi">日本曆法:六曜、二十四節氣、吉日、農曆、月齡、年號</string>
+    <string name="premium_feature_weather">日曆上的兩週天氣</string>
+    <string name="premium_feature_themes">全部主題配色 + 自訂顏色</string>
+    <string name="premium_feature_widgets">全部主畫面小工具</string>
+    <string name="premium_feature_shortcuts">範本、多日複製、快速活動與拖放</string>
+    <string name="premium_feature_backup">換機轉移備份</string>
+    <string name="premium_buy">解鎖</string>
+    <string name="premium_buy_price">以 %1$s 解鎖</string>
+    <string name="premium_restore">還原購買</string>
+    <string name="premium_owned">進階版已解鎖，謝謝支持!</string>
+    <string name="premium_note">購買由 Google Play 處理，並在你的裝置間共享。</string>
+    <string name="widget_premium_lock">此小工具屬於 Koyomi 進階版。\n開啟應用程式即可解鎖。</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">移動還是複製?</string>
+    <string name="drop_message">要如何處理「%1$s」?</string>
+    <string name="drop_move">移動到這裡</string>
+    <string name="drop_copy">複製到這裡</string>
+    <string name="undo">復原</string>
+    <string name="drag_month_limit">拖曳最多可達 2 個月之外 — 先放在這裡，再繼續拖曳</string>
+    <string name="batch_copy">複製到多天</string>
+    <string name="batch_copy_confirm">複製(%1$d 天)</string>
+    <string name="batch_copied">已複製到 %1$d 天</string>
+    <string name="template_save">儲存為範本</string>
+    <string name="template_saved">已儲存為範本</string>
+    <string name="template_add">從範本新增</string>
+    <string name="templates_title">範本</string>
+    <string name="template_empty">沒有已儲存的範本</string>
+    <string name="event_created">已建立活動</string>
+    <string name="event_create_failed">無法建立活動。請先新增可寫入的日曆。</string>
+
+    <!-- Widgets -->
+    <string name="widget_month_label">月曆</string>
+    <string name="widget_month_description">一目了然的本月，活動以日曆顏色顯示。</string>
+    <string name="widget_today_label">今日活動</string>
+    <string name="widget_today_description">今天和明天的活動(含時間)。</string>
+    <string name="widget_clock_today_label">時鐘 + 今日</string>
+    <string name="widget_clock_today_description">時鐘與今日活動並排顯示。</string>
+    <string name="widget_month_today_label">日曆 + 今日</string>
+    <string name="widget_month_today_description">本月日曆下方顯示今日活動。</string>
+    <string name="widget_agenda_month_label">今日 + 迷你日曆</string>
+    <string name="widget_agenda_month_description">今日活動與點狀迷你月曆並排。</string>
+    <string name="widget_todo_agenda_label">待辦 + 活動 + 日曆</string>
+    <string name="widget_todo_agenda_description">待辦與未來幾天的活動(可捲動)，旁邊是迷你月曆。</string>
+    <string name="widget_himekuri_label">日曆頁 (2×2)</string>
+    <string name="widget_himekuri_description">大字顯示今天日期，附國定假日、吉日和最近的倒數。</string>
+    <string name="widget_mini_month_label">迷你日曆 (2×2)</string>
+    <string name="widget_mini_month_description">最小的月檢視，活動以圓點顯示。</string>
+    <string name="himekuri_countdown">%1$s 還有 %2$d 天</string>
+    <string name="himekuri_countdown_today">今天是%1$s!</string>
+    <string name="settings_weather">天氣</string>
+    <string name="weather_place">天氣地點</string>
+    <string name="weather_place_none">未設定</string>
+    <string name="weather_search_hint">以城市名稱搜尋</string>
+    <string name="weather_clear">關閉</string>
+    <string name="settings_widget_opacity">小工具背景不透明度</string>
+    <string name="widget_config_title">小工具設定</string>
+    <string name="events_count">%1$d 個活動</string>
+    <string name="no_more_today">今天到此為止</string>
+    <string name="tomorrow_label">明天</string>
+
+    <!-- Event color -->
+    <string name="event_color">顏色</string>
+    <string name="event_color_default">日曆預設</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">你的日曆，一目了然</string>
+    <string name="onboarding_body">Koyomi 讀寫此裝置上既有的日曆 —— Google 日曆、Exchange 等 —— 讓一切保持同步。若要顯示與建立活動，請允許存取你的日曆。</string>
+    <string name="onboarding_grant">允許存取</string>
+    <string name="onboarding_skip">暫不</string>
+</resources>

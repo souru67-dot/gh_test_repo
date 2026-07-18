@@ -2,13 +2,15 @@ package com.souru.koyomi.data.model
 
 import java.time.LocalDate
 
-/** A calendar account row from CalendarContract.Calendars. */
+/** A calendar row from CalendarContract.Calendars. */
 data class CalendarInfo(
     val id: Long,
     val displayName: String,
     val accountName: String,
     val color: Int,
     val isWritable: Boolean,
+    /** Provider-level visibility (Calendars.VISIBLE). */
+    val isVisible: Boolean = true,
 )
 
 /**
@@ -43,6 +45,19 @@ data class EventDetails(
     val description: String?,
     val rrule: String?,
     val reminderMinutes: Int?,
+    /** Sync adapter's color key (Google user palette) if the event has one. */
+    val eventColorKey: String? = null,
+    val eventColor: Int = 0,
+)
+
+/**
+ * One selectable event color. [key] identifies a color from the account's
+ * synced palette (CalendarContract.Colors); a null key is a plain ARGB value
+ * for accounts without a palette (e.g. the local calendar).
+ */
+data class EventColor(
+    val key: String?,
+    val color: Int,
 )
 
 /**
@@ -64,4 +79,6 @@ data class EventDraft(
     val description: String = "",
     val rrule: String? = null,
     val reminderMinutes: Int? = null,
+    /** null = use the calendar's default color. */
+    val eventColor: EventColor? = null,
 )

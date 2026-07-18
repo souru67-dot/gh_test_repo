@@ -1,0 +1,40 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h144a28,28 0 0 1 28,28v144a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Month name (big) + 朱 dot + year (small) -->
+    <path
+        android:fillColor="#26241F"
+        android:pathData="M20,18h34v14H20z" />
+    <path android:fillColor="#A8503C" android:pathData="M61,29m-3,0a3,3 0 1 1 6,0a3,3 0 1 1 -6,0" />
+    <path
+        android:fillColor="#B0ACA3"
+        android:pathData="M70,24h18v6H70z" />
+    <!-- Today chip -->
+    <path
+        android:fillColor="#DFE3E8"
+        android:pathData="M144,17h36a8,8 0 0 1 0,16h-36a8,8 0 0 1 0,-16z" />
+    <!-- Weekday row -->
+    <path android:fillColor="#BA7B74" android:pathData="M24,48h8v4h-8z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M48,48h8v4h-8zM72,48h8v4h-8zM96,48h8v4h-8zM120,48h8v4h-8zM144,48h8v4h-8z" />
+    <path android:fillColor="#7A8FA8" android:pathData="M168,48h8v4h-8z" />
+    <!-- Hairline under the weekday row -->
+    <path android:fillColor="#EFE8DA" android:pathData="M20,56h160v1.5H20z" />
+    <!-- Day numbers grid -->
+    <path android:fillColor="#69655C" android:pathData="M24,64h8v6h-8zM48,64h8v6h-8zM72,64h8v6h-8zM96,64h8v6h-8zM120,64h8v6h-8zM144,64h8v6h-8zM168,64h8v6h-8zM24,92h8v6h-8zM48,92h8v6h-8zM72,92h8v6h-8zM120,92h8v6h-8zM144,92h8v6h-8zM168,92h8v6h-8zM24,120h8v6h-8zM48,120h8v6h-8zM96,120h8v6h-8zM120,120h8v6h-8zM144,120h8v6h-8zM168,120h8v6h-8zM24,148h8v6h-8zM48,148h8v6h-8zM72,148h8v6h-8zM96,148h8v6h-8zM120,148h8v6h-8zM144,148h8v6h-8zM168,148h8v6h-8z" />
+    <!-- Today: filled circle (藍墨) -->
+    <path android:fillColor="#343B46" android:pathData="M100,95m-12,0a12,12 0 1 1 24,0a12,12 0 1 1 -24,0" />
+    <path android:fillColor="#F8F3EA" android:pathData="M96,92h8v6h-8z" />
+    <!-- Event titles: short calendar-color bars under the days -->
+    <path android:fillColor="#4A6FA5" android:pathData="M20,74h16v3.5H20z" />
+    <path android:fillColor="#E67C73" android:pathData="M20,80h12v3.5H20z" />
+    <path android:fillColor="#F6BF26" android:pathData="M68,102h16v3.5H68z" />
+    <path android:fillColor="#4A6FA5" android:pathData="M92,112h16v3.5H92z" />
+    <path android:fillColor="#8E24AA" android:pathData="M92,118h12v3.5H92z" />
+    <path android:fillColor="#33B679" android:pathData="M140,130h16v3.5h-16z" />
+</vector>

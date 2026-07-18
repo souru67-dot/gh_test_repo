@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+    <!-- Card (和紙) -->
+    <path
+        android:fillColor="#F8F3EA"
+        android:pathData="M28,0h94a28,28 0 0 1 28,28v94a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Month label -->
+    <path android:fillColor="#26241F" android:pathData="M18,16h24v10H18z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M48,19h14v6H48z" />
+    <!-- Weekday letters -->
+    <path android:fillColor="#BA7B74" android:pathData="M20,36h6v3h-6z" />
+    <path android:fillColor="#B0ACA3" android:pathData="M38,36h6v3h-6zM56,36h6v3h-6zM74,36h6v3h-6zM92,36h6v3h-6zM110,36h6v3h-6z" />
+    <path android:fillColor="#7A8FA8" android:pathData="M128,36h6v3h-6z" />
+    <!-- Day numbers grid -->
+    <path android:fillColor="#69655C" android:pathData="M20,48h6v5h-6zM38,48h6v5h-6zM56,48h6v5h-6zM74,48h6v5h-6zM92,48h6v5h-6zM110,48h6v5h-6zM128,48h6v5h-6zM20,68h6v5h-6zM38,68h6v5h-6zM74,68h6v5h-6zM92,68h6v5h-6zM110,68h6v5h-6zM128,68h6v5h-6zM20,88h6v5h-6zM38,88h6v5h-6zM56,88h6v5h-6zM92,88h6v5h-6zM110,88h6v5h-6zM128,88h6v5h-6zM20,108h6v5h-6zM38,108h6v5h-6zM56,108h6v5h-6zM74,108h6v5h-6zM92,108h6v5h-6zM110,108h6v5h-6zM128,108h6v5h-6z" />
+    <!-- Today: filled circle -->
+    <path android:fillColor="#343B46" android:pathData="M59,70.5m-9,0a9,9 0 1 1 18,0a9,9 0 1 1 -18,0" />
+    <path android:fillColor="#F8F3EA" android:pathData="M56,68h6v5h-6z" />
+    <!-- Event dots -->
+    <path android:fillColor="#4A6FA5" android:pathData="M23,58m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#E67C73" android:pathData="M95,78m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#33B679" android:pathData="M41,98m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#F6BF26" android:pathData="M113,118m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+</vector>

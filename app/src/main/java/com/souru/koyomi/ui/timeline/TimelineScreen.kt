@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import java.time.DayOfWeek
@@ -125,10 +125,16 @@ private fun TimelineTopBar(
         )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onPrev) {
-            Icon(Icons.Filled.ChevronLeft, contentDescription = null)
+            Icon(
+                Icons.Filled.ChevronLeft,
+                contentDescription = stringResource(R.string.previous_period),
+            )
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = stringResource(R.string.next_period),
+            )
         }
         IconButton(onClick = onToday) {
             Icon(
@@ -158,7 +164,7 @@ private fun WeekDayHeaderRow(days: List<LocalDate>) {
         Spacer(modifier = Modifier.width(44.dp)) // gutter for hour labels
         for (day in days) {
             val color = when {
-                JapaneseHolidays.isRedDay(day) -> calendarColors.sunday
+                Holidays.isRedDay(day) -> calendarColors.sunday
                 day.dayOfWeek == DayOfWeek.SATURDAY -> calendarColors.saturday
                 else -> MaterialTheme.colorScheme.onSurface
             }
@@ -270,6 +276,18 @@ private fun DayTimelineColumn(
             }
         }
 
+        // Current-time indicator on today's column.
+        if (day == LocalDate.now()) {
+            val now = java.time.LocalTime.now()
+            Box(
+                modifier = Modifier
+                    .offset(y = HourHeight * ((now.hour * 60 + now.minute) / 60f))
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(LocalCalendarColors.current.sunday),
+            )
+        }
+
         for (positioned in assignLanes(events, day, zone)) {
             val event = positioned.event
             val heightMinutes =
@@ -338,7 +356,7 @@ private fun assignLanes(
 
 @Composable
 private fun TimelineChip(event: EventInstance, modifier: Modifier = Modifier) {
-    val background = if (event.color != 0) Color(event.color) else MaterialTheme.colorScheme.primary
+    val background = com.souru.koyomi.ui.month.eventColor(event)
     val textColor = if (background.luminance() > 0.5f) {
         Color.Black.copy(alpha = 0.8f)
     } else {
