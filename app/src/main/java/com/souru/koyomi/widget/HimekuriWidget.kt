@@ -64,10 +64,13 @@ class HimekuriWidget : GlanceAppWidget() {
                 .filter { (_, days) -> days in 0..99 }
                 .minByOrNull { (_, days) -> days }
         }.getOrNull()
+        // 六曜・開運日 are Japanese-almanac concepts; only surface them in
+        // Japanese so non-JP users don't see untranslatable text (大安 etc.).
+        val japanese = Locale.getDefault().language == "ja"
         val data = HimekuriData(
             holiday = Holidays.nameFor(today),
-            rokuyo = Kyureki.rokuyoFor(today),
-            lucky = Kyureki.luckyDaysFor(today).firstOrNull(),
+            rokuyo = if (japanese) Kyureki.rokuyoFor(today) else null,
+            lucky = if (japanese) Kyureki.luckyDaysFor(today).firstOrNull() else null,
             countdown = nearest?.let { (anniversary, days) ->
                 if (days == 0L) {
                     context.getString(R.string.himekuri_countdown_today, anniversary.title)

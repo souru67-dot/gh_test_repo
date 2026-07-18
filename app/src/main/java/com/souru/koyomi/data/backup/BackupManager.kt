@@ -38,6 +38,10 @@ class BackupManager(
 
         val settings = JSONArray()
         for ((key, value) in context.dataStore.data.first().asMap()) {
+            // Never let the premium entitlement travel in a backup — otherwise
+            // a purchased user's file would unlock premium on any device that
+            // imports it. Billing (Google Play) is the sole source of truth.
+            if (key.name in EXCLUDED_SETTING_KEYS) continue
             val entry = JSONObject().put("k", key.name)
             when (value) {
                 is Boolean -> entry.put("t", "bool").put("v", value.toString())
@@ -171,10 +175,15 @@ class BackupManager(
             }
         }
 
-        // Parsed clean — now restore.
+        // Parsed clean — now restore. Preserve the premium entitlement across
+        // the wipe so a restore can never grant or revoke premium; only
+        // Google Play may change it (re-synced on next app start regardless).
         context.dataStore.edit { prefs ->
+            val premium = prefs[EXCLUDED_PREMIUM_KEY]
             prefs.clear()
+            premium?.let { prefs[EXCLUDED_PREMIUM_KEY] = it }
             for (setting in settings) {
+                if (setting.key in EXCLUDED_SETTING_KEYS) continue
                 when (setting.type) {
                     "bool" -> prefs[booleanPreferencesKey(setting.key)] =
                         setting.value.toBoolean()
@@ -197,5 +206,11 @@ class BackupManager(
         for ((date, text) in diary) diaryRepository.save(date, text)
 
         return tasks.size + templates.size + anniversaries.size + diary.size
+    }
+
+    private companion object {
+        /** Premium entitlement key (mirrors BillingRepository). Never backed up. */
+        val EXCLUDED_PREMIUM_KEY = booleanPreferencesKey("premium_unlocked")
+        val EXCLUDED_SETTING_KEYS = setOf(EXCLUDED_PREMIUM_KEY.name)
     }
 }
