@@ -36,6 +36,7 @@ class SettingsRepository(private val context: Context) {
         val TASK_CALENDAR_ID = stringPreferencesKey("task_calendar_id")
         val DEFAULT_CALENDAR_ID = stringPreferencesKey("default_calendar_id")
         val CUSTOM_STAMPS = stringPreferencesKey("custom_stamps")
+        val HOLIDAY_COUNTRY = stringPreferencesKey("holiday_country")
         val THEME_PACK = stringPreferencesKey("theme_pack")
         val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
         val SHOW_ROKUYO = booleanPreferencesKey("show_rokuyo")
@@ -141,6 +142,27 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowRokuyo(enabled: Boolean) {
         context.dataStore.edit { it[Keys.SHOW_ROKUYO] = enabled }
+    }
+
+    /**
+     * Country whose public holidays are highlighted. Null (unset) means
+     * "follow the device locale", resolved by the Holidays facade.
+     */
+    val holidayCountry: Flow<com.souru.koyomi.data.holiday.HolidayCountry?> =
+        context.dataStore.data.map { prefs ->
+            prefs[Keys.HOLIDAY_COUNTRY]?.let {
+                com.souru.koyomi.data.holiday.HolidayCountry.fromCode(it)
+            }
+        }
+
+    suspend fun setHolidayCountry(country: com.souru.koyomi.data.holiday.HolidayCountry?) {
+        context.dataStore.edit { prefs ->
+            if (country == null) {
+                prefs.remove(Keys.HOLIDAY_COUNTRY)
+            } else {
+                prefs[Keys.HOLIDAY_COUNTRY] = country.code
+            }
+        }
     }
 
     /** 開運日 (一粒万倍日・天赦日・寅の日・巳の日) in month view + day sheet. */

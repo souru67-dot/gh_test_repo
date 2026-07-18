@@ -26,7 +26,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.rokuyo.Kyureki
 import java.time.LocalDate
 import java.time.format.TextStyle as JavaTextStyle
@@ -65,7 +65,7 @@ class HimekuriWidget : GlanceAppWidget() {
                 .minByOrNull { (_, days) -> days }
         }.getOrNull()
         val data = HimekuriData(
-            holiday = JapaneseHolidays.nameFor(today),
+            holiday = Holidays.nameFor(today),
             rokuyo = Kyureki.rokuyoFor(today),
             lucky = Kyureki.luckyDaysFor(today).firstOrNull(),
             countdown = nearest?.let { (anniversary, days) ->

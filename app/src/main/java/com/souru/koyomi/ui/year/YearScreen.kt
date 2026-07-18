@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import com.souru.koyomi.util.JapaneseEraFormat
 import com.souru.koyomi.util.monthGridDays
@@ -184,7 +184,7 @@ private fun MiniMonth(
                                     textAlign = TextAlign.Center,
                                     color = when {
                                         isToday -> MaterialTheme.colorScheme.onPrimary
-                                        JapaneseHolidays.isRedDay(date) -> calendarColors.sunday
+                                        Holidays.isRedDay(date) -> calendarColors.sunday
                                         date.dayOfWeek == DayOfWeek.SATURDAY -> calendarColors.saturday
                                         else -> MaterialTheme.colorScheme.onSurface
                                     },

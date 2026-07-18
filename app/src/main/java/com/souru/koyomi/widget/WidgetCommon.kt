@@ -36,7 +36,7 @@ import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.R
 import com.souru.koyomi.data.ThemeMode
 import com.souru.koyomi.data.ThemePack
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.ui.theme.koyomiColorScheme
 import com.souru.koyomi.util.monthGridDays
@@ -353,7 +353,7 @@ private fun androidx.glance.layout.RowScope.WidgetDayCell(
     val dayColor = when {
         !inMonth -> GlanceTheme.colors.outline
         isToday -> GlanceTheme.colors.onPrimary
-        JapaneseHolidays.isRedDay(date) -> WidgetSundayColor
+        Holidays.isRedDay(date) -> WidgetSundayColor
         date.dayOfWeek == DayOfWeek.SATURDAY -> WidgetSaturdayColor
         else -> GlanceTheme.colors.onSurface
     }
@@ -510,7 +510,7 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
 ) {
     val dayColor = when {
         isToday -> GlanceTheme.colors.onPrimary
-        JapaneseHolidays.isRedDay(date) -> WidgetSundayColor
+        Holidays.isRedDay(date) -> WidgetSundayColor
         date.dayOfWeek == DayOfWeek.SATURDAY -> WidgetSaturdayColor
         else -> GlanceTheme.colors.onSurface
     }

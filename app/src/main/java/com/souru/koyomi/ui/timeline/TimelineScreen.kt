@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import java.time.DayOfWeek
@@ -164,7 +164,7 @@ private fun WeekDayHeaderRow(days: List<LocalDate>) {
         Spacer(modifier = Modifier.width(44.dp)) // gutter for hour labels
         for (day in days) {
             val color = when {
-                JapaneseHolidays.isRedDay(day) -> calendarColors.sunday
+                Holidays.isRedDay(day) -> calendarColors.sunday
                 day.dayOfWeek == DayOfWeek.SATURDAY -> calendarColors.saturday
                 else -> MaterialTheme.colorScheme.onSurface
             }

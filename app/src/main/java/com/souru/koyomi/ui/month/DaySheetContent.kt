@@ -57,7 +57,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
@@ -183,7 +183,7 @@ private fun DayEventList(
 ) {
     val calendarColors = LocalCalendarColors.current
     val dateFormatter = rememberPatternFormatter(R.string.sheet_date_pattern)
-    val holidayName = JapaneseHolidays.nameFor(date)
+    val holidayName = Holidays.nameFor(date)
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(

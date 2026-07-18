@@ -46,6 +46,8 @@ data class SettingsUiState(
     val showLuckyDays: Boolean = false,
     /** Calendar preselected for new events; null = last-used. */
     val defaultCalendarId: Long? = null,
+    /** Holiday country; null = follow device locale. */
+    val holidayCountry: com.souru.koyomi.data.holiday.HolidayCountry? = null,
 )
 
 class SettingsViewModel(
@@ -134,6 +136,13 @@ class SettingsViewModel(
         val widgetOpacityPercent: Int,
     )
 
+    private data class ExtraAlmanac(
+        val customThemeColor: Int,
+        val showLuckyDays: Boolean,
+        val defaultCalendarId: Long?,
+        val holidayCountry: com.souru.koyomi.data.holiday.HolidayCountry?,
+    )
+
     private data class AlmanacPrefs(
         val showSolarTerms: Boolean,
         val showLunarDate: Boolean,
@@ -142,6 +151,7 @@ class SettingsViewModel(
         val customThemeColor: Int,
         val showLuckyDays: Boolean,
         val defaultCalendarId: Long?,
+        val holidayCountry: com.souru.koyomi.data.holiday.HolidayCountry?,
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -181,9 +191,16 @@ class SettingsViewModel(
                 settingsRepository.customThemeColor,
                 settingsRepository.showLuckyDays,
                 settingsRepository.defaultCalendarId,
-            ) { custom, lucky, defaultCal -> Triple(custom, lucky, defaultCal) },
-        ) { terms, lunar, moon, era, (custom, lucky, defaultCal) ->
-            AlmanacPrefs(terms, lunar, moon, era, custom, lucky, defaultCal)
+                settingsRepository.holidayCountry,
+            ) { custom, lucky, defaultCal, country ->
+                ExtraAlmanac(custom, lucky, defaultCal, country)
+            },
+        ) { terms, lunar, moon, era, extra ->
+            AlmanacPrefs(
+                terms, lunar, moon, era,
+                extra.customThemeColor, extra.showLuckyDays,
+                extra.defaultCalendarId, extra.holidayCountry,
+            )
         },
     ) { base, extras, hidden, calendars, almanac ->
         base.copy(
@@ -201,6 +218,7 @@ class SettingsViewModel(
             customThemeColor = almanac.customThemeColor,
             showLuckyDays = almanac.showLuckyDays,
             defaultCalendarId = almanac.defaultCalendarId,
+            holidayCountry = almanac.holidayCountry,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -289,6 +307,10 @@ class SettingsViewModel(
 
     fun setDefaultCalendar(calendarId: Long?) {
         viewModelScope.launch { settingsRepository.setDefaultCalendarId(calendarId) }
+    }
+
+    fun setHolidayCountry(country: com.souru.koyomi.data.holiday.HolidayCountry?) {
+        viewModelScope.launch { settingsRepository.setHolidayCountry(country) }
     }
 
     /** Writes all shown calendars to [uri] as .ics; -1 on failure. */

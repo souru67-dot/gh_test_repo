@@ -107,6 +107,13 @@
     <string name="settings_japanese_era">和暦(令和8年)で表示</string>
     <string name="settings_default_calendar">新規予定のカレンダー</string>
     <string name="default_calendar_last_used">前回使ったカレンダー</string>
+    <string name="settings_holiday_country">祝日</string>
+    <string name="holiday_country_auto">端末の地域に合わせる</string>
+    <string name="holiday_country_jp">日本</string>
+    <string name="holiday_country_us">アメリカ</string>
+    <string name="holiday_country_gb">イギリス</string>
+    <string name="holiday_country_kr">韓国</string>
+    <string name="holiday_country_none">表示しない</string>
     <string name="settings_calendars">表示するカレンダー</string>
 
     <!-- Data (ICS) -->

@@ -108,6 +108,13 @@
     <string name="settings_japanese_era">Japanese era year (Reiwa 8)</string>
     <string name="settings_default_calendar">Calendar for new events</string>
     <string name="default_calendar_last_used">Last used calendar</string>
+    <string name="settings_holiday_country">Public holidays</string>
+    <string name="holiday_country_auto">Follow device region</string>
+    <string name="holiday_country_jp">Japan</string>
+    <string name="holiday_country_us">United States</string>
+    <string name="holiday_country_gb">United Kingdom</string>
+    <string name="holiday_country_kr">South Korea</string>
+    <string name="holiday_country_none">Don\'t show</string>
     <string name="settings_calendars">Calendars to show</string>
 
     <!-- Data (ICS) -->

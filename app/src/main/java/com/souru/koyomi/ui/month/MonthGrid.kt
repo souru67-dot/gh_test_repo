@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.data.rokuyo.Kyureki
@@ -416,7 +416,7 @@ private fun DayCell(
 ) {
     val calendarColors = LocalCalendarColors.current
     val baseColor = when {
-        JapaneseHolidays.isRedDay(date) -> calendarColors.sunday
+        Holidays.isRedDay(date) -> calendarColors.sunday
         date.dayOfWeek == DayOfWeek.SATURDAY -> calendarColors.saturday
         else -> MaterialTheme.colorScheme.onSurface
     }

@@ -164,6 +164,20 @@ fun SettingsScreen(
                 onChange = gateOn(viewModel::setUseJapaneseEra),
             )
 
+            SectionLabel(stringResource(R.string.settings_holiday_country))
+            RadioRow(
+                label = stringResource(R.string.holiday_country_auto),
+                selected = state.holidayCountry == null,
+                onClick = { viewModel.setHolidayCountry(null) },
+            )
+            for (country in com.souru.koyomi.data.holiday.HolidayCountry.entries) {
+                RadioRow(
+                    label = stringResource(holidayCountryLabel(country)),
+                    selected = state.holidayCountry == country,
+                    onClick = { viewModel.setHolidayCountry(country) },
+                )
+            }
+
             SectionLabel(stringResource(R.string.settings_theme_pack))
             for (pack in com.souru.koyomi.data.ThemePack.entries) {
                 if (pack == com.souru.koyomi.data.ThemePack.CUSTOM) continue
@@ -475,6 +489,15 @@ private fun ThemePackRow(
         )
     }
 }
+
+private fun holidayCountryLabel(country: com.souru.koyomi.data.holiday.HolidayCountry): Int =
+    when (country) {
+        com.souru.koyomi.data.holiday.HolidayCountry.JAPAN -> R.string.holiday_country_jp
+        com.souru.koyomi.data.holiday.HolidayCountry.UNITED_STATES -> R.string.holiday_country_us
+        com.souru.koyomi.data.holiday.HolidayCountry.UNITED_KINGDOM -> R.string.holiday_country_gb
+        com.souru.koyomi.data.holiday.HolidayCountry.SOUTH_KOREA -> R.string.holiday_country_kr
+        com.souru.koyomi.data.holiday.HolidayCountry.NONE -> R.string.holiday_country_none
+    }
 
 /** こよみ プレミアム banner: opens the paywall (or shows the owned state). */
 @Composable

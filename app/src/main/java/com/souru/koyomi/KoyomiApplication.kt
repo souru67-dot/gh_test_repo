@@ -79,6 +79,17 @@ class KoyomiApplication : Application() {
                 WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
             }
         }
+        // Keep the active holiday country in sync with the setting (null =
+        // follow the device locale). Static call sites read Holidays.country.
+        appScope.launch {
+            container.settingsRepository.holidayCountry.collect { country ->
+                com.souru.koyomi.data.holiday.Holidays.country = country
+                    ?: com.souru.koyomi.data.holiday.HolidayCountry.fromLocale(
+                        java.util.Locale.getDefault(),
+                    )
+                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+            }
+        }
     }
 
     private fun createNotificationChannel() {
