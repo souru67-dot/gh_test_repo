@@ -104,13 +104,19 @@ class WeatherRepository(private val context: Context) {
         }
     }
 
-    /** Name search via the Open-Meteo geocoding API (Japanese labels). */
+    /** Name search via the Open-Meteo geocoding API, labels in the app language. */
     suspend fun searchPlaces(query: String): List<WeatherPlace> =
         withContext(Dispatchers.IO) {
             if (query.isBlank()) return@withContext emptyList()
+            // Open-Meteo geocoding supports en/de/fr/es/it/pt/ru/tr/hi/ja/ko/zh.
+            val lang = when (java.util.Locale.getDefault().language) {
+                "ja", "ko", "zh", "de", "fr", "es", "it", "pt", "ru", "tr", "hi" ->
+                    java.util.Locale.getDefault().language
+                else -> "en"
+            }
             val url = "https://geocoding-api.open-meteo.com/v1/search" +
                 "?name=${URLEncoder.encode(query.trim(), "UTF-8")}" +
-                "&count=8&language=ja&format=json"
+                "&count=8&language=$lang&format=json"
             val body = runCatching { httpGet(url) }.getOrNull()
                 ?: return@withContext emptyList()
             runCatching {
