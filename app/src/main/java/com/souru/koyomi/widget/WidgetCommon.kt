@@ -635,7 +635,7 @@ fun formatWidgetTime(context: Context, event: EventInstance): String =
     if (event.allDay) {
         context.getString(R.string.all_day)
     } else {
-        DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
+        com.souru.koyomi.util.deviceTimeFormatter(context)
             .format(Instant.ofEpochMilli(event.begin).atZone(ZoneId.systemDefault()))
     }
 

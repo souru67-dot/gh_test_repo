@@ -185,7 +185,7 @@ private fun DateHeader(date: LocalDate) {
 @Composable
 private fun ResultRow(event: EventInstance, onClick: () -> Unit) {
     val zone = ZoneId.systemDefault()
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()) }
+    val timeFormatter = com.souru.koyomi.util.rememberDeviceTimeFormatter()
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val color = providerColor(event.color)?.let { mutedColor(it, darkTheme) }
         ?: MaterialTheme.colorScheme.primary

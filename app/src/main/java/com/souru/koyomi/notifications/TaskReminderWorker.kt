@@ -40,7 +40,7 @@ class TaskReminderWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val timeText = task.time?.format(
-            DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()),
+            com.souru.koyomi.util.deviceTimeFormatter(applicationContext),
         )
         val notification = NotificationCompat
             .Builder(applicationContext, ReminderReceiver.CHANNEL_ID)

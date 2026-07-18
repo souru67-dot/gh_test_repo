@@ -106,7 +106,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val timeText = if (allDay) {
             context.getString(R.string.all_day)
         } else {
-            DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).format(start)
+            com.souru.koyomi.util.deviceTimeFormatter(context).format(start)
         }
         val text = listOfNotNull(timeText, location?.takeIf { it.isNotBlank() })
             .joinToString("  ")

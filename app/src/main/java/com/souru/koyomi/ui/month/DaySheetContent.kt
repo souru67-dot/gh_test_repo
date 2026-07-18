@@ -749,12 +749,8 @@ private fun openLocationInMaps(context: android.content.Context, location: Strin
 }
 
 @Composable
-private fun rememberTimeFormatter(): DateTimeFormatter {
-    val locale = Locale.getDefault()
-    return androidx.compose.runtime.remember(locale) {
-        DateTimeFormatter.ofPattern("HH:mm", locale)
-    }
-}
+private fun rememberTimeFormatter(): DateTimeFormatter =
+    com.souru.koyomi.util.rememberDeviceTimeFormatter()
 
 @Composable
 private fun rememberPatternFormatter(patternRes: Int): DateTimeFormatter {

@@ -512,11 +512,7 @@ private fun TaskFields(state: EditorUiState, viewModel: EventEditViewModel) {
         val taskTime = state.taskTime
         if (taskTime != null) {
             TextButton(onClick = { showTimePicker = true }) {
-                Text(
-                    taskTime.format(
-                        DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()),
-                    ),
-                )
+                Text(taskTime.format(com.souru.koyomi.util.rememberDeviceTimeFormatter()))
             }
         }
         Switch(
@@ -605,7 +601,7 @@ private fun DateTimeRow(
             locale,
         )
     }
-    val timeFormatter = remember(locale) { DateTimeFormatter.ofPattern("HH:mm", locale) }
+    val timeFormatter = com.souru.koyomi.util.rememberDeviceTimeFormatter()
 
     Row(
         modifier = Modifier

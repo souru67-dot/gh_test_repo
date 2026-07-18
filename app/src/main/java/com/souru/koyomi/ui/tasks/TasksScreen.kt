@@ -181,7 +181,7 @@ private fun TaskListRow(
     val dateFormatter = remember(datePattern) {
         DateTimeFormatter.ofPattern(datePattern, Locale.getDefault())
     }
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()) }
+    val timeFormatter = com.souru.koyomi.util.rememberDeviceTimeFormatter()
     Row(
         modifier = Modifier
             .fillMaxWidth()
