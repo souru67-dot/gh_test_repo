@@ -13,5 +13,5 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
     val paletteExtractor: PaletteExtractor by lazy { PaletteExtractor(appContext) }
-    val photoRepository: PhotoRepository by lazy { PhotoRepository(paletteExtractor) }
+    val photoRepository: PhotoRepository by lazy { PhotoRepository(paletteExtractor, appContext) }
 }

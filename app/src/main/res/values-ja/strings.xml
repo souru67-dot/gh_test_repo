@@ -5,6 +5,13 @@
     <string name="tab_sort">仕分け</string>
     <string name="tab_collage">コラージュ</string>
     <string name="tab_grid">グリッド</string>
+    <string name="tab_map">マップ</string>
+
+    <!-- Color map (Phase 3) -->
+    <string name="map_title">カラーマップ</string>
+    <string name="map_no_location">位置情報なし</string>
+    <string name="map_export">散歩ログを書き出し</string>
+    <string name="map_empty">位置情報つきの写真がまだありません。写真アクセスを許可するとExifのGPSを読み取ります。</string>
 
     <!-- Generic actions -->
     <string name="action_ok">OK</string>

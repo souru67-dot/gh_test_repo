@@ -91,16 +91,21 @@ fun SortScreen(
     val launchPicker = { picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) viewModel.importRecentDevicePhotos(context)
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        // Import as long as image access was granted; media-location is a bonus for GPS.
+        if (grants[readImagesPermission()] == true) viewModel.importRecentDevicePhotos(context)
     }
     val autoSort = {
-        val perm = readImagesPermission()
-        if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
+        val readPerm = readImagesPermission()
+        if (ContextCompat.checkSelfPermission(context, readPerm) == PackageManager.PERMISSION_GRANTED) {
             viewModel.importRecentDevicePhotos(context)
         } else {
-            permissionLauncher.launch(perm)
+            val perms = buildList {
+                add(readPerm)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACCESS_MEDIA_LOCATION)
+            }
+            permissionLauncher.launch(perms.toTypedArray())
         }
     }
 

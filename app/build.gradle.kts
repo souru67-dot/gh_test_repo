@@ -55,6 +55,9 @@ dependencies {
     // Async image loading in Compose grids
     implementation(libs.coil.compose)
 
+    // Map (Phase 3) — OpenStreetMap, no API key / billing
+    implementation(libs.osmdroid.android)
+
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)

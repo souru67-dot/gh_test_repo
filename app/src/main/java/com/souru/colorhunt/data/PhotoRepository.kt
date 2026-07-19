@@ -1,5 +1,6 @@
 package com.souru.colorhunt.data
 
+import android.content.Context
 import android.net.Uri
 import com.souru.colorhunt.domain.color.ColorClassifier
 import com.souru.colorhunt.domain.model.AnalysisState
@@ -26,6 +27,7 @@ import kotlinx.coroutines.sync.withPermit
  */
 class PhotoRepository(
     private val extractor: PaletteExtractor,
+    private val context: Context,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val analysisGate = Semaphore(MAX_PARALLEL_ANALYSIS)
@@ -47,17 +49,25 @@ class PhotoRepository(
     }
 
     private suspend fun analyze(photo: HuntPhoto) {
-        val color = analysisGate.withPermit {
-            runCatching { extractor.extractDominantColor(photo.uri) }.getOrNull()
+        val (color, latLng) = analysisGate.withPermit {
+            val c = runCatching { extractor.extractDominantColor(photo.uri) }.getOrNull()
+            val ll = runCatching { ExifReader.readLatLng(context, photo.uri) }.getOrNull()
+            c to ll
         }
         val updated = if (color != null) {
             photo.copy(
                 dominantColor = color,
                 bucket = ColorClassifier.classify(color),
+                latitude = latLng?.first,
+                longitude = latLng?.second,
                 analysis = AnalysisState.Done,
             )
         } else {
-            photo.copy(analysis = AnalysisState.Failed)
+            photo.copy(
+                latitude = latLng?.first,
+                longitude = latLng?.second,
+                analysis = AnalysisState.Failed,
+            )
         }
         _photos.update { list -> list.map { if (it.id == updated.id) updated else it } }
     }
