@@ -3,6 +3,15 @@
 
     <!--
         Photo Picker (PickMultipleVisualMedia) needs no storage permission.
+        The "grant photo access → auto-sort" flow reads the gallery via
+        MediaStore, which needs READ_MEDIA_IMAGES on API 33+ or
+        READ_EXTERNAL_STORAGE on API <= 32.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!--
         WRITE_EXTERNAL_STORAGE is only required to save into the gallery on
         API <= 28 (legacy MediaStore); API 29+ uses scoped storage with no
         permission. Requested at runtime only on those older versions.

@@ -6,51 +6,89 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.LruCache
 import androidx.palette.graphics.Palette
+import com.souru.colorhunt.domain.color.Hsv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Extracts a dominant colour from an image [Uri] using AndroidX Palette.
+ * Extracts a representative "theme colour" from an image [Uri] using AndroidX Palette.
  *
- * All heavy work (decode + palette) runs off the main thread. Results are cached
- * by uri so re-visiting the grid or rebuilding a collage is instant. Every
- * failure path (missing file, undecodable image, empty palette) returns null
- * instead of throwing, so a bad photo never takes the pipeline down.
+ * For a colour-hunting app the useful colour is the **colourful subject**, not the
+ * largest region: a blue hydrangea shot against dark foliage is mostly dark by
+ * pixel count, so Palette's population-based `dominantSwatch` would return the
+ * near-black background. Instead we pick the most prominent *chromatic* swatch
+ * (enough saturation, not too dark/blown-out) and only fall back to the overall
+ * dominant (grey/white/black) when the photo genuinely has no colour.
+ *
+ * All heavy work runs off the main thread; results are cached by uri. Every
+ * failure path returns null instead of throwing, and a last-resort average keeps
+ * decodable-but-awkward photos out of the "uncategorized" bucket.
  */
 class PaletteExtractor(private val context: Context) {
 
     private val cache = LruCache<String, Int>(CACHE_ENTRIES)
 
-    /** @return packed 0xFFRRGGBB dominant colour, or null if it could not be determined. */
+    /** @return packed 0xFFRRGGBB representative colour, or null if it could not be determined. */
     suspend fun extractDominantColor(uri: Uri): Int? {
         cache.get(uri.toString())?.let { return it }
 
         val bitmap = decodeDownsampled(uri) ?: return null
         return try {
             val palette = withContext(Dispatchers.Default) {
-                Palette.from(bitmap).clearFilters().generate()
+                Palette.from(bitmap).clearFilters().maximumColorCount(MAX_PALETTE_COLORS).generate()
             }
-            pickColor(palette)?.also { cache.put(uri.toString(), it) }
+            val color = pickThemeColor(palette) ?: averageColor(bitmap)
+            color?.also { cache.put(uri.toString(), it) }
         } catch (t: Throwable) {
-            null
+            // Palette can throw on odd inputs; still try a plain average before giving up.
+            averageColor(bitmap)?.also { cache.put(uri.toString(), it) }
         } finally {
             bitmap.recycle()
         }
     }
 
-    private fun pickColor(palette: Palette): Int? {
-        // Prefer the visually dominant swatch, then fall back through the
-        // themed swatches so we still get a colour for low-contrast photos.
-        val swatch = palette.dominantSwatch
-            ?: palette.vibrantSwatch
-            ?: palette.mutedSwatch
-            ?: palette.swatches.maxByOrNull { it.population }
-        return swatch?.rgb
+    /**
+     * Prefer the most prominent chromatic swatch; only use an achromatic one when
+     * the whole image is essentially grey/white/black.
+     */
+    private fun pickThemeColor(palette: Palette): Int? {
+        val swatches = palette.swatches
+        if (swatches.isEmpty()) return null
+
+        val colorful = swatches.filter { swatch ->
+            val hsv = Hsv.fromColorInt(swatch.rgb)
+            hsv.saturation >= SUBJECT_MIN_SATURATION &&
+                hsv.value in SUBJECT_MIN_VALUE..SUBJECT_MAX_VALUE
+        }
+        val pick = colorful.maxByOrNull { it.population }
+            ?: swatches.maxByOrNull { it.population }
+        return pick?.rgb
+    }
+
+    /** Last-resort average colour over the (already small) bitmap. */
+    private fun averageColor(bitmap: Bitmap): Int? {
+        if (bitmap.isRecycled || bitmap.width == 0 || bitmap.height == 0) return null
+        val step = 4
+        var r = 0L; var g = 0L; var b = 0L; var n = 0L
+        var y = 0
+        while (y < bitmap.height) {
+            var x = 0
+            while (x < bitmap.width) {
+                val c = bitmap.getPixel(x, y)
+                r += (c shr 16) and 0xFF
+                g += (c shr 8) and 0xFF
+                b += c and 0xFF
+                n++
+                x += step
+            }
+            y += step
+        }
+        if (n == 0L) return null
+        return (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
     }
 
     private suspend fun decodeDownsampled(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            // First pass: bounds only, to compute a sample size.
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.contentResolver.openInputStream(uri)?.use {
                 BitmapFactory.decodeStream(it, null, bounds)
@@ -84,7 +122,12 @@ class PaletteExtractor(private val context: Context) {
 
     private companion object {
         const val CACHE_ENTRIES = 512
-        // Palette does not need full resolution; a small image is faster and enough.
         const val TARGET_MAX_DIM = 160
+        const val MAX_PALETTE_COLORS = 24
+
+        // What counts as a "colourful subject" swatch rather than background.
+        const val SUBJECT_MIN_SATURATION = 0.18f
+        const val SUBJECT_MIN_VALUE = 0.20f
+        const val SUBJECT_MAX_VALUE = 0.96f
     }
 }

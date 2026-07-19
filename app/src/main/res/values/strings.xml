@@ -7,7 +7,13 @@
 
     <!-- Sort / import screen -->
     <string name="sort_title">Color Sort</string>
+    <string name="sort_tagline">Hunt your theme color.</string>
     <string name="sort_pick">Add photos</string>
+    <string name="sort_auto">Auto-sort library</string>
+    <string name="sort_processing_group">Analyzing</string>
+    <string name="sort_permission_denied">Photo access was denied. You can still add photos manually.</string>
+    <string name="sort_stat_photos">photos</string>
+    <string name="sort_stat_colors">colors</string>
     <string name="sort_empty_title">No photos yet</string>
     <string name="sort_empty_body">Pick photos and ColorHunt sorts them by their dominant color.</string>
     <string name="sort_filter_all">All</string>

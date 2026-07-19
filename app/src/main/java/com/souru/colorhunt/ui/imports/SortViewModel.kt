@@ -1,10 +1,12 @@
 package com.souru.colorhunt.ui.imports
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.souru.colorhunt.data.MediaImageSource
 import com.souru.colorhunt.data.PhotoRepository
 import com.souru.colorhunt.domain.color.ColorBucket
 import com.souru.colorhunt.domain.model.AnalysisState
@@ -15,13 +17,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** One colour bucket plus the photos sorted into it. */
 data class BucketGroup(val bucket: ColorBucket, val photos: List<HuntPhoto>)
 
 data class SortUiState(
     val groups: List<BucketGroup> = emptyList(),
-    /** Photos still analyzing or whose colour could not be read. */
+    /** Photos still being analysed (colour not yet known). */
+    val processing: List<HuntPhoto> = emptyList(),
+    /** Photos whose colour genuinely could not be read. */
     val uncategorized: List<HuntPhoto> = emptyList(),
     val availableFilters: List<ColorBucket> = emptyList(),
     val activeFilter: ColorBucket? = null,
@@ -32,6 +37,8 @@ data class SortUiState(
     val isEmpty: Boolean get() = totalCount == 0
     val hasSelection: Boolean get() = selectedIds.isNotEmpty()
 }
+
+const val RECENT_IMPORT_LIMIT = 200
 
 class SortViewModel(private val repository: PhotoRepository) : ViewModel() {
 
@@ -47,23 +54,20 @@ class SortViewModel(private val repository: PhotoRepository) : ViewModel() {
         selected: Set<String>,
         filter: ColorBucket?,
     ): SortUiState {
-        val classified = photos.filter { it.bucket != null }
-        val byBucket = classified.groupBy { it.bucket!! }
+        val byBucket = photos.filter { it.bucket != null }.groupBy { it.bucket!! }
         val availableFilters = ColorBucket.entries.filter { byBucket.containsKey(it) }
 
-        // Keep a stable, meaningful order (enum order = spectrum order).
         val groups = ColorBucket.entries
             .filter { filter == null || it == filter }
             .mapNotNull { bucket -> byBucket[bucket]?.let { BucketGroup(bucket, it) } }
 
-        val uncategorized = if (filter == null) {
-            photos.filter { it.bucket == null }
-        } else {
-            emptyList()
-        }
+        val showExtras = filter == null
+        val processing = if (showExtras) photos.filter { it.analysis == AnalysisState.Pending } else emptyList()
+        val uncategorized = if (showExtras) photos.filter { it.analysis == AnalysisState.Failed } else emptyList()
 
         return SortUiState(
             groups = groups,
+            processing = processing,
             uncategorized = uncategorized,
             availableFilters = availableFilters,
             activeFilter = filter,
@@ -74,6 +78,14 @@ class SortViewModel(private val repository: PhotoRepository) : ViewModel() {
     }
 
     fun addPhotos(uris: List<Uri>) = repository.addPhotos(uris)
+
+    /** Grant-photo-access flow: pull the most recent device photos and auto-sort them. */
+    fun importRecentDevicePhotos(context: Context, limit: Int = RECENT_IMPORT_LIMIT) {
+        viewModelScope.launch {
+            val uris = MediaImageSource.recentImages(context.applicationContext, limit)
+            repository.addPhotos(uris)
+        }
+    }
 
     fun toggleSelection(id: String) = repository.toggleSelection(id)
 

@@ -7,7 +7,13 @@
 
     <!-- Sort / import screen -->
     <string name="sort_title">色で仕分け</string>
-    <string name="sort_pick">写真を追加</string>
+    <string name="sort_tagline">テーマ色を、集めよう。</string>
+    <string name="sort_pick">写真を選ぶ</string>
+    <string name="sort_auto">端末の写真を自動仕分け</string>
+    <string name="sort_processing_group">解析中</string>
+    <string name="sort_permission_denied">写真へのアクセスが拒否されました。手動でも写真を追加できます。</string>
+    <string name="sort_stat_photos">枚</string>
+    <string name="sort_stat_colors">色</string>
     <string name="sort_empty_title">まだ写真がありません</string>
     <string name="sort_empty_body">写真を選ぶと、ドミナントカラーで自動的に仕分けします。</string>
     <string name="sort_filter_all">すべて</string>
