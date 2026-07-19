@@ -69,6 +69,7 @@
 
     <!-- Collage screen -->
     <string name="collage_title">コラージュ</string>
+    <string name="collage_header_sub">%1$d枚 · タイルを長押しで並べ替え</string>
     <string name="collage_empty_title">写真が未選択です</string>
     <string name="collage_empty_body">「仕分け」タブで写真を選び、「コラージュを作成」を押してください。</string>
     <string name="collage_cells">枚数</string>

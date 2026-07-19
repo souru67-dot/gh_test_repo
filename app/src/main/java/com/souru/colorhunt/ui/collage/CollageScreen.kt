@@ -7,16 +7,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
@@ -43,7 +47,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,12 +55,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.souru.colorhunt.domain.config.CollageGrid
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.BuildConfig
@@ -113,7 +124,8 @@ fun CollageScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.collage_title)) }) },
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = { CollageHeader(photoCount = state.photoCount) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         when {
@@ -127,6 +139,7 @@ fun CollageScreen(
                 onSave = viewModel::save,
                 onShare = viewModel::share,
                 onUpgrade = { showPaywall = true },
+                onMove = viewModel::move,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -197,10 +210,11 @@ private fun CollageContent(
     onSave: () -> Unit,
     onShare: () -> Unit,
     onUpgrade: () -> Unit,
+    onMove: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        PreviewArea(state)
+        PreviewArea(state, onMove)
         Spacer(Modifier.size(16.dp))
 
         if (!state.isPro) {
@@ -360,15 +374,54 @@ private fun CollageContent(
     }
 }
 
+/**
+ * WYSIWYG collage preview with an interactive drag layer. Long-press a cell and
+ * drag it onto another to swap their order — the grid geometry mirrors
+ * [CollageRenderer] exactly so the hit-zones line up with what's drawn.
+ */
 @Composable
-private fun PreviewArea(state: CollageUiState) {
-    Box(
+private fun PreviewArea(
+    state: CollageUiState,
+    onMove: (Int, Int) -> Unit,
+) {
+    val cellCount = state.cellCount
+    val columns = CollageGrid.columnsFor(cellCount)
+    val rows = CollageGrid.rowsFor(cellCount)
+    val showRail = state.style.paletteStrip && state.isPro
+    val spacingFrac = state.style.cellSpacingDp / 360f
+    val filled = minOf(cellCount, state.orderedPhotos.size)
+
+    var dragFrom by remember { mutableStateOf<Int?>(null) }
+    var dragTo by remember { mutableStateOf<Int?>(null) }
+    var dragPos by remember { mutableStateOf(Offset.Zero) }
+
+    BoxWithConstraints(
         Modifier
             .fillMaxWidth()
             .aspectRatio(state.size.aspectRatio)
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-        contentAlignment = Alignment.Center,
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
+        val density = LocalDensity.current
+        val wPx = with(density) { maxWidth.toPx() }
+        val hPx = with(density) { maxHeight.toPx() }
+
+        val spacing = spacingFrac * wPx
+        val railWidth = if (showRail) wPx * 0.18f else 0f
+        val gridWidth = wPx - railWidth
+        val cellW = ((gridWidth - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
+        val cellH = ((hPx - spacing * (rows + 1)) / rows).coerceAtLeast(1f)
+
+        fun leftOf(i: Int) = spacing + (i % columns) * (cellW + spacing)
+        fun topOf(i: Int) = spacing + (i / columns) * (cellH + spacing)
+        fun cellAt(p: Offset): Int? {
+            for (i in 0 until filled) {
+                val l = leftOf(i); val t = topOf(i)
+                if (p.x in l..(l + cellW) && p.y in t..(t + cellH)) return i
+            }
+            return null
+        }
+
         val preview = state.preview
         if (preview != null) {
             androidx.compose.foundation.Image(
@@ -377,8 +430,100 @@ private fun PreviewArea(state: CollageUiState) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
+
+        // Drag layer: transparent, sits over the rendered preview.
+        if (filled > 1) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(cellCount, columns, showRail, spacingFrac, wPx, hPx, filled) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                dragFrom = cellAt(offset)
+                                dragPos = offset
+                                dragTo = dragFrom
+                            },
+                            onDrag = { change, _ ->
+                                dragPos = change.position
+                                cellAt(change.position)?.let { dragTo = it }
+                            },
+                            onDragEnd = {
+                                val from = dragFrom; val to = dragTo
+                                if (from != null && to != null && from != to) onMove(from, to)
+                                dragFrom = null; dragTo = null
+                            },
+                            onDragCancel = { dragFrom = null; dragTo = null },
+                        )
+                    },
+            )
+        }
+
+        // Highlight the drop target while dragging.
+        val to = dragTo
+        if (dragFrom != null && to != null) {
+            val cellWDp = with(density) { cellW.toDp() }
+            val cellHDp = with(density) { cellH.toDp() }
+            Box(
+                Modifier
+                    .offset { IntOffset(leftOf(to).toInt(), topOf(to).toInt()) }
+                    .size(cellWDp, cellHDp)
+                    .border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
+            )
+        }
+
+        // Floating thumbnail that follows the finger.
+        val from = dragFrom
+        if (from != null && from < state.orderedPhotos.size) {
+            val thumb = (cellW * 0.9f)
+            val thumbDp = with(density) { thumb.toDp() }
+            AsyncImage(
+                model = state.orderedPhotos[from].uri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .offset { IntOffset((dragPos.x - thumb / 2f).toInt(), (dragPos.y - thumb / 2f).toInt()) }
+                    .size(thumbDp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(2.dp, Color.White, RoundedCornerShape(8.dp)),
+            )
+        }
+
         if (state.rendering || state.loading) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(Modifier.align(Alignment.Center))
+        }
+    }
+}
+
+/**
+ * A vivid gradient header that carries the app's "映え" identity onto the collage
+ * screen and doubles as a live status line (photo count + rearrange hint).
+ */
+@Composable
+private fun CollageHeader(photoCount: Int) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color(0xFF7C4DFF), Color(0xFFEC407A), Color(0xFFFFA726)),
+                ),
+            )
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Column {
+            Text(
+                stringResource(R.string.collage_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Spacer(Modifier.size(2.dp))
+            Text(
+                stringResource(R.string.collage_header_sub, photoCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.9f),
+            )
         }
     }
 }

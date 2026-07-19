@@ -69,6 +69,7 @@
 
     <!-- Collage screen -->
     <string name="collage_title">Collage</string>
+    <string name="collage_header_sub">%1$d photos · long-press a tile to rearrange</string>
     <string name="collage_empty_title">Nothing selected</string>
     <string name="collage_empty_body">Select photos on the Sort tab, then tap \"Make collage\".</string>
     <string name="collage_cells">Cells</string>

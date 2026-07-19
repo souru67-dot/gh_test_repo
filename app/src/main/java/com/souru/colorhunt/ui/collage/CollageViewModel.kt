@@ -55,6 +55,8 @@ data class CollageUiState(
     val preview: Bitmap? = null,
     val rendering: Boolean = false,
     val isPro: Boolean = FeatureFlags.isPro,
+    /** Selected photos in cell order — for the interactive drag overlay. */
+    val orderedPhotos: List<HuntPhoto> = emptyList(),
 ) {
     val isEmpty: Boolean get() = !loading && photoCount == 0
 }
@@ -102,6 +104,7 @@ class CollageViewModel(
             preview = prev,
             rendering = isRendering,
             isPro = isPro,
+            orderedPhotos = spec.order.mapNotNull { id -> photos.firstOrNull { it.id == id } },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CollageUiState())
 
