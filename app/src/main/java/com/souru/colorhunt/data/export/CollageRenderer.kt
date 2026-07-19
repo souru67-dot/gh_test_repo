@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import com.souru.colorhunt.domain.config.CollageGeometry
 import com.souru.colorhunt.domain.config.CollageStyle
+import com.souru.colorhunt.domain.config.FocalPoint
 import com.souru.colorhunt.domain.config.PalettePlacement
 
 /**
@@ -45,6 +46,7 @@ object CollageRenderer {
         density: Float,
         addWatermark: Boolean,
         paletteColors: List<Int> = emptyList(),
+        focals: List<FocalPoint> = emptyList(),
     ): Bitmap {
         val output = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
@@ -75,7 +77,7 @@ object CollageRenderer {
             val dest = RectF(r.left, r.top, r.right, r.bottom)
             val bitmap = cells.getOrNull(index)
             if (bitmap != null && !bitmap.isRecycled) {
-                drawCenterCropped(canvas, bitmap, dest, radius, imagePaint)
+                drawCenterCropped(canvas, bitmap, dest, radius, imagePaint, focals.getOrNull(index) ?: FocalPoint())
             }
             if (borderWidth > 0f) {
                 canvas.drawRoundRect(dest, radius, radius, borderPaint)
@@ -139,25 +141,27 @@ object CollageRenderer {
         }
     }
 
-    /** Center-crops [bitmap] to fill [dest], clipped to rounded corners. */
+    /** Crops [bitmap] to fill [dest] (clipped to rounded corners), positioning the
+     *  crop window by [focal] (0.5/0.5 = centre). */
     private fun drawCenterCropped(
         canvas: Canvas,
         bitmap: Bitmap,
         dest: RectF,
         radius: Float,
         paint: Paint,
+        focal: FocalPoint,
     ) {
         val srcRatio = bitmap.width.toFloat() / bitmap.height
         val dstRatio = dest.width() / dest.height()
         val src = if (srcRatio > dstRatio) {
-            // Source is wider: crop the sides.
+            // Source is wider: crop the sides, panned by focal.x.
             val cropW = (bitmap.height * dstRatio).toInt().coerceAtMost(bitmap.width)
-            val x = (bitmap.width - cropW) / 2
+            val x = ((bitmap.width - cropW) * focal.x).toInt().coerceIn(0, bitmap.width - cropW)
             Rect(x, 0, x + cropW, bitmap.height)
         } else {
-            // Source is taller: crop top/bottom.
+            // Source is taller: crop top/bottom, panned by focal.y.
             val cropH = (bitmap.width / dstRatio).toInt().coerceAtMost(bitmap.height)
-            val y = (bitmap.height - cropH) / 2
+            val y = ((bitmap.height - cropH) * focal.y).toInt().coerceIn(0, bitmap.height - cropH)
             Rect(0, y, bitmap.width, y + cropH)
         }
 

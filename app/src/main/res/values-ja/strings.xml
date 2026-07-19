@@ -71,6 +71,9 @@
     <string name="collage_title">コラージュ</string>
     <string name="collage_header_hint">長押しで並べ替え</string>
     <string name="collage_photo_count">%1$d枚</string>
+    <string name="collage_mode_reorder">並べ替え</string>
+    <string name="collage_mode_crop">位置調整</string>
+    <string name="collage_mode_crop_hint">写真をドラッグしてトリミング位置を調整</string>
     <string name="collage_layout">レイアウト</string>
     <string name="collage_layout_grid">グリッド</string>
     <string name="collage_layout_vertical">縦並び</string>

@@ -18,6 +18,7 @@ import com.souru.colorhunt.domain.color.Hsv
 import com.souru.colorhunt.domain.config.CellCountPreset
 import com.souru.colorhunt.domain.config.CollageStyle
 import com.souru.colorhunt.domain.config.FeatureFlags
+import com.souru.colorhunt.domain.config.FocalPoint
 import com.souru.colorhunt.domain.config.PalettePlacement
 import com.souru.colorhunt.domain.config.SnsSize
 import com.souru.colorhunt.domain.model.HuntPhoto
@@ -78,6 +79,8 @@ class CollageViewModel(
     private val countPreset = MutableStateFlow(CellCountPreset.CUSTOM)
     private val style = MutableStateFlow(CollageStyle())
     private val order = MutableStateFlow<List<String>>(emptyList())
+    /** Per-photo crop focal points (keyed by photo id). */
+    private val focals = MutableStateFlow<Map<String, FocalPoint>>(emptyMap())
     /** Bumped to force a re-render when nothing observable changed (e.g. bitmaps finished decoding). */
     private val renderTick = MutableStateFlow(0)
 
@@ -182,6 +185,9 @@ class CollageViewModel(
         } else {
             emptyList()
         }
+        val focalList = (0 until cellCount).map { i ->
+            order.getOrNull(i)?.let { id -> focals.value[id] } ?: FocalPoint()
+        }
         CollageRenderer.render(
             cells = cells,
             cellCount = cellCount,
@@ -191,6 +197,7 @@ class CollageViewModel(
             density = density,
             addWatermark = !FeatureFlags.isPro,
             paletteColors = paletteColors,
+            focals = focalList,
         )
     }
 
@@ -224,6 +231,17 @@ class CollageViewModel(
         val mutable = list.toMutableList()
         mutable.add(to, mutable.removeAt(from))
         order.value = mutable
+    }
+
+    /**
+     * Pan a cell's crop window. [dxFrac]/[dyFrac] are drag deltas as a fraction of
+     * the cell size; dragging the photo one way reveals the opposite edge.
+     */
+    fun adjustFocal(cellIndex: Int, dxFrac: Float, dyFrac: Float) {
+        val id = order.value.getOrNull(cellIndex) ?: return
+        val current = focals.value[id] ?: FocalPoint()
+        focals.value = focals.value + (id to current.shifted(-dxFrac, -dyFrac))
+        renderTick.value += 1
     }
 
     fun save() {

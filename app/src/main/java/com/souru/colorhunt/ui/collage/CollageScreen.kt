@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,6 +144,7 @@ fun CollageScreen(
                 onShare = viewModel::share,
                 onUpgrade = { showPaywall = true },
                 onMove = viewModel::move,
+                onFocalDrag = viewModel::adjustFocal,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -214,10 +216,14 @@ private fun CollageContent(
     onShare: () -> Unit,
     onUpgrade: () -> Unit,
     onMove: (Int, Int) -> Unit,
+    onFocalDrag: (Int, Float, Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var adjustMode by remember { mutableStateOf(false) }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        PreviewArea(state, onMove)
+        PreviewArea(state, adjustMode, onMove, onFocalDrag)
+        Spacer(Modifier.size(10.dp))
+        PreviewModeToggle(adjustMode = adjustMode, onChange = { adjustMode = it })
         Spacer(Modifier.size(16.dp))
 
         if (!state.isPro) {
@@ -391,7 +397,9 @@ private fun CollageContent(
 @Composable
 private fun PreviewArea(
     state: CollageUiState,
+    adjustMode: Boolean,
     onMove: (Int, Int) -> Unit,
+    onFocalDrag: (Int, Float, Float) -> Unit,
 ) {
     val cellCount = state.cellCount
     val placement = if (state.isPro) state.style.palette else PalettePlacement.NONE
@@ -401,6 +409,7 @@ private fun PreviewArea(
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragTo by remember { mutableStateOf<Int?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
+    var panCell by remember { mutableStateOf<Int?>(null) }
 
     // Cap the preview height so tall ratios (9:16) don't fill the whole screen —
     // for those the box shrinks in width and stays centered.
@@ -450,7 +459,28 @@ private fun PreviewArea(
         }
 
         // Drag layer: transparent, sits over the rendered preview.
-        if (filled > 1) {
+        if (adjustMode) {
+            // Pan the touched cell's crop window.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
+                        detectDragGestures(
+                            onDragStart = { offset -> panCell = cellAt(offset) },
+                            onDragEnd = { panCell = null },
+                            onDragCancel = { panCell = null },
+                            onDrag = { change, drag ->
+                                change.consume()
+                                val c = panCell
+                                if (c != null && c < cells.size) {
+                                    onFocalDrag(c, drag.x / cells[c].width, drag.y / cells[c].height)
+                                }
+                            },
+                        )
+                    },
+            )
+        } else if (filled > 1) {
+            // Long-press to rearrange cells.
             Box(
                 Modifier
                     .fillMaxSize()
@@ -510,6 +540,51 @@ private fun PreviewArea(
         }
     }
         }
+    }
+}
+
+/** Segmented toggle above the preview: rearrange cells vs. adjust each crop. */
+@Composable
+private fun PreviewModeToggle(adjustMode: Boolean, onChange: (Boolean) -> Unit) {
+    Column {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            SegItem(stringResource(R.string.collage_mode_reorder), selected = !adjustMode, Modifier.weight(1f)) { onChange(false) }
+            SegItem(stringResource(R.string.collage_mode_crop), selected = adjustMode, Modifier.weight(1f)) { onChange(true) }
+        }
+        if (adjustMode) {
+            Spacer(Modifier.size(6.dp))
+            Text(
+                stringResource(R.string.collage_mode_crop_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SegItem(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

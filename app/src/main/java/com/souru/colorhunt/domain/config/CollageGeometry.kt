@@ -3,6 +3,15 @@ package com.souru.colorhunt.domain.config
 import kotlin.math.ceil
 
 /**
+ * Normalised focal point for a cell's crop window (0..1 on each axis). 0.5/0.5 is
+ * the centre crop; users can pan it so the aspect-ratio crop keeps what matters.
+ */
+data class FocalPoint(val x: Float = 0.5f, val y: Float = 0.5f) {
+    fun shifted(dx: Float, dy: Float) =
+        FocalPoint((x + dx).coerceIn(0f, 1f), (y + dy).coerceIn(0f, 1f))
+}
+
+/**
  * Single source of truth for collage layout maths. Both the on-screen drag
  * overlay ([com.souru.colorhunt.ui.collage] preview) and the pixel renderer
  * ([com.souru.colorhunt.data.export.CollageRenderer]) compute their rectangles

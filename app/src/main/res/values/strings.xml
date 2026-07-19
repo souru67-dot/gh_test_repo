@@ -71,6 +71,9 @@
     <string name="collage_title">Collage</string>
     <string name="collage_header_hint">Long-press a tile to rearrange</string>
     <string name="collage_photo_count">%1$d photos</string>
+    <string name="collage_mode_reorder">Rearrange</string>
+    <string name="collage_mode_crop">Adjust crop</string>
+    <string name="collage_mode_crop_hint">Drag a photo to reposition its crop</string>
     <string name="collage_layout">Layout</string>
     <string name="collage_layout_grid">Grid</string>
     <string name="collage_layout_vertical">Vertical</string>
