@@ -6,6 +6,9 @@ import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.view.View
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,19 +59,24 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.souru.colorhunt.R
 import com.souru.colorhunt.data.export.ImageExporter
 import com.souru.colorhunt.data.export.ShareHelper
 import com.souru.colorhunt.domain.color.ColorBucket
+import com.souru.colorhunt.domain.color.ColorClassifier
 import com.souru.colorhunt.domain.model.HuntPhoto
 import com.souru.colorhunt.ui.common.composeColor
 import com.souru.colorhunt.ui.common.label
+import com.souru.colorhunt.ui.common.labelRes
 import kotlinx.coroutines.launch
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.infowindow.InfoWindow
 
 @Composable
 fun MapScreen(
@@ -230,6 +238,7 @@ private fun NoLocationBar(photos: List<HuntPhoto>) {
 
 private fun refreshMarkers(view: MapView, context: Context, located: List<HuntPhoto>) {
     view.overlays.clear()
+    val infoWindow = PhotoInfoWindow(view)
     val points = ArrayList<GeoPoint>(located.size)
     located.forEach { photo ->
         val lat = photo.latitude ?: return@forEach
@@ -240,6 +249,9 @@ private fun refreshMarkers(view: MapView, context: Context, located: List<HuntPh
             position = point
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             icon = pinDrawable(context, photo.dominantColor ?: AndroidColor.GRAY)
+            // A photo bubble (thumbnail + colour + hex) opens on tap.
+            relatedObject = photo
+            setInfoWindow(infoWindow)
         }
         view.overlays.add(marker)
     }
@@ -257,6 +269,44 @@ private fun refreshMarkers(view: MapView, context: Context, located: List<HuntPh
             }
         }
     }
+}
+
+/**
+ * A photo bubble shown when a map pin is tapped: thumbnail, colour dot, bucket
+ * name and hex. Fixes the previously-empty default InfoWindow.
+ */
+private class PhotoInfoWindow(mapView: MapView) :
+    InfoWindow(R.layout.map_marker_bubble, mapView) {
+
+    override fun onOpen(item: Any?) {
+        val marker = item as? Marker ?: return
+        val photo = marker.relatedObject as? HuntPhoto ?: return
+        val ctx = mView.context
+
+        val image = mView.findViewById<ImageView>(R.id.bubble_image)
+        ctx.imageLoader.enqueue(
+            ImageRequest.Builder(ctx).data(photo.uri).target(image).build(),
+        )
+
+        val title = mView.findViewById<TextView>(R.id.bubble_title)
+        val hex = mView.findViewById<TextView>(R.id.bubble_hex)
+        val dot = mView.findViewById<View>(R.id.bubble_dot)
+        val color = photo.dominantColor
+        if (color != null) {
+            title.text = ctx.getString(ColorClassifier.classify(color).labelRes())
+            hex.text = "#%06X".format(0xFFFFFF and color)
+            dot.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(color)
+            }
+        } else {
+            title.text = ctx.getString(R.string.sort_no_color)
+            hex.text = ""
+        }
+        mView.setOnClickListener { close() }
+    }
+
+    override fun onClose() {}
 }
 
 private fun pinDrawable(context: Context, colorInt: Int): Drawable {
