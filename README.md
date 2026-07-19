@@ -26,7 +26,8 @@ SNS 用に書き出し／共有します。
 | 1 | 取り込み・色仕分け・コラージュ・書き出し | 実装済み |
 | 2 | Instagram グリッドプレビュー | 実装済み |
 | 3 | カラーマップ（osmdroid） | 実装済み |
-| 4 | お題ルーレット / Play Billing | seam のみ（`domain/pro`, `domain/roulette`, `FeatureFlags.isPro`） |
+| 4 | お題カラールーレット＋デイリー通知 | 実装済み（`ui/roulette`, WorkManager通知） |
+| 4 | Play Billing（Pro課金） | seam（`domain/pro`, `FeatureFlags.isPro`） |
 
 ## モジュール構成（Phase 1）
 

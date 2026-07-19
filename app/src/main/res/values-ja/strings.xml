@@ -6,6 +6,21 @@
     <string name="tab_collage">コラージュ</string>
     <string name="tab_grid">グリッド</string>
     <string name="tab_map">マップ</string>
+    <string name="tab_roulette">お題</string>
+
+    <!-- Roulette / today's color (Phase 4) -->
+    <string name="roulette_title">今日の色</string>
+    <string name="roulette_subtitle">ルーレットを回して、この色を狩ろう。</string>
+    <string name="roulette_today">今日の色</string>
+    <string name="roulette_random">ランダム</string>
+    <string name="roulette_spin">回す</string>
+    <string name="roulette_reset_today">今日の色に戻す</string>
+    <string name="roulette_hunt">この色で仕分けへ</string>
+    <string name="roulette_reminder">毎日の通知</string>
+    <string name="roulette_channel_name">今日の色</string>
+    <string name="roulette_channel_desc">今日狩るテーマ色を毎日お知らせします。</string>
+    <string name="roulette_notif_title">今日の色が決まりました</string>
+    <string name="roulette_notif_text">今日は「%1$s」を狩りに行こう！</string>
 
     <!-- Color map (Phase 3) -->
     <string name="map_title">カラーマップ</string>

@@ -3,6 +3,7 @@ package com.souru.colorhunt.ui
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Place
@@ -28,6 +29,7 @@ import com.souru.colorhunt.ui.collage.CollageScreen
 import com.souru.colorhunt.ui.grid.GridPreviewScreen
 import com.souru.colorhunt.ui.imports.SortScreen
 import com.souru.colorhunt.ui.map.MapScreen
+import com.souru.colorhunt.ui.roulette.RouletteScreen
 
 /**
  * Top-level destinations. Phase 1 ships Sort and Collage; Phase 2 (Grid) and
@@ -38,6 +40,7 @@ enum class TopDestination(
     @StringRes val labelRes: Int,
     val icon: ImageVector,
 ) {
+    Roulette("roulette", R.string.tab_roulette, Icons.Filled.Casino),
     Sort("sort", R.string.tab_sort, Icons.Filled.PhotoLibrary),
     Collage("collage", R.string.tab_collage, Icons.Filled.GridView),
     Grid("grid", R.string.tab_grid, Icons.Filled.GridOn),
@@ -73,9 +76,18 @@ fun ColorHuntApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = TopDestination.Sort.route,
+            startDestination = TopDestination.Roulette.route,
             modifier = Modifier.padding(innerPadding),
         ) {
+            composable(TopDestination.Roulette.route) {
+                RouletteScreen(onOpenSort = {
+                    navController.navigate(TopDestination.Sort.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                })
+            }
             composable(TopDestination.Sort.route) {
                 SortScreen(onOpenCollage = {
                     navController.navigate(TopDestination.Collage.route) {

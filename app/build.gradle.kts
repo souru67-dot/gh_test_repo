@@ -60,6 +60,9 @@ dependencies {
     // Map (Phase 3) — OpenStreetMap, no API key / billing
     implementation(libs.osmdroid.android)
 
+    // Daily theme-colour notification (Phase 4)
+    implementation(libs.androidx.work.runtime)
+
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)

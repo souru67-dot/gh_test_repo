@@ -1,37 +1,31 @@
 package com.souru.colorhunt.domain.roulette
 
 import com.souru.colorhunt.domain.color.ColorBucket
+import java.time.LocalDate
 
 /**
- * Phase 4 seam — "today's color" roulette.
+ * "Today's color" roulette (Phase 4).
  *
- * The full feature spins a hue wheel to pick a daily theme colour and fires a
- * daily notification. This stub provides the deterministic colour-picking core
- * (pure, testable) so the UI wheel and the notification scheduler can be layered
- * on later without changing how a day maps to a colour.
+ * The colour-picking core is pure and deterministic: a given day always maps to
+ * the same theme colour (so a daily notification and the in-app wheel agree),
+ * while [randomColor] powers the manual spin.
  */
 object DailyColorRoulette {
 
-    /** Chromatic buckets only — a "theme colour" of grey/black/white is no fun. */
-    private val themeChoices: List<ColorBucket> = ColorBucket.entries.filter { !it.isAchromatic }
+    /** Chromatic buckets only — a theme colour of grey/black/white is no fun. */
+    val choices: List<ColorBucket> = ColorBucket.entries.filter { !it.isAchromatic }
 
-    /** Deterministically pick the theme colour for a given day (epoch-day works well as [seed]). */
+    /** Deterministically pick the theme colour for a given day-seed (epoch day works well). */
     fun colorForSeed(seed: Long): ColorBucket {
-        val index = ((seed % themeChoices.size) + themeChoices.size) % themeChoices.size
-        return themeChoices[index.toInt()]
-    }
-}
-
-/**
- * Phase 4 stub for the daily "today's color" notification. Empty on purpose —
- * marks where a WorkManager periodic job + notification channel will go.
- */
-object DailyThemeNotifier {
-    fun enableDailyReminder() {
-        // TODO(Phase 4): schedule a daily WorkManager job that posts the roulette colour.
+        val index = ((seed % choices.size) + choices.size) % choices.size
+        return choices[index.toInt()]
     }
 
-    fun disableDailyReminder() {
-        // TODO(Phase 4): cancel the scheduled job.
-    }
+    /** The theme colour for today, stable for the whole day. */
+    fun todayColor(today: LocalDate = LocalDate.now()): ColorBucket = colorForSeed(today.toEpochDay())
+
+    /** A random theme colour for a manual spin. */
+    fun randomColor(): ColorBucket = choices.random()
+
+    fun indexOf(bucket: ColorBucket): Int = choices.indexOf(bucket)
 }

@@ -6,6 +6,21 @@
     <string name="tab_collage">Collage</string>
     <string name="tab_grid">Grid</string>
     <string name="tab_map">Map</string>
+    <string name="tab_roulette">Today</string>
+
+    <!-- Roulette / today's color (Phase 4) -->
+    <string name="roulette_title">Today\'s Color</string>
+    <string name="roulette_subtitle">Spin the wheel and hunt this color.</string>
+    <string name="roulette_today">Today</string>
+    <string name="roulette_random">Random</string>
+    <string name="roulette_spin">Spin</string>
+    <string name="roulette_reset_today">Today\'s color</string>
+    <string name="roulette_hunt">Hunt this color</string>
+    <string name="roulette_reminder">Daily reminder</string>
+    <string name="roulette_channel_name">Today\'s color</string>
+    <string name="roulette_channel_desc">A daily nudge with the theme color to hunt.</string>
+    <string name="roulette_notif_title">Today\'s color is ready</string>
+    <string name="roulette_notif_text">Go hunt %1$s today!</string>
 
     <!-- Color map (Phase 3) -->
     <string name="map_title">Color Map</string>
