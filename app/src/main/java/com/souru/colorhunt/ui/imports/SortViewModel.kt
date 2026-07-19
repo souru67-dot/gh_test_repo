@@ -89,6 +89,9 @@ class SortViewModel(private val repository: PhotoRepository) : ViewModel() {
 
     fun toggleSelection(id: String) = repository.toggleSelection(id)
 
+    /** Manual override: move a photo into the bucket the hunter thinks is right. */
+    fun reassignBucket(id: String, bucket: ColorBucket) = repository.reassignBucket(id, bucket)
+
     fun setFilter(bucket: ColorBucket?) {
         activeFilter.value = bucket
     }

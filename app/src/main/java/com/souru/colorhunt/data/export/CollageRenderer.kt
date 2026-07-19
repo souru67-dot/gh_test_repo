@@ -47,6 +47,8 @@ object CollageRenderer {
         addWatermark: Boolean,
         paletteColors: List<Int> = emptyList(),
         focals: List<FocalPoint> = emptyList(),
+        /** Per-cell dominant colours for the on-photo HEX chip overlay (Pro). */
+        cellColors: List<Int?> = emptyList(),
     ): Bitmap {
         val output = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
@@ -81,6 +83,9 @@ object CollageRenderer {
             }
             if (borderWidth > 0f) {
                 canvas.drawRoundRect(dest, radius, radius, borderPaint)
+            }
+            if (style.hexOverlay && bitmap != null) {
+                cellColors.getOrNull(index)?.let { drawHexChip(canvas, it, dest, density) }
             }
         }
 
@@ -139,6 +144,47 @@ object CollageRenderer {
 
             if (i > 0) canvas.drawLine(left, top, right, top, sep)
         }
+    }
+
+    /**
+     * A small pill overlaid on the photo's bottom-left: colour dot + HEX code —
+     * the same look as the Hunt tab's thumbnails, carried onto the collage (Pro).
+     */
+    private fun drawHexChip(canvas: Canvas, color: Int, cell: RectF, density: Float) {
+        val chipH = (cell.height() * 0.11f).coerceIn(9f * density, 16f * density)
+        val margin = chipH * 0.45f
+        val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+            textSize = chipH * 0.58f
+            letterSpacing = 0.05f
+            this.color = Color.argb(240, 255, 255, 255)
+        }
+        val hex = "#%06X".format(0xFFFFFF and color)
+        val dotR = chipH * 0.28f
+        val padH = chipH * 0.42f
+        val chipW = padH + dotR * 2 + padH * 0.7f + text.measureText(hex) + padH
+
+        val left = cell.left + margin
+        val bottom = cell.bottom - margin
+        val rect = RectF(left, bottom - chipH, left + chipW, bottom)
+        if (rect.right > cell.right - margin) return // cell too small for a legible chip
+
+        val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.argb(115, 10, 10, 14) }
+        canvas.drawRoundRect(rect, chipH / 2f, chipH / 2f, scrim)
+
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color or (0xFF shl 24) }
+        val dotCx = rect.left + padH + dotR
+        val dotCy = rect.centerY()
+        canvas.drawCircle(dotCx, dotCy, dotR, dot)
+        canvas.drawCircle(dotCx, dotCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.style = Paint.Style.STROKE
+            strokeWidth = (1f * density).coerceAtLeast(1f)
+            this.color = Color.argb(200, 255, 255, 255)
+        })
+
+        val tx = dotCx + dotR + padH * 0.7f
+        val ty = rect.centerY() - (text.ascent() + text.descent()) / 2f
+        canvas.drawText(hex, tx, ty, text)
     }
 
     /** Crops [bitmap] to fill [dest] (clipped to rounded corners), positioning the

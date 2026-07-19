@@ -309,6 +309,7 @@ private fun CollageContent(
                 val placements = listOf(
                     PalettePlacement.NONE to R.string.collage_palette_none,
                     PalettePlacement.CENTER to R.string.collage_palette_center,
+                    PalettePlacement.LEFT to R.string.collage_palette_left,
                     PalettePlacement.SIDE to R.string.collage_palette_side,
                 )
                 placements.forEach { (p, res) ->
@@ -323,7 +324,25 @@ private fun CollageContent(
                     )
                 }
             }
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(10.dp))
+
+            // Pro: on-photo dot + HEX chips (like the Hunt thumbnails).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.collage_hex_overlay),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                if (state.isPro) {
+                    Switch(
+                        checked = state.style.hexOverlay,
+                        onCheckedChange = { on -> onStyleChange { it.copy(hexOverlay = on) } },
+                    )
+                } else {
+                    ProPill(onClick = onUpgrade)
+                }
+            }
+            Spacer(Modifier.size(10.dp))
             AssistChip(
                 onClick = onHueSort,
                 leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
@@ -536,7 +555,9 @@ private fun PreviewArea(
             )
         }
 
-        if (state.rendering || state.loading) {
+        // Spinner only before the first frame — flashing it on every crop-pan
+        // re-render would make the adjustment feel janky.
+        if (state.loading || (state.rendering && state.preview == null)) {
             CircularProgressIndicator(Modifier.align(Alignment.Center))
         }
     }

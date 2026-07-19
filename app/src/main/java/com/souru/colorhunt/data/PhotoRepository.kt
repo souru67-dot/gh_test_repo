@@ -72,6 +72,19 @@ class PhotoRepository(
         _photos.update { list -> list.map { if (it.id == updated.id) updated else it } }
     }
 
+    /**
+     * Manually re-file a photo into a different colour bucket (auto-classification
+     * is a best guess — the hunter has the final say). The extracted dominant
+     * colour is kept; only the grouping changes.
+     */
+    fun reassignBucket(id: String, bucket: com.souru.colorhunt.domain.color.ColorBucket) {
+        _photos.update { list ->
+            list.map {
+                if (it.id == id) it.copy(bucket = bucket, analysis = AnalysisState.Done) else it
+            }
+        }
+    }
+
     fun toggleSelection(id: String) {
         _selectedIds.update { if (id in it) it - id else it + id }
     }

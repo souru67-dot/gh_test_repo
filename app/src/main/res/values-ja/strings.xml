@@ -52,6 +52,8 @@
     <string name="sort_pick">写真を選ぶ</string>
     <string name="sort_auto">自動で仕分け</string>
     <string name="sort_auto_hint">自動仕分けは直近%1$d枚を読み込みます</string>
+    <string name="sort_rebucket_hint">色は自動判定です。イメージと違うときは写真を長押しで変更できます。</string>
+    <string name="sort_rebucket_title">この写真の色を変更</string>
     <string name="sort_processing_group">解析中</string>
     <string name="sort_permission_denied">写真へのアクセスが拒否されました。手動でも写真を追加できます。</string>
     <string name="sort_stat_photos">枚</string>
@@ -83,6 +85,8 @@
     <string name="collage_palette_none">なし</string>
     <string name="collage_palette_center">中央</string>
     <string name="collage_palette_side">右</string>
+    <string name="collage_palette_left">左</string>
+    <string name="collage_hex_overlay">HEXチップを写真に重ねる</string>
     <string name="collage_empty_title">写真が未選択です</string>
     <string name="collage_empty_body">「ハント」タブで写真を選び、「コラージュを作成」を押してください。</string>
     <string name="collage_cells">枚数</string>

@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,6 +95,8 @@ fun SortScreen(
     val deniedMsg = stringResource(R.string.sort_permission_denied)
     // Collapsed by default so the photo groups are visible without scrolling past the wheel.
     var wheelExpanded by rememberSaveable { mutableStateOf(false) }
+    // Photo whose colour bucket the user is manually re-filing (long-press).
+    var rebucketTarget by remember { mutableStateOf<HuntPhoto?>(null) }
 
     val picker = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) viewModel.addPhotos(uris)
@@ -183,12 +186,28 @@ fun SortScreen(
                 }
             }
 
+            if (!state.isEmpty) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "rebucket_hint") {
+                    Text(
+                        stringResource(R.string.sort_rebucket_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+
             state.groups.forEach { group ->
                 item(span = { GridItemSpan(maxLineSpan) }, key = "h_${group.bucket.name}") {
                     SectionHeader(group.bucket.composeColor(), group.bucket.label(), group.photos.size)
                 }
                 items(group.photos, key = { it.id }) { photo ->
-                    PhotoThumb(photo, photo.id in state.selectedIds) { viewModel.toggleSelection(photo.id) }
+                    PhotoThumb(
+                        photo = photo,
+                        selected = photo.id in state.selectedIds,
+                        onLongClick = { rebucketTarget = photo },
+                        onClick = { viewModel.toggleSelection(photo.id) },
+                    )
                 }
             }
 
@@ -197,7 +216,11 @@ fun SortScreen(
                     SectionHeader(MaterialTheme.colorScheme.secondary, stringResource(R.string.sort_processing_group), state.processing.size)
                 }
                 items(state.processing, key = { it.id }) { photo ->
-                    PhotoThumb(photo, photo.id in state.selectedIds) { viewModel.toggleSelection(photo.id) }
+                    PhotoThumb(
+                        photo = photo,
+                        selected = photo.id in state.selectedIds,
+                        onClick = { viewModel.toggleSelection(photo.id) },
+                    )
                 }
             }
 
@@ -206,11 +229,78 @@ fun SortScreen(
                     SectionHeader(MaterialTheme.colorScheme.outline, stringResource(R.string.sort_no_color_group), state.uncategorized.size)
                 }
                 items(state.uncategorized, key = { it.id }) { photo ->
-                    PhotoThumb(photo, photo.id in state.selectedIds) { viewModel.toggleSelection(photo.id) }
+                    PhotoThumb(
+                        photo = photo,
+                        selected = photo.id in state.selectedIds,
+                        onLongClick = { rebucketTarget = photo },
+                        onClick = { viewModel.toggleSelection(photo.id) },
+                    )
                 }
             }
         }
     }
+
+    rebucketTarget?.let { target ->
+        RebucketDialog(
+            photo = target,
+            onPick = { bucket ->
+                viewModel.reassignBucket(target.id, bucket)
+                rebucketTarget = null
+            },
+            onDismiss = { rebucketTarget = null },
+        )
+    }
+}
+
+/**
+ * Manual bucket override: auto-classification is a best guess, so the hunter can
+ * re-file any photo into the colour they meant to collect.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun RebucketDialog(
+    photo: HuntPhoto,
+    onPick: (ColorBucket) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.sort_rebucket_title), fontWeight = FontWeight.Bold) },
+        text = {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ColorBucket.entries.forEach { bucket ->
+                    val current = bucket == photo.bucket
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (current) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            .clickable { onPick(bucket) }
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.size(14.dp).clip(CircleShape).background(bucket.composeColor())
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), CircleShape),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(bucket.label(), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -494,7 +584,13 @@ private fun EmptyHint() {
 }
 
 @Composable
-private fun PhotoThumb(photo: HuntPhoto, selected: Boolean, onClick: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun PhotoThumb(
+    photo: HuntPhoto,
+    selected: Boolean,
+    onLongClick: () -> Unit = {},
+    onClick: () -> Unit,
+) {
     val shape = RoundedCornerShape(16.dp)
     Box(
         Modifier
@@ -505,7 +601,7 @@ private fun PhotoThumb(photo: HuntPhoto, selected: Boolean, onClick: () -> Unit)
                 if (selected) Modifier.border(3.dp, BrandGradients.cta, shape)
                 else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), shape)
             )
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         AsyncImage(
             model = photo.uri,

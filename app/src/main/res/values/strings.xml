@@ -52,6 +52,8 @@
     <string name="sort_pick">Add photos</string>
     <string name="sort_auto">Auto-sort</string>
     <string name="sort_auto_hint">Auto-sort scans your %1$d most recent photos</string>
+    <string name="sort_rebucket_hint">Colors are detected automatically — long-press a photo to re-file it.</string>
+    <string name="sort_rebucket_title">Change this photo\'s color</string>
     <string name="sort_processing_group">Analyzing</string>
     <string name="sort_permission_denied">Photo access was denied. You can still add photos manually.</string>
     <string name="sort_stat_photos">photos</string>
@@ -82,7 +84,9 @@
     <string name="collage_palette">Color palette</string>
     <string name="collage_palette_none">Off</string>
     <string name="collage_palette_center">Center</string>
-    <string name="collage_palette_side">Side</string>
+    <string name="collage_palette_side">Right</string>
+    <string name="collage_palette_left">Left</string>
+    <string name="collage_hex_overlay">HEX chips on photos</string>
     <string name="collage_empty_title">Nothing selected</string>
     <string name="collage_empty_body">Pick photos on the Hunt tab, then tap \"Make collage\".</string>
     <string name="collage_cells">Cells</string>

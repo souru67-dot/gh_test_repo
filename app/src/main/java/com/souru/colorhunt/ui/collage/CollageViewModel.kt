@@ -157,7 +157,7 @@ class CollageViewModel(
     private fun observeAndRender() {
         viewModelScope.launch {
             combine(size, countPreset, style, order, renderTick) { s, c, st, o, _ -> Spec(s, c, st, o) }
-                .debounce(90)
+                .debounce(45)
                 .collectLatest { spec ->
                     rendering.value = true
                     preview.value = renderCollage(
@@ -165,21 +165,34 @@ class CollageViewModel(
                         resolveCellCount(spec.countPreset, spec.order.size),
                         spec.style,
                         spec.order,
+                        maxDim = PREVIEW_MAX_DIM,
                     )
                     rendering.value = false
                 }
         }
     }
 
+    /**
+     * @param maxDim when set, the output is downscaled to fit (preview path) so
+     *               re-renders during a crop-pan stay fluid; export passes null
+     *               and always gets the full SNS-preset resolution.
+     */
     private suspend fun renderCollage(
         size: SnsSize,
         cellCount: Int,
         style: CollageStyle,
         order: List<String>,
+        maxDim: Int? = null,
     ): Bitmap = withContext(Dispatchers.Default) {
         val cells: List<Bitmap?> = (0 until cellCount).map { order.getOrNull(it)?.let { id -> bitmaps[id] } }
         val bg = if (style.backgroundFollowsTheme) themeColor() else style.backgroundColor
-        val density = size.exportWidth / REFERENCE_WIDTH_DP
+        val scale = maxDim
+            ?.takeIf { maxOf(size.exportWidth, size.exportHeight) > it }
+            ?.let { it.toFloat() / maxOf(size.exportWidth, size.exportHeight) }
+            ?: 1f
+        val outWidth = (size.exportWidth * scale).toInt().coerceAtLeast(1)
+        val outHeight = (size.exportHeight * scale).toInt().coerceAtLeast(1)
+        val density = outWidth / REFERENCE_WIDTH_DP
         val paletteColors = if (style.palette != PalettePlacement.NONE && FeatureFlags.isPro) {
             (0 until cellCount).mapNotNull { i -> order.getOrNull(i)?.let { id -> colorFor(id) } }
         } else {
@@ -188,16 +201,21 @@ class CollageViewModel(
         val focalList = (0 until cellCount).map { i ->
             order.getOrNull(i)?.let { id -> focals.value[id] } ?: FocalPoint()
         }
+        val cellColors = (0 until cellCount).map { i -> order.getOrNull(i)?.let { id -> colorFor(id) } }
         CollageRenderer.render(
             cells = cells,
             cellCount = cellCount,
-            style = style.copy(backgroundColor = bg),
-            widthPx = size.exportWidth,
-            heightPx = size.exportHeight,
+            style = style.copy(
+                backgroundColor = bg,
+                hexOverlay = style.hexOverlay && FeatureFlags.isPro,
+            ),
+            widthPx = outWidth,
+            heightPx = outHeight,
             density = density,
             addWatermark = !FeatureFlags.isPro,
             paletteColors = paletteColors,
             focals = focalList,
+            cellColors = cellColors,
         )
     }
 
@@ -316,6 +334,8 @@ class CollageViewModel(
     companion object {
         private const val SOURCE_MAX_DIM = 1080
         private const val REFERENCE_WIDTH_DP = 360f
+        /** Preview renders capped to this dimension so crop-pan re-renders stay fluid. */
+        private const val PREVIEW_MAX_DIM = 900
 
         val Factory = viewModelFactory {
             initializer {

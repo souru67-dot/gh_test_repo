@@ -55,6 +55,7 @@ object CollageGeometry {
         val railW = if (hasPalette) width * PALETTE_RATIO else 0f
         // The centre column only makes sense with >= 2 columns; otherwise fall back to a side rail.
         val center = placement == PalettePlacement.CENTER && columns >= 2
+        val leftRail = placement == PalettePlacement.LEFT
 
         val cellW = ((width - railW - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
         val cellH = ((height - spacing * (rows + 1)) / rows).coerceAtLeast(1f)
@@ -67,6 +68,7 @@ object CollageGeometry {
             val row = i / columns
             var x = spacing + col * (cellW + spacing)
             if (center && col >= leftCols) x += railW
+            if (leftRail) x += railW
             val y = spacing + row * (cellH + spacing)
             cells += Rect(x, y, x + cellW, y + cellH)
         }
@@ -79,6 +81,7 @@ object CollageGeometry {
                 val railLeft = leftEnd + spacing / 2f
                 Rect(railLeft, 0f, railLeft + railW, height)
             }
+            leftRail -> Rect(0f, 0f, railW, height)
             else -> Rect(width - railW, 0f, width, height) // SIDE (and centre fallback)
         }
 

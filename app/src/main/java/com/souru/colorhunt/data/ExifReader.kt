@@ -13,19 +13,40 @@ import kotlinx.coroutines.withContext
  *
  * On API 29+ the location is redacted from MediaStore images unless we ask for
  * the original via [MediaStore.setRequireOriginal] AND hold ACCESS_MEDIA_LOCATION;
- * we try that first and fall back to the plain stream. Photo Picker URIs are
- * always redacted by the system, so those legitimately return null and land in
- * the "no location" list. Never throws.
+ * we try that first and fall back to the plain stream.
+ *
+ * Photo Picker URIs are redacted by the system too, so manually picked photos
+ * would never map. When the app also holds the photo-library permission we can
+ * resolve the picker URI back to its MediaStore original via
+ * [MediaStore.getMediaUri] and read GPS from there — so "写真を選ぶ" photos get
+ * locations as long as photo access was granted. Without that permission they
+ * legitimately return null and land in the "no location" list. Never throws.
  */
 object ExifReader {
 
     /** @return latitude to longitude, or null when unavailable. */
     suspend fun readLatLng(context: Context, uri: Uri): Pair<Double, Double>? =
         withContext(Dispatchers.IO) {
-            readFrom(context, requireOriginal(context, uri)) ?: readFrom(context, uri)
+            val original = mediaStoreOriginal(context, uri)
+            (original?.let { readFrom(context, requireOriginal(it)) })
+                ?: readFrom(context, requireOriginal(uri))
+                ?: readFrom(context, uri)
         }
 
-    private fun requireOriginal(context: Context, uri: Uri): Uri = try {
+    /** Resolve a Photo Picker URI back to its (un-redacted-able) MediaStore URI, if possible. */
+    private fun mediaStoreOriginal(context: Context, uri: Uri): Uri? = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri.authority == MediaStore.AUTHORITY) {
+            null // already a MediaStore uri
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.getMediaUri(context, uri)
+        } else {
+            null
+        }
+    } catch (t: Throwable) {
+        null
+    }
+
+    private fun requireOriginal(uri: Uri): Uri = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.setRequireOriginal(uri)
         } else {

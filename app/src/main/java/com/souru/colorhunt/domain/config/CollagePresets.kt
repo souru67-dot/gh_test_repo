@@ -55,8 +55,9 @@ enum class CollageLayout { GRID, VERTICAL, TWO_COLUMN }
  * - [NONE] no palette.
  * - [CENTER] a slim column down the middle, splitting the photos left/right (組写風).
  * - [SIDE] a rail down the right edge.
+ * - [LEFT] a rail down the left edge.
  */
-enum class PalettePlacement { NONE, CENTER, SIDE }
+enum class PalettePlacement { NONE, CENTER, SIDE, LEFT }
 
 /**
  * Adjustable collage styling. Pure data so it can be snapshotted, previewed and
@@ -74,6 +75,8 @@ data class CollageStyle(
     val layout: CollageLayout = CollageLayout.GRID,
     /** Pro template: a HEX colour palette, placed in the centre column or a side rail. */
     val palette: PalettePlacement = PalettePlacement.NONE,
+    /** Pro template: overlay each photo with a small dot + HEX chip. */
+    val hexOverlay: Boolean = false,
 )
 
 /** Grid geometry for a given cell count, chosen to stay close to square. */
