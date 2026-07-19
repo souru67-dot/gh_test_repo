@@ -3,13 +3,13 @@ package com.souru.colorhunt.color
 import com.souru.colorhunt.domain.color.ColorBucket
 import com.souru.colorhunt.domain.color.ColorClassifier
 import com.souru.colorhunt.domain.color.Hsv
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
- * Verifies the pure colour-classification logic. Runs on the JVM without any
- * Android dependency, so the core algorithm can be validated independently of
- * the Android build (and later shared with an iOS/KMP target).
+ * Verifies the pure colour-classification logic. As multiplatform commonTest it
+ * runs on every target (JVM/Android and iOS), so the shared core is validated
+ * the same way everywhere.
  */
 class ColorClassifierTest {
 
