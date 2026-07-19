@@ -2,7 +2,7 @@
     <string name="app_name">ColorHunt</string>
 
     <!-- Navigation -->
-    <string name="tab_sort">仕分け</string>
+    <string name="tab_sort">ハント</string>
     <string name="tab_collage">コラージュ</string>
     <string name="tab_grid">グリッド</string>
     <string name="tab_map">マップ</string>
@@ -18,7 +18,7 @@
     <string name="roulette_random">ランダム</string>
     <string name="roulette_spin">回す</string>
     <string name="roulette_reset_today">今日の色に戻す</string>
-    <string name="roulette_hunt">この色で仕分けへ</string>
+    <string name="roulette_hunt">この色をハントする</string>
     <string name="roulette_reminder">毎日の通知</string>
     <string name="roulette_channel_name">今日の色</string>
     <string name="roulette_channel_desc">今日狩るテーマ色を毎日お知らせします。</string>
@@ -69,7 +69,16 @@
 
     <!-- Collage screen -->
     <string name="collage_title">コラージュ</string>
-    <string name="collage_header_sub">%1$d枚 · タイルを長押しで並べ替え</string>
+    <string name="collage_header_hint">長押しで並べ替え</string>
+    <string name="collage_photo_count">%1$d枚</string>
+    <string name="collage_layout">レイアウト</string>
+    <string name="collage_layout_grid">グリッド</string>
+    <string name="collage_layout_vertical">縦並び</string>
+    <string name="collage_layout_two_col">2列</string>
+    <string name="collage_palette">カラーパレット</string>
+    <string name="collage_palette_none">なし</string>
+    <string name="collage_palette_center">中央</string>
+    <string name="collage_palette_side">右</string>
     <string name="collage_empty_title">写真が未選択です</string>
     <string name="collage_empty_body">「仕分け」タブで写真を選び、「コラージュを作成」を押してください。</string>
     <string name="collage_cells">枚数</string>
@@ -92,8 +101,6 @@
     <string name="collage_save_permission">この端末で保存するにはストレージ権限が必要です。</string>
     <string name="collage_upgrade">Proにアップグレード</string>
     <string name="collage_templates">テンプレート</string>
-    <string name="collage_palette_strip">カラーパレット帯</string>
-    <string name="collage_palette_strip_sub">コラージュ横に色＋HEXコードのパレット帯を追加</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

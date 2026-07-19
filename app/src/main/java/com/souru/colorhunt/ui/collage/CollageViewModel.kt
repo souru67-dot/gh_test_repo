@@ -18,6 +18,7 @@ import com.souru.colorhunt.domain.color.Hsv
 import com.souru.colorhunt.domain.config.CellCountPreset
 import com.souru.colorhunt.domain.config.CollageStyle
 import com.souru.colorhunt.domain.config.FeatureFlags
+import com.souru.colorhunt.domain.config.PalettePlacement
 import com.souru.colorhunt.domain.config.SnsSize
 import com.souru.colorhunt.domain.model.HuntPhoto
 import com.souru.colorhunt.domain.pro.ProState
@@ -176,7 +177,7 @@ class CollageViewModel(
         val cells: List<Bitmap?> = (0 until cellCount).map { order.getOrNull(it)?.let { id -> bitmaps[id] } }
         val bg = if (style.backgroundFollowsTheme) themeColor() else style.backgroundColor
         val density = size.exportWidth / REFERENCE_WIDTH_DP
-        val paletteColors = if (style.paletteStrip && FeatureFlags.isPro) {
+        val paletteColors = if (style.palette != PalettePlacement.NONE && FeatureFlags.isPro) {
             (0 until cellCount).mapNotNull { i -> order.getOrNull(i)?.let { id -> colorFor(id) } }
         } else {
             emptyList()

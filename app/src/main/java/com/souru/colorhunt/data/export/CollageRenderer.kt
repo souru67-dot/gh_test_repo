@@ -7,8 +7,9 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
-import com.souru.colorhunt.domain.config.CollageGrid
+import com.souru.colorhunt.domain.config.CollageGeometry
 import com.souru.colorhunt.domain.config.CollageStyle
+import com.souru.colorhunt.domain.config.PalettePlacement
 
 /**
  * Renders a collage to a [Bitmap] purely from data, so the exact same code path
@@ -26,14 +27,14 @@ object CollageRenderer {
      * @param widthPx/heightPx  output size, taken from the chosen SNS preset.
      * @param addWatermark  draw the free-tier watermark (Phase 4 gate).
      */
-    private const val PALETTE_RAIL_RATIO = 0.18f
+    private const val REFERENCE_WIDTH_DP = 360f
 
     /**
      * @param cells         source bitmaps in cell order; a null entry = empty cell.
      * @param cellCount     total number of cells (>= cells.size).
      * @param widthPx/heightPx  output size, taken from the chosen SNS preset.
      * @param addWatermark  draw the free-tier watermark (Phase 4 gate).
-     * @param paletteColors dominant colours (cell order) for the Pro palette strip.
+     * @param paletteColors dominant colours (cell order) for the Pro palette.
      */
     fun render(
         cells: List<Bitmap?>,
@@ -49,19 +50,19 @@ object CollageRenderer {
         val canvas = Canvas(output)
         canvas.drawColor(style.backgroundColor)
 
-        val showRail = style.paletteStrip && paletteColors.isNotEmpty()
-        val railWidth = if (showRail) (widthPx * PALETTE_RAIL_RATIO) else 0f
-        val gridWidth = widthPx - railWidth
+        val placement = if (paletteColors.isNotEmpty()) style.palette else PalettePlacement.NONE
+        val spacingFrac = style.cellSpacingDp / REFERENCE_WIDTH_DP
+        val layout = CollageGeometry.compute(
+            cellCount = cellCount,
+            layout = style.layout,
+            placement = placement,
+            spacingFrac = spacingFrac,
+            width = widthPx.toFloat(),
+            height = heightPx.toFloat(),
+        )
 
-        val columns = CollageGrid.columnsFor(cellCount)
-        val rows = CollageGrid.rowsFor(cellCount)
-
-        val spacing = style.cellSpacingDp * density
         val radius = style.cornerRadiusDp * density
         val borderWidth = style.borderWidthDp * density
-
-        val cellWidth = (gridWidth - spacing * (columns + 1)) / columns
-        val cellHeight = (heightPx - spacing * (rows + 1)) / rows
 
         val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -70,13 +71,8 @@ object CollageRenderer {
             color = style.borderColor
         }
 
-        for (index in 0 until cellCount) {
-            val col = index % columns
-            val row = index / columns
-            val left = spacing + col * (cellWidth + spacing)
-            val top = spacing + row * (cellHeight + spacing)
-            val dest = RectF(left, top, left + cellWidth, top + cellHeight)
-
+        layout.cells.forEachIndexed { index, r ->
+            val dest = RectF(r.left, r.top, r.right, r.bottom)
             val bitmap = cells.getOrNull(index)
             if (bitmap != null && !bitmap.isRecycled) {
                 drawCenterCropped(canvas, bitmap, dest, radius, imagePaint)
@@ -86,72 +82,60 @@ object CollageRenderer {
             }
         }
 
-        if (showRail) {
-            drawPaletteRail(canvas, paletteColors, gridWidth, widthPx.toFloat(), heightPx.toFloat(), density, style.backgroundColor)
-        }
+        layout.palette?.let { drawPalette(canvas, paletteColors, it, density) }
         if (addWatermark) drawWatermark(canvas, widthPx, heightPx, density)
         return output
     }
 
     /**
-     * A slim vertical colour rail down the right edge — one block per photo with
-     * its hex code in mono type. A crisp separator in the background colour keeps
-     * blocks distinct; a small "PALETTE" cap at the top brands it.
+     * The HEX palette column (組写風). One block per photo, its hex code centred
+     * in a refined light sans-serif with generous letter-spacing, auto-sized to
+     * never overflow. Works as a centre column or a side rail — the caller's
+     * rectangle decides.
      */
-    private fun drawPaletteRail(
+    private fun drawPalette(
         canvas: Canvas,
         colors: List<Int>,
-        left: Float,
-        right: Float,
-        height: Float,
+        rect: CollageGeometry.Rect,
         density: Float,
-        separatorColor: Int,
     ) {
         val n = colors.size
         if (n == 0) return
-        val railWidth = right - left
-        val capHeight = (height * 0.06f).coerceAtMost(railWidth * 0.9f)
-        val blocksTop = capHeight
-        val blockH = (height - blocksTop) / n
+        val left = rect.left
+        val right = rect.right
+        val railWidth = rect.width
+        val blockH = rect.height / n
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
-            textSize = (blockH * 0.26f).coerceAtMost(railWidth * 0.30f).coerceAtLeast(7f * density)
-            letterSpacing = 0.06f
+            letterSpacing = 0.14f
         }
         val sep = Paint().apply {
-            color = separatorColor or (0xFF shl 24)
-            strokeWidth = (1.6f * density).coerceAtLeast(1.5f)
+            color = Color.argb(30, 0, 0, 0)
+            strokeWidth = (1f * density).coerceAtLeast(1f)
         }
 
-        // Brand cap.
-        val cap = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(255, 245, 245, 250)
-            textAlign = Paint.Align.CENTER
-            textSize = (capHeight * 0.42f).coerceAtLeast(6f * density)
-            letterSpacing = 0.22f
-            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        }
-        canvas.drawText("PALETTE", left + railWidth / 2f, blocksTop / 2f - (cap.ascent() + cap.descent()) / 2f, cap)
-
+        val cx = left + railWidth / 2f
+        val maxTextWidth = railWidth * 0.82f
         colors.forEachIndexed { i, color ->
-            val top = blocksTop + i * blockH
+            val top = rect.top + i * blockH
             fill.color = color or (0xFF shl 24)
             canvas.drawRect(left, top, right, top + blockH, fill)
 
-            val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
-            text.color = if (luminance > 140) Color.argb(230, 15, 15, 20) else Color.argb(235, 255, 255, 255)
             val hex = "#%06X".format(0xFFFFFF and color)
-            val cx = left + railWidth / 2f
+            text.textSize = (blockH * 0.20f).coerceAtLeast(6f * density)
+            val measured = text.measureText(hex)
+            if (measured > maxTextWidth) text.textSize *= maxTextWidth / measured
+
+            val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
+            text.color = if (luminance > 135) Color.argb(235, 20, 20, 26) else Color.argb(235, 245, 245, 250)
             val cy = top + blockH / 2f - (text.ascent() + text.descent()) / 2f
             canvas.drawText(hex, cx, cy, text)
 
             if (i > 0) canvas.drawLine(left, top, right, top, sep)
         }
-        // Left edge hairline between grid and rail.
-        canvas.drawLine(left, 0f, left, height, sep)
     }
 
     /** Center-crops [bitmap] to fill [dest], clipped to rounded corners. */

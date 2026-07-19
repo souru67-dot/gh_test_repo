@@ -1,0 +1,78 @@
+package com.souru.colorhunt.domain.config
+
+import kotlin.math.ceil
+
+/**
+ * Single source of truth for collage layout maths. Both the on-screen drag
+ * overlay ([com.souru.colorhunt.ui.collage] preview) and the pixel renderer
+ * ([com.souru.colorhunt.data.export.CollageRenderer]) compute their rectangles
+ * here, so the interactive hit-zones line up exactly with what gets drawn —
+ * WYSIWYG stays true no matter the layout or palette placement.
+ *
+ * All maths is in the target coordinate space (px for the export bitmap, px for
+ * the preview box). Spacing is expressed as a fraction of width so it scales.
+ */
+object CollageGeometry {
+
+    /** Fraction of the total width taken by the palette column/rail. */
+    const val PALETTE_RATIO = 0.16f
+
+    data class Rect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+        val width: Float get() = right - left
+        val height: Float get() = bottom - top
+    }
+
+    data class Layout(
+        /** Photo cell rectangles, in cell order. */
+        val cells: List<Rect>,
+        /** Palette column rectangle, or null when there's no palette. */
+        val palette: Rect?,
+    )
+
+    fun compute(
+        cellCount: Int,
+        layout: CollageLayout,
+        placement: PalettePlacement,
+        spacingFrac: Float,
+        width: Float,
+        height: Float,
+    ): Layout {
+        val count = cellCount.coerceAtLeast(1)
+        val columns = CollageGrid.columnsFor(count, layout).coerceAtLeast(1)
+        val rows = ceil(count.toDouble() / columns).toInt().coerceAtLeast(1)
+
+        val spacing = spacingFrac * width
+        val hasPalette = placement != PalettePlacement.NONE
+        val railW = if (hasPalette) width * PALETTE_RATIO else 0f
+        // The centre column only makes sense with >= 2 columns; otherwise fall back to a side rail.
+        val center = placement == PalettePlacement.CENTER && columns >= 2
+
+        val cellW = ((width - railW - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
+        val cellH = ((height - spacing * (rows + 1)) / rows).coerceAtLeast(1f)
+
+        val leftCols = if (center) columns / 2 else columns
+
+        val cells = ArrayList<Rect>(count)
+        for (i in 0 until count) {
+            val col = i % columns
+            val row = i / columns
+            var x = spacing + col * (cellW + spacing)
+            if (center && col >= leftCols) x += railW
+            val y = spacing + row * (cellH + spacing)
+            cells += Rect(x, y, x + cellW, y + cellH)
+        }
+
+        val palette: Rect? = when {
+            !hasPalette -> null
+            center -> {
+                // Sit in the gap between the left and right groups.
+                val leftEnd = spacing + (leftCols - 1) * (cellW + spacing) + cellW
+                val railLeft = leftEnd + spacing / 2f
+                Rect(railLeft, 0f, railLeft + railW, height)
+            }
+            else -> Rect(width - railW, 0f, width, height) // SIDE (and centre fallback)
+        }
+
+        return Layout(cells, palette)
+    }
+}

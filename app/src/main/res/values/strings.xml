@@ -2,7 +2,7 @@
     <string name="app_name">ColorHunt</string>
 
     <!-- Navigation -->
-    <string name="tab_sort">Sort</string>
+    <string name="tab_sort">Hunt</string>
     <string name="tab_collage">Collage</string>
     <string name="tab_grid">Grid</string>
     <string name="tab_map">Map</string>
@@ -69,7 +69,16 @@
 
     <!-- Collage screen -->
     <string name="collage_title">Collage</string>
-    <string name="collage_header_sub">%1$d photos · long-press a tile to rearrange</string>
+    <string name="collage_header_hint">Long-press a tile to rearrange</string>
+    <string name="collage_photo_count">%1$d photos</string>
+    <string name="collage_layout">Layout</string>
+    <string name="collage_layout_grid">Grid</string>
+    <string name="collage_layout_vertical">Vertical</string>
+    <string name="collage_layout_two_col">2 columns</string>
+    <string name="collage_palette">Color palette</string>
+    <string name="collage_palette_none">Off</string>
+    <string name="collage_palette_center">Center</string>
+    <string name="collage_palette_side">Side</string>
     <string name="collage_empty_title">Nothing selected</string>
     <string name="collage_empty_body">Select photos on the Sort tab, then tap \"Make collage\".</string>
     <string name="collage_cells">Cells</string>
@@ -92,8 +101,6 @@
     <string name="collage_save_permission">Storage permission is needed to save on this device.</string>
     <string name="collage_upgrade">Upgrade to Pro</string>
     <string name="collage_templates">Templates</string>
-    <string name="collage_palette_strip">Color palette rail</string>
-    <string name="collage_palette_strip_sub">Adds a hex-code color rail beside your collage</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

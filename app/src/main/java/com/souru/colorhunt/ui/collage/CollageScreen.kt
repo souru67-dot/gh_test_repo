@@ -68,7 +68,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.souru.colorhunt.domain.config.CollageGrid
+import com.souru.colorhunt.domain.config.CollageGeometry
+import com.souru.colorhunt.domain.config.CollageLayout
+import com.souru.colorhunt.domain.config.PalettePlacement
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.BuildConfig
@@ -268,52 +270,58 @@ private fun CollageContent(
         }
         Spacer(Modifier.size(12.dp))
 
+        // Layout: grid / vertical stack / two columns
+        SectionLabel(stringResource(R.string.collage_layout))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val layouts = listOf(
+                CollageLayout.GRID to R.string.collage_layout_grid,
+                CollageLayout.VERTICAL to R.string.collage_layout_vertical,
+                CollageLayout.TWO_COLUMN to R.string.collage_layout_two_col,
+            )
+            layouts.forEach { (lay, res) ->
+                FilterChip(
+                    selected = state.style.layout == lay,
+                    onClick = { onStyleChange { it.copy(layout = lay) } },
+                    label = { Text(stringResource(res)) },
+                )
+            }
+        }
+        Spacer(Modifier.size(12.dp))
+
+        // Pro: HEX color palette placement (center column / side rail)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel(stringResource(R.string.collage_palette))
+            if (!state.isPro) {
+                Spacer(Modifier.width(8.dp))
+                ProPill(onClick = onUpgrade)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val placements = listOf(
+                PalettePlacement.NONE to R.string.collage_palette_none,
+                PalettePlacement.CENTER to R.string.collage_palette_center,
+                PalettePlacement.SIDE to R.string.collage_palette_side,
+            )
+            placements.forEach { (p, res) ->
+                val locked = !state.isPro && p != PalettePlacement.NONE
+                FilterChip(
+                    selected = state.style.palette == p,
+                    onClick = { if (locked) onUpgrade() else onStyleChange { it.copy(palette = p) } },
+                    leadingIcon = if (locked) {
+                        { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    label = { Text(stringResource(res)) },
+                )
+            }
+        }
+        Spacer(Modifier.size(12.dp))
+
         // Hue sort
         AssistChip(
             onClick = onHueSort,
             leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
             label = { Text(stringResource(R.string.collage_hue_sort)) },
         )
-        Spacer(Modifier.size(16.dp))
-
-        // Pro template: palette strip (hex codes)
-        SectionLabel(stringResource(R.string.collage_templates))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.collage_palette_strip), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.collage_palette_strip_sub), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (state.isPro) {
-                Switch(
-                    checked = state.style.paletteStrip,
-                    onCheckedChange = { on -> onStyleChange { it.copy(paletteStrip = on) } },
-                )
-            } else {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable(onClick = onUpgrade)
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                ) {
-                    Text(
-                        stringResource(R.string.collage_pro_locked),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
-        }
         Spacer(Modifier.size(16.dp))
 
         // Sliders
@@ -385,9 +393,7 @@ private fun PreviewArea(
     onMove: (Int, Int) -> Unit,
 ) {
     val cellCount = state.cellCount
-    val columns = CollageGrid.columnsFor(cellCount)
-    val rows = CollageGrid.rowsFor(cellCount)
-    val showRail = state.style.paletteStrip && state.isPro
+    val placement = if (state.isPro) state.style.palette else PalettePlacement.NONE
     val spacingFrac = state.style.cellSpacingDp / 360f
     val filled = minOf(cellCount, state.orderedPhotos.size)
 
@@ -406,18 +412,20 @@ private fun PreviewArea(
         val wPx = with(density) { maxWidth.toPx() }
         val hPx = with(density) { maxHeight.toPx() }
 
-        val spacing = spacingFrac * wPx
-        val railWidth = if (showRail) wPx * 0.18f else 0f
-        val gridWidth = wPx - railWidth
-        val cellW = ((gridWidth - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
-        val cellH = ((hPx - spacing * (rows + 1)) / rows).coerceAtLeast(1f)
-
-        fun leftOf(i: Int) = spacing + (i % columns) * (cellW + spacing)
-        fun topOf(i: Int) = spacing + (i / columns) * (cellH + spacing)
+        // Same maths the renderer uses, so hit-zones line up with the drawn cells.
+        val geo = CollageGeometry.compute(
+            cellCount = cellCount,
+            layout = state.style.layout,
+            placement = placement,
+            spacingFrac = spacingFrac,
+            width = wPx,
+            height = hPx,
+        )
+        val cells = geo.cells
         fun cellAt(p: Offset): Int? {
-            for (i in 0 until filled) {
-                val l = leftOf(i); val t = topOf(i)
-                if (p.x in l..(l + cellW) && p.y in t..(t + cellH)) return i
+            for (i in 0 until minOf(filled, cells.size)) {
+                val r = cells[i]
+                if (p.x in r.left..r.right && p.y in r.top..r.bottom) return i
             }
             return null
         }
@@ -436,7 +444,7 @@ private fun PreviewArea(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(cellCount, columns, showRail, spacingFrac, wPx, hPx, filled) {
+                    .pointerInput(cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { offset ->
                                 dragFrom = cellAt(offset)
@@ -460,21 +468,20 @@ private fun PreviewArea(
 
         // Highlight the drop target while dragging.
         val to = dragTo
-        if (dragFrom != null && to != null) {
-            val cellWDp = with(density) { cellW.toDp() }
-            val cellHDp = with(density) { cellH.toDp() }
+        if (dragFrom != null && to != null && to < cells.size) {
+            val r = cells[to]
             Box(
                 Modifier
-                    .offset { IntOffset(leftOf(to).toInt(), topOf(to).toInt()) }
-                    .size(cellWDp, cellHDp)
+                    .offset { IntOffset(r.left.toInt(), r.top.toInt()) }
+                    .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() })
                     .border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
             )
         }
 
         // Floating thumbnail that follows the finger.
         val from = dragFrom
-        if (from != null && from < state.orderedPhotos.size) {
-            val thumb = (cellW * 0.9f)
+        if (from != null && from < state.orderedPhotos.size && from < cells.size) {
+            val thumb = cells[from].width * 0.9f
             val thumbDp = with(density) { thumb.toDp() }
             AsyncImage(
                 model = state.orderedPhotos[from].uri,
@@ -494,9 +501,29 @@ private fun PreviewArea(
     }
 }
 
+/** Small "Pro" pill used to flag pay-gated controls. */
+@Composable
+private fun ProPill(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.primary)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    ) {
+        Text(
+            stringResource(R.string.collage_pro_locked),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+    }
+}
+
 /**
- * A vivid gradient header that carries the app's "映え" identity onto the collage
- * screen and doubles as a live status line (photo count + rearrange hint).
+ * A slim vivid-gradient header carrying the app's "映え" identity. Title and the
+ * live photo count sit on one row with a tight hint underneath — compact, no
+ * wasted vertical space.
  */
 @Composable
 private fun CollageHeader(photoCount: Int) {
@@ -509,21 +536,35 @@ private fun CollageHeader(photoCount: Int) {
                 ),
             )
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
     ) {
-        Column {
-            Text(
-                stringResource(R.string.collage_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
-            Spacer(Modifier.size(2.dp))
-            Text(
-                stringResource(R.string.collage_header_sub, photoCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.9f),
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.collage_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Text(
+                    stringResource(R.string.collage_header_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                )
+            }
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.20f))
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+            ) {
+                Text(
+                    stringResource(R.string.collage_photo_count, photoCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+            }
         }
     }
 }

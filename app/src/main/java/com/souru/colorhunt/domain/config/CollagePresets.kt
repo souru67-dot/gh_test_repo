@@ -43,35 +43,57 @@ enum class CellCountPreset(val count: Int?) {
 }
 
 /**
+ * How photos are arranged in the collage.
+ * - [GRID] auto-picks a near-square column count from the cell count.
+ * - [VERTICAL] stacks every photo in a single column (組写／縦積み).
+ * - [TWO_COLUMN] forces two columns — the classic layout the centre palette pairs with.
+ */
+enum class CollageLayout { GRID, VERTICAL, TWO_COLUMN }
+
+/**
+ * Where the Pro HEX palette lives.
+ * - [NONE] no palette.
+ * - [CENTER] a slim column down the middle, splitting the photos left/right (組写風).
+ * - [SIDE] a rail down the right edge.
+ */
+enum class PalettePlacement { NONE, CENTER, SIDE }
+
+/**
  * Adjustable collage styling. Pure data so it can be snapshotted, previewed and
  * rendered identically for screen and export.
  */
 data class CollageStyle(
-    val cellSpacingDp: Float = 6f,
-    val cornerRadiusDp: Float = 8f,
+    val cellSpacingDp: Float = 4f,
+    val cornerRadiusDp: Float = 6f,
     val borderWidthDp: Float = 0f,
     val borderColor: Int = 0xFFFFFFFF.toInt(),
-    val backgroundColor: Int = 0xFFFFFFFF.toInt(),
+    val backgroundColor: Int = 0xFF0E0E12.toInt(),
     /** When true the background follows the current theme colour instead of [backgroundColor]. */
     val backgroundFollowsTheme: Boolean = false,
-    /** Pro template: append a bottom strip of the photos' dominant colours + hex codes. */
-    val paletteStrip: Boolean = false,
+    /** Photo arrangement. */
+    val layout: CollageLayout = CollageLayout.GRID,
+    /** Pro template: a HEX colour palette, placed in the centre column or a side rail. */
+    val palette: PalettePlacement = PalettePlacement.NONE,
 )
 
 /** Grid geometry for a given cell count, chosen to stay close to square. */
 object CollageGrid {
-    fun columnsFor(cellCount: Int): Int = when (cellCount) {
-        1 -> 1
-        2 -> 2
-        3 -> 3
-        4 -> 2
-        6 -> 3
-        9 -> 3
-        else -> ceil(sqrt(cellCount.toDouble())).toInt().coerceAtLeast(1)
+    fun columnsFor(cellCount: Int, layout: CollageLayout = CollageLayout.GRID): Int = when (layout) {
+        CollageLayout.VERTICAL -> 1
+        CollageLayout.TWO_COLUMN -> 2
+        CollageLayout.GRID -> when (cellCount) {
+            1 -> 1
+            2 -> 2
+            3 -> 3
+            4 -> 2
+            6 -> 3
+            9 -> 3
+            else -> ceil(sqrt(cellCount.toDouble())).toInt().coerceAtLeast(1)
+        }
     }
 
-    fun rowsFor(cellCount: Int): Int {
-        val cols = columnsFor(cellCount)
+    fun rowsFor(cellCount: Int, layout: CollageLayout = CollageLayout.GRID): Int {
+        val cols = columnsFor(cellCount, layout)
         return ceil(cellCount.toDouble() / cols).toInt().coerceAtLeast(1)
     }
 }

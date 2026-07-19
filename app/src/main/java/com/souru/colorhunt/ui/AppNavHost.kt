@@ -90,8 +90,12 @@ fun ColorHuntApp() {
             }
             composable(TopDestination.Sort.route) {
                 SortScreen(onOpenCollage = {
+                    // Switch to the Collage tab with the same semantics as the bottom bar,
+                    // so it stays a peer tab and returning to Hunt/Sort works reliably.
                     navController.navigate(TopDestination.Collage.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 })
             }
