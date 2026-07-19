@@ -8,6 +8,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -47,7 +50,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +92,8 @@ fun SortScreen(
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val deniedMsg = stringResource(R.string.sort_permission_denied)
+    // Collapsed by default so the photo groups are visible without scrolling past the wheel.
+    var wheelExpanded by rememberSaveable { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) viewModel.addPhotos(uris)
@@ -165,7 +173,12 @@ fun SortScreen(
                 val wheelColors = state.groups.flatMap { it.photos }.mapNotNull { it.dominantColor }
                 if (wheelColors.size >= 3) {
                     item(span = { GridItemSpan(maxLineSpan) }, key = "wheel") {
-                        HueRingCard(wheelColors, state.availableFilters.size)
+                        HueRingCard(
+                            colors = wheelColors,
+                            colorCount = state.availableFilters.size,
+                            expanded = wheelExpanded,
+                            onToggle = { wheelExpanded = !wheelExpanded },
+                        )
                     }
                 }
             }
@@ -268,6 +281,12 @@ private fun HeroHeader(
                     onClick = onAuto,
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.sort_auto_hint, RECENT_IMPORT_LIMIT),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.8f),
+            )
         }
     }
 }
@@ -358,29 +377,67 @@ private fun ColorFilterChip(dot: Color?, label: String, selected: Boolean, onCli
     }
 }
 
+/**
+ * The collected-colours wheel, collapsed by default so it never buries the photo
+ * groups. Tap the header to reveal the ring; a compact swatch strip hints at the
+ * palette while collapsed.
+ */
 @Composable
-private fun HueRingCard(colors: List<Int>, colorCount: Int) {
+private fun HueRingCard(colors: List<Int>, colorCount: Int, expanded: Boolean, onToggle: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = 16.dp),
+            .clickable(onClick = onToggle)
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.sort_wheel_title),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            stringResource(R.string.sort_wheel_sub, colorCount),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(12.dp))
-        HueRing(colors = colors, modifier = Modifier.size(190.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.sort_wheel_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    stringResource(R.string.sort_wheel_sub, colorCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (!expanded) {
+                MiniSwatches(colors)
+                Spacer(Modifier.width(10.dp))
+            }
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(Modifier.size(14.dp))
+                HueRing(colors = colors, modifier = Modifier.size(180.dp))
+            }
+        }
+    }
+}
+
+/** A tiny row of representative swatches shown while the wheel is collapsed. */
+@Composable
+private fun MiniSwatches(colors: List<Int>) {
+    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+        colors.take(5).forEach { c ->
+            Box(
+                Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(Color(c))
+                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
+            )
+        }
     }
 }
 

@@ -51,6 +51,7 @@
     <string name="sort_tagline">Hunt your theme color.</string>
     <string name="sort_pick">Add photos</string>
     <string name="sort_auto">Auto-sort</string>
+    <string name="sort_auto_hint">Auto-sort scans your %1$d most recent photos</string>
     <string name="sort_processing_group">Analyzing</string>
     <string name="sort_permission_denied">Photo access was denied. You can still add photos manually.</string>
     <string name="sort_stat_photos">photos</string>

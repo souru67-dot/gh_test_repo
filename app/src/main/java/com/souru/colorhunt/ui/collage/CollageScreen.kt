@@ -247,129 +247,129 @@ private fun CollageContent(
             Spacer(Modifier.size(12.dp))
         }
 
-        // Cell count presets
-        SectionLabel(stringResource(R.string.collage_cells))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CellCountPreset.entries.forEach { preset ->
-                FilterChip(
-                    selected = state.countPreset == preset,
-                    onClick = { onCountSelected(preset) },
-                    label = { Text(preset.count?.toString() ?: stringResource(R.string.collage_count_custom)) },
+        // Card 1 — composition: cell count, SNS size, layout.
+        ControlCard {
+            SectionLabel(stringResource(R.string.collage_cells))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CellCountPreset.entries.forEach { preset ->
+                    FilterChip(
+                        selected = state.countPreset == preset,
+                        onClick = { onCountSelected(preset) },
+                        label = { Text(preset.count?.toString() ?: stringResource(R.string.collage_count_custom)) },
+                    )
+                }
+            }
+            Spacer(Modifier.size(14.dp))
+
+            SectionLabel(stringResource(R.string.collage_size))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SnsSize.entries.forEach { size ->
+                    val locked = size.proOnly && !state.isPro
+                    FilterChip(
+                        selected = state.size == size,
+                        onClick = { onSizeSelected(size) },
+                        enabled = !locked,
+                        leadingIcon = if (locked) {
+                            { Icon(Icons.Filled.Lock, contentDescription = stringResource(R.string.collage_pro_locked), modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        label = { Text(size.sizeLabel()) },
+                    )
+                }
+            }
+            Spacer(Modifier.size(14.dp))
+
+            SectionLabel(stringResource(R.string.collage_layout))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val layouts = listOf(
+                    CollageLayout.GRID to R.string.collage_layout_grid,
+                    CollageLayout.VERTICAL to R.string.collage_layout_vertical,
+                    CollageLayout.TWO_COLUMN to R.string.collage_layout_two_col,
                 )
+                layouts.forEach { (lay, res) ->
+                    FilterChip(
+                        selected = state.style.layout == lay,
+                        onClick = { onStyleChange { it.copy(layout = lay) } },
+                        label = { Text(stringResource(res)) },
+                    )
+                }
             }
         }
         Spacer(Modifier.size(12.dp))
 
-        // SNS sizes
-        SectionLabel(stringResource(R.string.collage_size))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SnsSize.entries.forEach { size ->
-                val locked = size.proOnly && !state.isPro
-                FilterChip(
-                    selected = state.size == size,
-                    onClick = { onSizeSelected(size) },
-                    enabled = !locked,
-                    leadingIcon = if (locked) {
-                        { Icon(Icons.Filled.Lock, contentDescription = stringResource(R.string.collage_pro_locked), modifier = Modifier.size(16.dp)) }
-                    } else null,
-                    label = { Text(size.sizeLabel()) },
+        // Card 2 — palette placement (Pro) + hue auto-sort.
+        ControlCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel(stringResource(R.string.collage_palette))
+                if (!state.isPro) {
+                    Spacer(Modifier.width(8.dp))
+                    ProPill(onClick = onUpgrade)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val placements = listOf(
+                    PalettePlacement.NONE to R.string.collage_palette_none,
+                    PalettePlacement.CENTER to R.string.collage_palette_center,
+                    PalettePlacement.SIDE to R.string.collage_palette_side,
                 )
+                placements.forEach { (p, res) ->
+                    val locked = !state.isPro && p != PalettePlacement.NONE
+                    FilterChip(
+                        selected = state.style.palette == p,
+                        onClick = { if (locked) onUpgrade() else onStyleChange { it.copy(palette = p) } },
+                        leadingIcon = if (locked) {
+                            { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        label = { Text(stringResource(res)) },
+                    )
+                }
             }
-        }
-        Spacer(Modifier.size(12.dp))
-
-        // Layout: grid / vertical stack / two columns
-        SectionLabel(stringResource(R.string.collage_layout))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val layouts = listOf(
-                CollageLayout.GRID to R.string.collage_layout_grid,
-                CollageLayout.VERTICAL to R.string.collage_layout_vertical,
-                CollageLayout.TWO_COLUMN to R.string.collage_layout_two_col,
-            )
-            layouts.forEach { (lay, res) ->
-                FilterChip(
-                    selected = state.style.layout == lay,
-                    onClick = { onStyleChange { it.copy(layout = lay) } },
-                    label = { Text(stringResource(res)) },
-                )
-            }
-        }
-        Spacer(Modifier.size(12.dp))
-
-        // Pro: HEX color palette placement (center column / side rail)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionLabel(stringResource(R.string.collage_palette))
-            if (!state.isPro) {
-                Spacer(Modifier.width(8.dp))
-                ProPill(onClick = onUpgrade)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val placements = listOf(
-                PalettePlacement.NONE to R.string.collage_palette_none,
-                PalettePlacement.CENTER to R.string.collage_palette_center,
-                PalettePlacement.SIDE to R.string.collage_palette_side,
-            )
-            placements.forEach { (p, res) ->
-                val locked = !state.isPro && p != PalettePlacement.NONE
-                FilterChip(
-                    selected = state.style.palette == p,
-                    onClick = { if (locked) onUpgrade() else onStyleChange { it.copy(palette = p) } },
-                    leadingIcon = if (locked) {
-                        { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null,
-                    label = { Text(stringResource(res)) },
-                )
-            }
-        }
-        Spacer(Modifier.size(12.dp))
-
-        // Hue sort
-        AssistChip(
-            onClick = onHueSort,
-            leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            label = { Text(stringResource(R.string.collage_hue_sort)) },
-        )
-        Spacer(Modifier.size(16.dp))
-
-        // Sliders
-        StyleSlider(
-            label = stringResource(R.string.collage_spacing),
-            value = state.style.cellSpacingDp,
-            range = 0f..24f,
-            onChange = { v -> onStyleChange { it.copy(cellSpacingDp = v) } },
-        )
-        StyleSlider(
-            label = stringResource(R.string.collage_corner),
-            value = state.style.cornerRadiusDp,
-            range = 0f..48f,
-            onChange = { v -> onStyleChange { it.copy(cornerRadiusDp = v) } },
-        )
-        StyleSlider(
-            label = stringResource(R.string.collage_border),
-            value = state.style.borderWidthDp,
-            range = 0f..8f,
-            onChange = { v -> onStyleChange { it.copy(borderWidthDp = v) } },
-        )
-        Spacer(Modifier.size(8.dp))
-
-        // Border colour
-        SectionLabel(stringResource(R.string.collage_border_color))
-        SwatchRow(selected = state.style.borderColor) { c -> onStyleChange { it.copy(borderColor = c) } }
-        Spacer(Modifier.size(12.dp))
-
-        // Background colour (+ follow-theme toggle)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionLabel(stringResource(R.string.collage_background))
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.collage_bg_follow_theme), style = MaterialTheme.typography.labelMedium)
-            Switch(
-                checked = state.style.backgroundFollowsTheme,
-                onCheckedChange = { on -> onStyleChange { it.copy(backgroundFollowsTheme = on) } },
+            Spacer(Modifier.size(14.dp))
+            AssistChip(
+                onClick = onHueSort,
+                leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                label = { Text(stringResource(R.string.collage_hue_sort)) },
             )
         }
-        if (!state.style.backgroundFollowsTheme) {
-            SwatchRow(selected = state.style.backgroundColor) { c -> onStyleChange { it.copy(backgroundColor = c) } }
+        Spacer(Modifier.size(12.dp))
+
+        // Card 3 — fine styling: spacing, corners, border, background.
+        ControlCard {
+            StyleSlider(
+                label = stringResource(R.string.collage_spacing),
+                value = state.style.cellSpacingDp,
+                range = 0f..24f,
+                onChange = { v -> onStyleChange { it.copy(cellSpacingDp = v) } },
+            )
+            StyleSlider(
+                label = stringResource(R.string.collage_corner),
+                value = state.style.cornerRadiusDp,
+                range = 0f..48f,
+                onChange = { v -> onStyleChange { it.copy(cornerRadiusDp = v) } },
+            )
+            StyleSlider(
+                label = stringResource(R.string.collage_border),
+                value = state.style.borderWidthDp,
+                range = 0f..8f,
+                onChange = { v -> onStyleChange { it.copy(borderWidthDp = v) } },
+            )
+            Spacer(Modifier.size(10.dp))
+
+            SectionLabel(stringResource(R.string.collage_border_color))
+            SwatchRow(selected = state.style.borderColor) { c -> onStyleChange { it.copy(borderColor = c) } }
+            Spacer(Modifier.size(14.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel(stringResource(R.string.collage_background))
+                Spacer(Modifier.weight(1f))
+                Text(stringResource(R.string.collage_bg_follow_theme), style = MaterialTheme.typography.labelMedium)
+                Switch(
+                    checked = state.style.backgroundFollowsTheme,
+                    onCheckedChange = { on -> onStyleChange { it.copy(backgroundFollowsTheme = on) } },
+                )
+            }
+            if (!state.style.backgroundFollowsTheme) {
+                SwatchRow(selected = state.style.backgroundColor) { c -> onStyleChange { it.copy(backgroundColor = c) } }
+            }
         }
         Spacer(Modifier.size(20.dp))
 
@@ -587,6 +587,19 @@ private fun SegItem(text: String, selected: Boolean, modifier: Modifier = Modifi
             color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** A rounded surface that groups related controls — the Hunt tab's card look. */
+@Composable
+private fun ControlCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        content = content,
+    )
 }
 
 /** Small "Pro" pill used to flag pay-gated controls. */

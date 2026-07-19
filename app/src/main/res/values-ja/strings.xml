@@ -51,6 +51,7 @@
     <string name="sort_tagline">テーマ色を、集めよう。</string>
     <string name="sort_pick">写真を選ぶ</string>
     <string name="sort_auto">自動で仕分け</string>
+    <string name="sort_auto_hint">自動仕分けは直近%1$d枚を読み込みます</string>
     <string name="sort_processing_group">解析中</string>
     <string name="sort_permission_denied">写真へのアクセスが拒否されました。手動でも写真を追加できます。</string>
     <string name="sort_stat_photos">枚</string>

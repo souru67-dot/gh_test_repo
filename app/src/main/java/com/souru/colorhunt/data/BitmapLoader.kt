@@ -32,7 +32,12 @@ object BitmapLoader {
                     .memoryCachePolicy(CachePolicy.DISABLED)
                     .build()
                 val result = context.imageLoader.execute(request)
-                (result as? SuccessResult)?.drawable?.toBitmap()
+                val decoded = (result as? SuccessResult)?.drawable?.toBitmap() ?: return@withContext null
+                // Own an independent software copy: Coil's bitmap pool may recycle/reuse
+                // the returned bitmap once the request ends, which would otherwise turn
+                // cells we hold and draw later into black (recycled) images.
+                if (decoded.isRecycled) null
+                else decoded.copy(Bitmap.Config.ARGB_8888, false)
             } catch (t: Throwable) {
                 null
             }
