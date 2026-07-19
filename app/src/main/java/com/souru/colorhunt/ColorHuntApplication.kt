@@ -19,5 +19,8 @@ class ColorHuntApplication : Application() {
             osmdroidBasePath = File(cacheDir, "osmdroid")
             osmdroidTileCache = File(osmdroidBasePath, "tiles")
         }
+
+        // Restore Pro entitlement (Phase 4).
+        container.billingManager.connect()
     }
 }

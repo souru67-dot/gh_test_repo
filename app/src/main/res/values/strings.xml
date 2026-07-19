@@ -82,6 +82,16 @@
     <string name="collage_count_custom">Custom</string>
     <string name="collage_pro_locked">Pro</string>
     <string name="collage_save_permission">Storage permission is needed to save on this device.</string>
+    <string name="collage_upgrade">Upgrade to Pro</string>
+
+    <!-- Paywall (Phase 4 billing) -->
+    <string name="paywall_title">ColorHunt Pro</string>
+    <string name="paywall_body">Unlock everything with a one-time purchase.</string>
+    <string name="paywall_b_watermark">Remove the watermark</string>
+    <string name="paywall_b_sizes">All SNS sizes + custom</string>
+    <string name="paywall_b_cells">Unlimited collage cells</string>
+    <string name="paywall_b_map">High-res walk-log export</string>
+    <string name="paywall_purchase">Purchase</string>
 
     <string name="share_chooser_title">Share collage</string>
 

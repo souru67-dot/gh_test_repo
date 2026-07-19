@@ -12,8 +12,8 @@ package com.souru.colorhunt.domain.config
  */
 object FeatureFlags {
 
-    /** Hard-coded for the MVP. Phase 4 replaces this with a billing-backed value. */
-    val isPro: Boolean = false
+    /** Backed by [com.souru.colorhunt.domain.pro.ProState], which billing updates at runtime. */
+    val isPro: Boolean get() = com.souru.colorhunt.domain.pro.ProState.isProNow
 
     /** Free tier caps collage cells; Pro is unlimited. Used as a gate today. */
     const val FREE_MAX_COLLAGE_CELLS = 9

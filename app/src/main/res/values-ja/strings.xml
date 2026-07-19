@@ -82,6 +82,16 @@
     <string name="collage_count_custom">カスタム</string>
     <string name="collage_pro_locked">Pro</string>
     <string name="collage_save_permission">この端末で保存するにはストレージ権限が必要です。</string>
+    <string name="collage_upgrade">Proにアップグレード</string>
+
+    <!-- Paywall (Phase 4 billing) -->
+    <string name="paywall_title">ColorHunt Pro</string>
+    <string name="paywall_body">買い切りですべての機能が解放されます。</string>
+    <string name="paywall_b_watermark">透かしを除去</string>
+    <string name="paywall_b_sizes">全SNSサイズ＋カスタム</string>
+    <string name="paywall_b_cells">コラージュ枚数が無制限</string>
+    <string name="paywall_b_map">散歩ログを高解像度で書き出し</string>
+    <string name="paywall_purchase">購入する</string>
 
     <string name="share_chooser_title">コラージュを共有</string>
 

@@ -63,6 +63,9 @@ dependencies {
     // Daily theme-colour notification (Phase 4)
     implementation(libs.androidx.work.runtime)
 
+    // Pro purchase (Phase 4)
+    implementation(libs.billing.ktx)
+
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)

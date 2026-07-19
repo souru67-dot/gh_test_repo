@@ -20,6 +20,7 @@ import com.souru.colorhunt.domain.config.CollageStyle
 import com.souru.colorhunt.domain.config.FeatureFlags
 import com.souru.colorhunt.domain.config.SnsSize
 import com.souru.colorhunt.domain.model.HuntPhoto
+import com.souru.colorhunt.domain.pro.ProState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
@@ -89,8 +90,8 @@ class CollageViewModel(
 
     val uiState: StateFlow<CollageUiState> = combine(
         combine(size, countPreset, style, order) { s, c, st, o -> Spec(s, c, st, o) },
-        preview, rendering, loading,
-    ) { spec, prev, isRendering, isLoading ->
+        preview, rendering, loading, ProState.isPro,
+    ) { spec, prev, isRendering, isLoading, isPro ->
         CollageUiState(
             loading = isLoading,
             photoCount = photos.size,
@@ -100,13 +101,15 @@ class CollageViewModel(
             style = spec.style,
             preview = prev,
             rendering = isRendering,
-            isPro = FeatureFlags.isPro,
+            isPro = isPro,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CollageUiState())
 
     init {
         loadSelection()
         observeAndRender()
+        // Re-render (e.g. drop the watermark) the moment Pro status changes.
+        viewModelScope.launch { ProState.isPro.collect { renderTick.value += 1 } }
     }
 
     private fun loadSelection() {

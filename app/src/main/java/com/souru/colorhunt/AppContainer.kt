@@ -3,6 +3,7 @@ package com.souru.colorhunt
 import android.content.Context
 import com.souru.colorhunt.data.PaletteExtractor
 import com.souru.colorhunt.data.PhotoRepository
+import com.souru.colorhunt.data.billing.BillingManager
 
 /**
  * Minimal manual DI container. Holds the process-wide singletons the ViewModels
@@ -14,4 +15,5 @@ class AppContainer(context: Context) {
 
     val paletteExtractor: PaletteExtractor by lazy { PaletteExtractor(appContext) }
     val photoRepository: PhotoRepository by lazy { PhotoRepository(paletteExtractor, appContext) }
+    val billingManager: BillingManager by lazy { BillingManager(appContext) }
 }

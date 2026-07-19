@@ -27,7 +27,7 @@ SNS 用に書き出し／共有します。
 | 2 | Instagram グリッドプレビュー | 実装済み |
 | 3 | カラーマップ（osmdroid） | 実装済み |
 | 4 | お題カラールーレット＋デイリー通知 | 実装済み（`ui/roulette`, WorkManager通知） |
-| 4 | Play Billing（Pro課金） | seam（`domain/pro`, `FeatureFlags.isPro`） |
+| 4 | Play Billing（Pro課金） | 実装済み（`data/billing`, `ProState`＋ペイウォール）※Play Console設定要 |
 
 ## モジュール構成（Phase 1）
 

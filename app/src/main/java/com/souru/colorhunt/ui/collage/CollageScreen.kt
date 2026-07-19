@@ -1,6 +1,7 @@
 package com.souru.colorhunt.ui.collage
 
 import android.Manifest
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,19 +42,24 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.souru.colorhunt.ColorHuntApplication
 import com.souru.colorhunt.R
 import com.souru.colorhunt.data.export.ShareHelper
 import com.souru.colorhunt.domain.config.CellCountPreset
@@ -72,6 +80,8 @@ fun CollageScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
+    val billing = remember { (context.applicationContext as ColorHuntApplication).container.billingManager }
+    var showPaywall by remember { mutableStateOf(false) }
 
     val savedMsg = stringResource(R.string.collage_saved)
     val saveFailedMsg = stringResource(R.string.collage_save_failed)
@@ -113,10 +123,42 @@ fun CollageScreen(
                 onStyleChange = viewModel::updateStyle,
                 onSave = viewModel::save,
                 onShare = viewModel::share,
+                onUpgrade = { showPaywall = true },
                 modifier = Modifier.padding(padding),
             )
         }
     }
+
+    if (showPaywall) {
+        PaywallDialog(
+            onDismiss = { showPaywall = false },
+            onPurchase = {
+                (context as? Activity)?.let { billing.launchPurchase(it) }
+                showPaywall = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun PaywallDialog(onDismiss: () -> Unit, onPurchase: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text(stringResource(R.string.paywall_title), fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(stringResource(R.string.paywall_body), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.size(8.dp))
+                Text("・" + stringResource(R.string.paywall_b_watermark), style = MaterialTheme.typography.bodySmall)
+                Text("・" + stringResource(R.string.paywall_b_sizes), style = MaterialTheme.typography.bodySmall)
+                Text("・" + stringResource(R.string.paywall_b_cells), style = MaterialTheme.typography.bodySmall)
+                Text("・" + stringResource(R.string.paywall_b_map), style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = onPurchase) { Text(stringResource(R.string.paywall_purchase)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 @Composable
@@ -145,11 +187,32 @@ private fun CollageContent(
     onStyleChange: ((CollageStyle) -> CollageStyle) -> Unit,
     onSave: () -> Unit,
     onShare: () -> Unit,
+    onUpgrade: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         PreviewArea(state)
         Spacer(Modifier.size(16.dp))
+
+        if (!state.isPro) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                    .clickable(onClick = onUpgrade)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.collage_upgrade),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+        }
 
         // Cell count presets
         SectionLabel(stringResource(R.string.collage_cells))
