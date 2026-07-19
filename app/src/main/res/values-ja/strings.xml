@@ -4,6 +4,20 @@
     <!-- Navigation -->
     <string name="tab_sort">仕分け</string>
     <string name="tab_collage">コラージュ</string>
+    <string name="tab_grid">グリッド</string>
+
+    <!-- Generic actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">キャンセル</string>
+
+    <!-- Grid preview (Phase 2) -->
+    <string name="grid_title">グリッドプレビュー</string>
+    <string name="grid_posts">投稿</string>
+    <string name="grid_followers">フォロワー</string>
+    <string name="grid_following">フォロー</string>
+    <string name="grid_edit_profile">プロフィールを編集</string>
+    <string name="grid_name_label">名前</string>
+    <string name="grid_hint">写真を長押ししてドラッグすると並べ替えできます。</string>
 
     <!-- Sort / import screen -->
     <string name="sort_title">色で仕分け</string>

@@ -3,6 +3,7 @@ package com.souru.colorhunt.ui
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
@@ -23,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.souru.colorhunt.R
 import com.souru.colorhunt.ui.collage.CollageScreen
+import com.souru.colorhunt.ui.grid.GridPreviewScreen
 import com.souru.colorhunt.ui.imports.SortScreen
 
 /**
@@ -36,6 +38,7 @@ enum class TopDestination(
 ) {
     Sort("sort", R.string.tab_sort, Icons.Filled.PhotoLibrary),
     Collage("collage", R.string.tab_collage, Icons.Filled.GridView),
+    Grid("grid", R.string.tab_grid, Icons.Filled.GridOn),
 }
 
 @Composable
@@ -79,6 +82,9 @@ fun ColorHuntApp() {
             }
             composable(TopDestination.Collage.route) {
                 CollageScreen()
+            }
+            composable(TopDestination.Grid.route) {
+                GridPreviewScreen()
             }
         }
     }

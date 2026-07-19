@@ -4,6 +4,20 @@
     <!-- Navigation -->
     <string name="tab_sort">Sort</string>
     <string name="tab_collage">Collage</string>
+    <string name="tab_grid">Grid</string>
+
+    <!-- Generic actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Grid preview (Phase 2) -->
+    <string name="grid_title">Grid Preview</string>
+    <string name="grid_posts">posts</string>
+    <string name="grid_followers">followers</string>
+    <string name="grid_following">following</string>
+    <string name="grid_edit_profile">Edit profile</string>
+    <string name="grid_name_label">Name</string>
+    <string name="grid_hint">Long-press a photo and drag to reorder your feed.</string>
 
     <!-- Sort / import screen -->
     <string name="sort_title">Color Sort</string>
