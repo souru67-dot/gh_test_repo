@@ -34,21 +34,19 @@ class RouletteViewModel(application: Application) : AndroidViewModel(application
     )
     val uiState: StateFlow<TodayColorUiState> = _state.asStateFlow()
 
-    /** Manual pick from the colour wheel. */
-    fun select(colorInt: Int) {
+    /**
+     * Commit a colour to the result card.
+     * @param fromSpin true when it came from the roulette spin ("today's color"),
+     *                 false for a manual pick on the wheel.
+     */
+    fun select(colorInt: Int, fromSpin: Boolean = false) {
         _state.update {
-            it.copy(selectedColor = colorInt, bucket = ColorClassifier.classify(colorInt), isToday = false)
+            it.copy(selectedColor = colorInt, bucket = ColorClassifier.classify(colorInt), isToday = fromSpin)
         }
     }
 
-    /** Auto "today's color" — deterministic per day. Returns the colour so the wheel can move its thumb. */
-    fun pickToday(): Int {
-        val color = DailyColorRoulette.todayColor().swatch
-        _state.update {
-            it.copy(selectedColor = color, bucket = ColorClassifier.classify(color), isToday = true)
-        }
-        return color
-    }
+    /** A fresh random hue (0..360) for the spin to land on — varied every press. */
+    fun randomSpinHue(): Float = DailyColorRoulette.randomHue()
 
     fun setReminder(enabled: Boolean) {
         _state.update { it.copy(reminderEnabled = enabled) }

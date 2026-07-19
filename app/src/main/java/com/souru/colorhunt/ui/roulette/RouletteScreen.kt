@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,8 +41,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -57,13 +62,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.R
-import com.souru.colorhunt.domain.color.Hsv
 import com.souru.colorhunt.ui.common.label
 import com.souru.colorhunt.ui.common.toHexCode
+import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.sin
+
+private const val SPIN_TURNS = 4
 
 @Composable
 fun RouletteScreen(
@@ -73,9 +79,13 @@ fun RouletteScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    var hue by remember { mutableFloatStateOf(300f) }
-    var sat by remember { mutableFloatStateOf(0.7f) }
+    // The ring shows one hue at a time (angle); saturation is fixed vivid, like the app icon.
+    val sat = 0.92f
+    val hueAnim = remember { Animatable(210f) }
+    var spinning by remember { mutableStateOf(false) }
+    val displayHue = ((hueAnim.value % 360f) + 360f) % 360f
 
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -104,23 +114,37 @@ fun RouletteScreen(
             Spacer(Modifier.height(20.dp))
 
             ColorWheel(
-                hue = hue,
-                sat = sat,
-                thumbColor = Color.hsv(hue, sat.coerceIn(0f, 1f), 1f),
-                onPick = { h, s ->
-                    hue = h; sat = s
-                    viewModel.select(Color.hsv(h, s.coerceIn(0f, 1f), 1f).toArgb())
+                hue = displayHue,
+                centerColor = Color.hsv(displayHue, sat, 1f),
+                spinning = spinning,
+                onPick = { h ->
+                    if (spinning) return@ColorWheel
+                    scope.launch { hueAnim.snapTo(h) }
+                    viewModel.select(Color.hsv(h, sat, 1f).toArgb(), fromSpin = false)
                 },
                 modifier = Modifier.fillMaxWidth(0.82f).aspectRatio(1f),
             )
             Spacer(Modifier.height(18.dp))
 
-            Button(onClick = {
-                val color = viewModel.pickToday()
-                val hsv = Hsv.fromColorInt(color)
-                hue = hsv.hue
-                sat = hsv.saturation.coerceIn(0.2f, 1f)
-            }) {
+            Button(
+                enabled = !spinning,
+                onClick = {
+                    if (spinning) return@Button
+                    spinning = true
+                    val targetHue = viewModel.randomSpinHue()
+                    // Spin forward several turns, easing to a stop on the target hue.
+                    val start = hueAnim.value
+                    val landing = start - (start % 360f) + 360f * SPIN_TURNS + targetHue
+                    scope.launch {
+                        hueAnim.animateTo(
+                            targetValue = landing,
+                            animationSpec = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+                        )
+                        viewModel.select(Color.hsv(targetHue, sat, 1f).toArgb(), fromSpin = true)
+                        spinning = false
+                    }
+                },
+            ) {
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.roulette_auto))
@@ -157,12 +181,17 @@ fun RouletteScreen(
     }
 }
 
+/**
+ * A rainbow **ring** colour wheel echoing the app icon: pick a hue by angle, with
+ * the chosen colour previewed in the hollow centre. The [spinning] flag drives a
+ * subtle pulse so a roulette spin reads as "deciding".
+ */
 @Composable
 private fun ColorWheel(
     hue: Float,
-    sat: Float,
-    thumbColor: Color,
-    onPick: (Float, Float) -> Unit,
+    centerColor: Color,
+    spinning: Boolean,
+    onPick: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rainbow = remember { (0..12).map { Color.hsv((it * 30f) % 360f, 1f, 1f) } }
@@ -170,14 +199,15 @@ private fun ColorWheel(
         val diameterPx = with(LocalDensity.current) { maxWidth.toPx() }
         val radius = diameterPx / 2f
         val center = Offset(radius, radius)
+        val ringWidth = radius * 0.24f
+        val ringRadius = radius - ringWidth / 2f
 
         fun emit(pos: Offset) {
             val dx = pos.x - center.x
             val dy = pos.y - center.y
-            val s = (hypot(dx, dy) / radius).coerceIn(0f, 1f)
             var h = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
             if (h < 0f) h += 360f
-            onPick(h, s)
+            onPick(h)
         }
 
         Canvas(
@@ -186,14 +216,26 @@ private fun ColorWheel(
                 .pointerInput(Unit) { detectTapGestures { emit(it) } }
                 .pointerInput(Unit) { detectDragGestures { change, _ -> emit(change.position) } },
         ) {
-            drawCircle(Brush.sweepGradient(rainbow, center), radius = radius, center = center)
-            drawCircle(Brush.radialGradient(listOf(Color.White, Color.Transparent), center, radius), radius = radius, center = center)
+            // Rainbow ring.
+            drawCircle(
+                brush = Brush.sweepGradient(rainbow, center),
+                radius = ringRadius,
+                center = center,
+                style = Stroke(width = ringWidth),
+            )
+            // Selected-colour swatch filling the hollow centre.
+            val centerR = ringRadius - ringWidth / 2f - radius * 0.06f
+            drawCircle(centerColor, radius = centerR.coerceAtLeast(1f), center = center)
 
+            // Marker riding the ring at the current hue.
             val angle = Math.toRadians(hue.toDouble())
-            val rr = sat.coerceIn(0f, 1f) * radius
-            val thumb = Offset(center.x + (cos(angle) * rr).toFloat(), center.y + (sin(angle) * rr).toFloat())
-            drawCircle(Color.White, radius = radius * 0.065f + 3f, center = thumb)
-            drawCircle(thumbColor, radius = radius * 0.065f, center = thumb)
+            val marker = Offset(
+                center.x + (cos(angle) * ringRadius).toFloat(),
+                center.y + (sin(angle) * ringRadius).toFloat(),
+            )
+            val markerR = ringWidth * (if (spinning) 0.62f else 0.5f)
+            drawCircle(Color.White, radius = markerR + 3f, center = marker)
+            drawCircle(centerColor, radius = markerR, center = marker)
         }
     }
 }

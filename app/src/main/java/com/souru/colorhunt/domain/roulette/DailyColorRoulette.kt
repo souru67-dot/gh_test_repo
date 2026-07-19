@@ -27,5 +27,8 @@ object DailyColorRoulette {
     /** A random theme colour for a manual spin. */
     fun randomColor(): ColorBucket = choices.random()
 
+    /** A random hue (0..360) for the interactive roulette spin — vivid every time. */
+    fun randomHue(): Float = kotlin.random.Random.nextFloat() * 360f
+
     fun indexOf(bucket: ColorBucket): Int = choices.indexOf(bucket)
 }

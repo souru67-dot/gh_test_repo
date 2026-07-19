@@ -107,10 +107,11 @@ object CollageRenderer {
         val blockH = rect.height / n
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        // An elegant serif (mincho-like) face for the hex codes — feels editorial.
         val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
-            letterSpacing = 0.14f
+            letterSpacing = 0.12f
         }
         val sep = Paint().apply {
             color = Color.argb(30, 0, 0, 0)

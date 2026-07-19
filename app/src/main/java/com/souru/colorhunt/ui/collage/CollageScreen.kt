@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -401,10 +402,19 @@ private fun PreviewArea(
     var dragTo by remember { mutableStateOf<Int?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
 
+    // Cap the preview height so tall ratios (9:16) don't fill the whole screen —
+    // for those the box shrinks in width and stays centered.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val ratio = state.size.aspectRatio
+        val previewCap = 440.dp
+        val sizeMod = if (maxWidth / ratio > previewCap) {
+            Modifier.height(previewCap).aspectRatio(ratio)
+        } else {
+            Modifier.fillMaxWidth().aspectRatio(ratio)
+        }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
     BoxWithConstraints(
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(state.size.aspectRatio)
+        sizeMod
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
@@ -497,6 +507,8 @@ private fun PreviewArea(
 
         if (state.rendering || state.loading) {
             CircularProgressIndicator(Modifier.align(Alignment.Center))
+        }
+    }
         }
     }
 }

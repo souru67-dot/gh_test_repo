@@ -80,7 +80,7 @@
     <string name="collage_palette_center">Center</string>
     <string name="collage_palette_side">Side</string>
     <string name="collage_empty_title">Nothing selected</string>
-    <string name="collage_empty_body">Select photos on the Sort tab, then tap \"Make collage\".</string>
+    <string name="collage_empty_body">Pick photos on the Hunt tab, then tap \"Make collage\".</string>
     <string name="collage_cells">Cells</string>
     <string name="collage_size">SNS size</string>
     <string name="collage_spacing">Spacing</string>

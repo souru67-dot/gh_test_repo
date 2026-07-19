@@ -80,7 +80,7 @@
     <string name="collage_palette_center">中央</string>
     <string name="collage_palette_side">右</string>
     <string name="collage_empty_title">写真が未選択です</string>
-    <string name="collage_empty_body">「仕分け」タブで写真を選び、「コラージュを作成」を押してください。</string>
+    <string name="collage_empty_body">「ハント」タブで写真を選び、「コラージュを作成」を押してください。</string>
     <string name="collage_cells">枚数</string>
     <string name="collage_size">SNSサイズ</string>
     <string name="collage_spacing">余白</string>
