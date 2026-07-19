@@ -98,6 +98,9 @@ fun MapScreen(
             mapView.onDetach()
         }
     }
+    // Re-plot only when the located set actually changes, so the user's pan/zoom
+    // isn't reset on unrelated recompositions.
+    LaunchedEffect(state.located) { refreshMarkers(mapView, context, state.located) }
 
     Scaffold(
         modifier = modifier,
@@ -135,7 +138,6 @@ fun MapScreen(
                 AndroidView(
                     factory = { mapView },
                     modifier = Modifier.fillMaxSize(),
-                    update = { view -> refreshMarkers(view, context, state.located) },
                 )
                 if (state.located.isEmpty()) {
                     Column(

@@ -23,10 +23,10 @@ SNS 用に書き出し／共有します。
 
 | Phase | 内容 | 状態 |
 |------|------|------|
-| 1 | 取り込み・色仕分け・コラージュ・書き出し | 実装済み（本ブランチ） |
-| 2 | Instagram グリッドプレビュー | 未着手 |
-| 3 | カラーマップ（osmdroid） | 未着手 |
-| 4 | お題ルーレット / Play Billing | seam のみ（`FeatureFlags.isPro`） |
+| 1 | 取り込み・色仕分け・コラージュ・書き出し | 実装済み |
+| 2 | Instagram グリッドプレビュー | 実装済み |
+| 3 | カラーマップ（osmdroid） | 実装済み |
+| 4 | お題ルーレット / Play Billing | seam のみ（`domain/pro`, `domain/roulette`, `FeatureFlags.isPro`） |
 
 ## モジュール構成（Phase 1）
 
@@ -44,11 +44,16 @@ app/src/main/java/com/souru/colorhunt/
 │   ├── BitmapLoader.kt       # Exif回転込みのダウンサンプリング読み込み
 │   └── export/  CollageRenderer / ImageExporter / ShareHelper
 └── ui/
-    ├── theme/               # M3テーマ
-    ├── AppNavHost.kt        # 下部ナビ（Sort / Collage、以降のPhaseでタブ追加）
-    ├── imports/  SortScreen / SortViewModel     # 取り込み・色仕分け
-    └── collage/  CollageScreen / CollageViewModel
+    ├── theme/               # M3ダークテーマ＋ブランドグラデーション
+    ├── AppNavHost.kt        # 下部ナビ（Sort / Collage / Grid / Map）
+    ├── imports/  SortScreen / SortViewModel      # 取り込み・色仕分け・自動仕分け
+    ├── collage/  CollageScreen / CollageViewModel # コラージュ
+    ├── grid/     GridPreviewScreen / ...VM        # Phase2 グリッドプレビュー
+    └── map/      MapScreen / MapViewModel         # Phase3 カラーマップ
 ```
+
+Phase 4 の seam は `domain/pro`（ProEntitlement / PlayBillingスタブ）と
+`domain/roulette`（DailyColorRoulette / 通知スタブ）に配置。
 
 ## 色分類の仕様
 
@@ -79,8 +84,11 @@ app/src/main/java/com/souru/colorhunt/
 
 Android SDK（platform 35 / build-tools）と Google Maven リポジトリへのアクセスが必要です。
 
-> **注記（本コミットの検証状況）**: 本ブランチが生成された CI 実行環境は、組織の egress ポリシーにより
-> `dl.google.com`（Android SDK と Google Maven）への接続がブロックされていたため、`assembleDebug`
-> による APK ビルドはこの環境では実行できていません。一方で、Android 非依存の色分類ロジックは
-> Maven Central 経由の独立した JVM プロジェクトで **単体テスト16件すべてパス**することを確認済みです。
-> 通常の開発環境（Android SDK と Google Maven に到達可能）ではそのままビルドできます。
+CI（GitHub Actions / `.github/workflows/android.yml`）で毎プッシュ `testDebugUnitTest` と
+`assembleDebug` を実行し、デバッグ APK（アーティファクト名 `colorhunt-debug-apk`）を生成します。
+
+## iOS / 多言語展開に向けて
+
+- 色分類などのコアロジックは Android 非依存の純 Kotlin（`domain/color`）に切り出し済みで、
+  将来 Kotlin Multiplatform の共有モジュールへ移しやすい構成。
+- 文字列は英語デフォルト＋日本語。アジア圏展開時はロケール追加のみで対応。
