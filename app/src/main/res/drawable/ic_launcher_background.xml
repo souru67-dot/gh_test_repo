@@ -4,17 +4,16 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Brand gradient (violet → pink → cyan), matching the in-app hero. -->
+    <!-- Soft, approachable pastel wash (lavender → pink → peach). -->
     <path android:pathData="M0,0 h108 v108 h-108 z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="8" android:startY="0"
-                android:endX="100" android:endY="108">
-                <item android:offset="0.0" android:color="#FF6D28D9" />
-                <item android:offset="0.45" android:color="#FF8B5CFF" />
-                <item android:offset="0.75" android:color="#FFF472B6" />
-                <item android:offset="1.0" android:color="#FF0EA5B7" />
+                android:startX="0" android:startY="0"
+                android:endX="108" android:endY="108">
+                <item android:offset="0.0" android:color="#FFF5EEFF" />
+                <item android:offset="0.5" android:color="#FFFFE7F1" />
+                <item android:offset="1.0" android:color="#FFFFF1E8" />
             </gradient>
         </aapt:attr>
     </path>

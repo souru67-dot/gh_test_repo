@@ -1,37 +1,37 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Color-hunting viewfinder: a white reticle "capturing" a cluster of colors. -->
-
-    <!-- Viewfinder ring -->
+    <!-- Color-wheel ring: the signature "color hunting" motif. -->
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
+        android:strokeWidth="12"
         android:fillColor="#00000000"
-        android:pathData="M54,54m-26,0a26,26 0 1 1 52,0a26,26 0 1 1 -52,0" />
+        android:pathData="M54,54m-29,0a29,29 0 1 1 58,0a29,29 0 1 1 -58,0">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="sweep"
+                android:centerX="54"
+                android:centerY="54">
+                <item android:offset="0.00" android:color="#FFFF3B30" />
+                <item android:offset="0.12" android:color="#FFFF9500" />
+                <item android:offset="0.25" android:color="#FFFFCC00" />
+                <item android:offset="0.38" android:color="#FF34C759" />
+                <item android:offset="0.50" android:color="#FF00C7BE" />
+                <item android:offset="0.62" android:color="#FF32ADE6" />
+                <item android:offset="0.75" android:color="#FF5E5CE6" />
+                <item android:offset="0.87" android:color="#FFAF52DE" />
+                <item android:offset="0.94" android:color="#FFFF2D92" />
+                <item android:offset="1.00" android:color="#FFFF3B30" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Crosshair ticks -->
+    <!-- Picker marker sitting on the wheel (the "hunt"). -->
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M54,24V15M54,84V93M84,54H93M24,54H15" />
-
-    <!-- White backdrop disc so the captured colors always pop -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-15,0a15,15 0 1 1 30,0a15,15 0 1 1 -30,0" />
-
-    <!-- Captured colors: violet / pink / cyan -->
-    <path
-        android:fillColor="#8B5CFF"
-        android:pathData="M54,47.5m-5.5,0a5.5,5.5 0 1 1 11,0a5.5,5.5 0 1 1 -11,0" />
-    <path
-        android:fillColor="#F472B6"
-        android:pathData="M48.37,57.25m-5.5,0a5.5,5.5 0 1 1 11,0a5.5,5.5 0 1 1 -11,0" />
-    <path
-        android:fillColor="#22D3EE"
-        android:pathData="M59.63,57.25m-5.5,0a5.5,5.5 0 1 1 11,0a5.5,5.5 0 1 1 -11,0" />
+        android:fillColor="#FFFFFFFF"
+        android:strokeColor="#22000000"
+        android:strokeWidth="1.5"
+        android:pathData="M34.6,75.5m-7.5,0a7.5,7.5 0 1 1 15,0a7.5,7.5 0 1 1 -15,0" />
 </vector>
