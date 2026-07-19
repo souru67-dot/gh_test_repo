@@ -87,8 +87,8 @@
     <string name="collage_save_permission">Storage permission is needed to save on this device.</string>
     <string name="collage_upgrade">Upgrade to Pro</string>
     <string name="collage_templates">Templates</string>
-    <string name="collage_palette_strip">Color palette strip</string>
-    <string name="collage_palette_strip_sub">Adds a hex-code palette bar under your collage</string>
+    <string name="collage_palette_strip">Color palette rail</string>
+    <string name="collage_palette_strip_sub">Adds a hex-code color rail beside your collage</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

@@ -88,7 +88,7 @@
     <string name="collage_upgrade">Proにアップグレード</string>
     <string name="collage_templates">テンプレート</string>
     <string name="collage_palette_strip">カラーパレット帯</string>
-    <string name="collage_palette_strip_sub">コラージュ下にHEXコード付きの色帯を追加</string>
+    <string name="collage_palette_strip_sub">コラージュ横に色＋HEXコードのパレット帯を追加</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

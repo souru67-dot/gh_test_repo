@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Typeface
 import com.souru.colorhunt.domain.config.CollageGrid
 import com.souru.colorhunt.domain.config.CollageStyle
 
@@ -25,7 +26,7 @@ object CollageRenderer {
      * @param widthPx/heightPx  output size, taken from the chosen SNS preset.
      * @param addWatermark  draw the free-tier watermark (Phase 4 gate).
      */
-    private const val PALETTE_STRIP_RATIO = 0.13f
+    private const val PALETTE_RAIL_RATIO = 0.18f
 
     /**
      * @param cells         source bitmaps in cell order; a null entry = empty cell.
@@ -48,9 +49,9 @@ object CollageRenderer {
         val canvas = Canvas(output)
         canvas.drawColor(style.backgroundColor)
 
-        val showStrip = style.paletteStrip && paletteColors.isNotEmpty()
-        val stripHeight = if (showStrip) (heightPx * PALETTE_STRIP_RATIO) else 0f
-        val gridHeight = heightPx - stripHeight
+        val showRail = style.paletteStrip && paletteColors.isNotEmpty()
+        val railWidth = if (showRail) (widthPx * PALETTE_RAIL_RATIO) else 0f
+        val gridWidth = widthPx - railWidth
 
         val columns = CollageGrid.columnsFor(cellCount)
         val rows = CollageGrid.rowsFor(cellCount)
@@ -59,8 +60,8 @@ object CollageRenderer {
         val radius = style.cornerRadiusDp * density
         val borderWidth = style.borderWidthDp * density
 
-        val cellWidth = (widthPx - spacing * (columns + 1)) / columns
-        val cellHeight = (gridHeight - spacing * (rows + 1)) / rows
+        val cellWidth = (gridWidth - spacing * (columns + 1)) / columns
+        val cellHeight = (heightPx - spacing * (rows + 1)) / rows
 
         val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -85,43 +86,72 @@ object CollageRenderer {
             }
         }
 
-        if (showStrip) {
-            drawPaletteStrip(canvas, paletteColors, gridHeight, widthPx.toFloat(), stripHeight, density)
+        if (showRail) {
+            drawPaletteRail(canvas, paletteColors, gridWidth, widthPx.toFloat(), heightPx.toFloat(), density, style.backgroundColor)
         }
         if (addWatermark) drawWatermark(canvas, widthPx, heightPx, density)
         return output
     }
 
-    /** Draw a bottom strip with one block per colour and its hex code. */
-    private fun drawPaletteStrip(
+    /**
+     * A slim vertical colour rail down the right edge — one block per photo with
+     * its hex code in mono type. A crisp separator in the background colour keeps
+     * blocks distinct; a small "PALETTE" cap at the top brands it.
+     */
+    private fun drawPaletteRail(
         canvas: Canvas,
         colors: List<Int>,
-        top: Float,
-        width: Float,
+        left: Float,
+        right: Float,
         height: Float,
         density: Float,
+        separatorColor: Int,
     ) {
         val n = colors.size
         if (n == 0) return
-        val segWidth = width / n
-        val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = (height * 0.22f).coerceAtLeast(9f * density)
-            textAlign = Paint.Align.CENTER
-        }
-        colors.forEachIndexed { i, color ->
-            val left = i * segWidth
-            fill.color = color or (0xFF shl 24)
-            canvas.drawRect(left, top, left + segWidth, top + height, fill)
+        val railWidth = right - left
+        val capHeight = (height * 0.06f).coerceAtMost(railWidth * 0.9f)
+        val blocksTop = capHeight
+        val blockH = (height - blocksTop) / n
 
-            // Contrasting label colour.
-            val luminance = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color))
-            text.color = if (luminance > 140) Color.argb(220, 0, 0, 0) else Color.argb(230, 255, 255, 255)
-            val hex = "#%06X".format(0xFFFFFF and color)
-            val cx = left + segWidth / 2f
-            val cy = top + height / 2f - (text.ascent() + text.descent()) / 2f
-            canvas.drawText(hex, cx, cy, text)
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            textSize = (blockH * 0.26f).coerceAtMost(railWidth * 0.30f).coerceAtLeast(7f * density)
+            letterSpacing = 0.06f
         }
+        val sep = Paint().apply {
+            color = separatorColor or (0xFF shl 24)
+            strokeWidth = (1.6f * density).coerceAtLeast(1.5f)
+        }
+
+        // Brand cap.
+        val cap = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(255, 245, 245, 250)
+            textAlign = Paint.Align.CENTER
+            textSize = (capHeight * 0.42f).coerceAtLeast(6f * density)
+            letterSpacing = 0.22f
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        }
+        canvas.drawText("PALETTE", left + railWidth / 2f, blocksTop / 2f - (cap.ascent() + cap.descent()) / 2f, cap)
+
+        colors.forEachIndexed { i, color ->
+            val top = blocksTop + i * blockH
+            fill.color = color or (0xFF shl 24)
+            canvas.drawRect(left, top, right, top + blockH, fill)
+
+            val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
+            text.color = if (luminance > 140) Color.argb(230, 15, 15, 20) else Color.argb(235, 255, 255, 255)
+            val hex = "#%06X".format(0xFFFFFF and color)
+            val cx = left + railWidth / 2f
+            val cy = top + blockH / 2f - (text.ascent() + text.descent()) / 2f
+            canvas.drawText(hex, cx, cy, text)
+
+            if (i > 0) canvas.drawLine(left, top, right, top, sep)
+        }
+        // Left edge hairline between grid and rail.
+        canvas.drawLine(left, 0f, left, height, sep)
     }
 
     /** Center-crops [bitmap] to fill [dest], clipped to rounded corners. */
