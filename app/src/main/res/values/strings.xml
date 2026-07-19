@@ -10,7 +10,10 @@
 
     <!-- Roulette / today's color (Phase 4) -->
     <string name="roulette_title">Today\'s Color</string>
-    <string name="roulette_subtitle">Spin the wheel and hunt this color.</string>
+    <string name="roulette_subtitle">Choose a color on the wheel, or auto-pick today\'s.</string>
+    <string name="roulette_auto">Pick today\'s color</string>
+    <string name="roulette_chosen">Your color</string>
+    <string name="roulette_pick_hint">Touch the wheel to choose your color.</string>
     <string name="roulette_today">Today</string>
     <string name="roulette_random">Random</string>
     <string name="roulette_spin">Spin</string>

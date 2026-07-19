@@ -10,7 +10,10 @@
 
     <!-- Roulette / today's color (Phase 4) -->
     <string name="roulette_title">今日の色</string>
-    <string name="roulette_subtitle">ルーレットを回して、この色を狩ろう。</string>
+    <string name="roulette_subtitle">ホイールで色を選ぶか、今日の色を自動で。</string>
+    <string name="roulette_auto">今日の色を自動で</string>
+    <string name="roulette_chosen">選んだ色</string>
+    <string name="roulette_pick_hint">ホイールに触れて色を選びましょう。</string>
     <string name="roulette_today">今日の色</string>
     <string name="roulette_random">ランダム</string>
     <string name="roulette_spin">回す</string>

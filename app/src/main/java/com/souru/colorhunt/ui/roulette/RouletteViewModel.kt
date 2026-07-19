@@ -3,56 +3,55 @@ package com.souru.colorhunt.ui.roulette
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.souru.colorhunt.ColorHuntApplication
 import com.souru.colorhunt.data.notification.ThemeReminderScheduler
 import com.souru.colorhunt.domain.color.ColorBucket
+import com.souru.colorhunt.domain.color.ColorClassifier
 import com.souru.colorhunt.domain.roulette.DailyColorRoulette
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
-data class RouletteUiState(
-    val bucket: ColorBucket = DailyColorRoulette.todayColor(),
-    val isToday: Boolean = true,
+data class TodayColorUiState(
+    /** Chosen colour (0xFFRRGGBB), or null until the user picks one. */
+    val selectedColor: Int? = null,
+    val bucket: ColorBucket? = null,
+    /** True when the colour came from "today's color" auto-pick rather than manual. */
+    val isToday: Boolean = false,
     val reminderEnabled: Boolean = false,
-    /** Increments on each pick, so the wheel animation re-triggers. */
-    val spinToken: Int = 0,
 )
 
 class RouletteViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private val bucket = MutableStateFlow(DailyColorRoulette.todayColor())
-    private val isToday = MutableStateFlow(true)
-    private val reminder = MutableStateFlow(prefs.getBoolean(KEY_REMINDER, false))
-    private val spinToken = MutableStateFlow(0)
+    private val _state = MutableStateFlow(
+        TodayColorUiState(reminderEnabled = prefs.getBoolean(KEY_REMINDER, false)),
+    )
+    val uiState: StateFlow<TodayColorUiState> = _state.asStateFlow()
 
-    val uiState: StateFlow<RouletteUiState> =
-        combine(bucket, isToday, reminder, spinToken) { b, today, rem, token ->
-            RouletteUiState(bucket = b, isToday = today, reminderEnabled = rem, spinToken = token)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RouletteUiState())
-
-    fun spin() {
-        bucket.value = DailyColorRoulette.randomColor()
-        isToday.value = false
-        spinToken.value += 1
+    /** Manual pick from the colour wheel. */
+    fun select(colorInt: Int) {
+        _state.update {
+            it.copy(selectedColor = colorInt, bucket = ColorClassifier.classify(colorInt), isToday = false)
+        }
     }
 
-    fun resetToday() {
-        bucket.value = DailyColorRoulette.todayColor()
-        isToday.value = true
-        spinToken.value += 1
+    /** Auto "today's color" — deterministic per day. Returns the colour so the wheel can move its thumb. */
+    fun pickToday(): Int {
+        val color = DailyColorRoulette.todayColor().swatch
+        _state.update {
+            it.copy(selectedColor = color, bucket = ColorClassifier.classify(color), isToday = true)
+        }
+        return color
     }
 
     fun setReminder(enabled: Boolean) {
-        reminder.value = enabled
+        _state.update { it.copy(reminderEnabled = enabled) }
         prefs.edit().putBoolean(KEY_REMINDER, enabled).apply()
         val context = getApplication<Application>()
         if (enabled) ThemeReminderScheduler.enable(context) else ThemeReminderScheduler.disable(context)
