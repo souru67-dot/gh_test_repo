@@ -299,7 +299,15 @@ private fun HeroButton(
     ) {
         Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = fg)
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = fg,
+            maxLines = 1,
+            softWrap = false,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+        )
     }
 }
 

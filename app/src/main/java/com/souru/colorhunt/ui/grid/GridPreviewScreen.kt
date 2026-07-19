@@ -60,7 +60,6 @@ import com.souru.colorhunt.domain.model.HuntPhoto
 import com.souru.colorhunt.ui.theme.BrandGradients
 
 private const val COLUMNS = 3
-private const val MIN_SLOTS = 9
 
 // Instagram's current feed grid uses 4:5 portrait tiles (width : height).
 private const val CELL_ASPECT = 4f / 5f
@@ -80,12 +79,14 @@ fun GridPreviewScreen(
                 postCount = state.postCount,
                 onEdit = { editing = true },
             )
-            Text(
-                stringResource(R.string.grid_hint),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-            )
+            if (!state.isEmpty) {
+                Text(
+                    stringResource(R.string.grid_hint),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
             ReorderableFeed(
                 feed = state.feed,
                 onMove = viewModel::move,
@@ -158,10 +159,14 @@ private fun ReorderableFeed(
     onMove: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (feed.isEmpty()) {
+        GridEmptyState(modifier)
+        return
+    }
+
     val gridState = rememberLazyGridState()
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var pointer by remember { mutableStateOf(Offset.Zero) }
-    val slots = maxOf(MIN_SLOTS, feed.size)
 
     fun itemInfoAt(pos: Offset): LazyGridItemInfo? =
         gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
@@ -204,30 +209,48 @@ private fun ReorderableFeed(
         verticalArrangement = Arrangement.spacedBy(1.5.dp),
     ) {
         items(
-            count = slots,
-            key = { i -> if (i < feed.size) feed[i].id else "empty-$i" },
+            count = feed.size,
+            key = { i -> feed[i].id },
         ) { i ->
-            if (i < feed.size) {
-                val isDragging = draggingIndex == i
-                FeedCell(
-                    photo = feed[i],
-                    modifier = Modifier.graphicsLayer {
-                        if (isDragging) {
-                            val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == i }
-                            if (info != null) {
-                                translationX = pointer.x - (info.offset.x + info.size.width / 2f)
-                                translationY = pointer.y - (info.offset.y + info.size.height / 2f)
-                            }
-                            scaleX = 1.05f
-                            scaleY = 1.05f
-                            shadowElevation = 16f
+            val isDragging = draggingIndex == i
+            FeedCell(
+                photo = feed[i],
+                modifier = Modifier.graphicsLayer {
+                    if (isDragging) {
+                        val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == i }
+                        if (info != null) {
+                            translationX = pointer.x - (info.offset.x + info.size.width / 2f)
+                            translationY = pointer.y - (info.offset.y + info.size.height / 2f)
                         }
-                    }.zIndex(if (isDragging) 1f else 0f),
-                )
-            } else {
-                EmptyCell()
-            }
+                        scaleX = 1.05f
+                        scaleY = 1.05f
+                        shadowElevation = 16f
+                    }
+                }.zIndex(if (isDragging) 1f else 0f),
+            )
         }
+    }
+}
+
+@Composable
+private fun GridEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(40.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.grid_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -251,23 +274,6 @@ private fun FeedCell(photo: HuntPhoto, modifier: Modifier = Modifier) {
                     .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             )
         }
-    }
-}
-
-@Composable
-private fun EmptyCell() {
-    Box(
-        Modifier
-            .aspectRatio(CELL_ASPECT)
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Filled.Add,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }
 

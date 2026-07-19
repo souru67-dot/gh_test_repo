@@ -17,8 +17,12 @@ object ColorClassifierConfig {
     /** At/above this value with low saturation a colour is [ColorBucket.WHITE]. */
     const val WHITE_MIN_VALUE = 0.90f
 
-    /** At/below this saturation a colour is considered achromatic (white/grey/black). */
-    const val ACHROMATIC_MAX_SATURATION = 0.12f
+    /**
+     * At/below this saturation a colour is considered achromatic (white/grey/black).
+     * Raised so muted, filmic photos (a grey city scene, a washed-out sky) sort into
+     * GRAY instead of being pulled into BLUE/CYAN by a faint colour cast.
+     */
+    const val ACHROMATIC_MAX_SATURATION = 0.20f
 
     // --- Pink refinement -------------------------------------------------------
     // A light, softly-saturated red reads as "pink" rather than "red", so reds in
@@ -38,9 +42,11 @@ object ColorClassifierConfig {
         HueRange(ColorBucket.ORANGE, 15f, 45f),
         HueRange(ColorBucket.YELLOW, 45f, 66f),
         HueRange(ColorBucket.YELLOW_GREEN, 66f, 90f),
-        HueRange(ColorBucket.GREEN, 90f, 156f),
-        HueRange(ColorBucket.CYAN, 156f, 200f),
-        HueRange(ColorBucket.BLUE, 200f, 255f),
+        // GREEN extends further so teal-leaning greens (deep foliage, a green door)
+        // read as 緑 rather than 水色; CYAN is narrowed to true light-blue / sky.
+        HueRange(ColorBucket.GREEN, 90f, 175f),
+        HueRange(ColorBucket.CYAN, 175f, 205f),
+        HueRange(ColorBucket.BLUE, 205f, 255f),
         HueRange(ColorBucket.PURPLE, 255f, 290f),
         HueRange(ColorBucket.PINK, 290f, 345f),
     )

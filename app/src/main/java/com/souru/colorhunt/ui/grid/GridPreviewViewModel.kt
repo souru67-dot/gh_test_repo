@@ -8,10 +8,12 @@ import com.souru.colorhunt.data.PhotoRepository
 import com.souru.colorhunt.domain.model.HuntPhoto
 import com.souru.colorhunt.ui.appContainer
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 
 /** Editable, dummy Instagram-style profile header values. */
 data class ProfileHeader(
@@ -24,56 +26,56 @@ data class GridPreviewUiState(
     val profile: ProfileHeader = ProfileHeader(),
     val feed: List<HuntPhoto> = emptyList(),
 ) {
-    /** Posts count mirrors the number of photos lined up. */
     val postCount: Int get() = feed.size
+    val isEmpty: Boolean get() = feed.isEmpty()
 }
 
 /**
  * Phase 2 — Instagram grid preview.
  *
- * Shows the upcoming posts as a 3-wide feed so the overall look can be checked
- * and reordered. Newest post sits top-left; dragging reorders. No real posting.
- * The feed is seeded from the shared photo store (selection first, else all).
+ * The feed is exactly the photos the user has **selected** (on the Sort tab):
+ * you build your grid by choosing shots, then drag to arrange. Newly selected
+ * photos enter at the top; deselected ones drop out; manual order is preserved.
+ * No placeholder cells. No real posting.
  */
 class GridPreviewViewModel(private val repository: PhotoRepository) : ViewModel() {
 
-    private val _state = MutableStateFlow(GridPreviewUiState())
-    val uiState: StateFlow<GridPreviewUiState> = _state.asStateFlow()
+    private val order = MutableStateFlow<List<String>>(emptyList())
+    private val profile = MutableStateFlow(ProfileHeader())
 
     init {
-        // Seed once, then keep newly imported photos flowing in without clobbering
-        // a manual reorder the user has already made.
-        repository.photos
-            .onEach { all ->
-                val current = _state.value.feed
-                if (current.isEmpty()) {
-                    val selected = repository.selectedPhotos()
-                    _state.value = _state.value.copy(feed = selected.ifEmpty { all })
-                } else {
-                    val known = current.mapTo(HashSet()) { it.id }
-                    val additions = all.filter { it.id !in known }
-                    // New posts enter at the top of the feed.
-                    val updated = (additions + current).map { photo ->
-                        all.firstOrNull { it.id == photo.id } ?: photo
-                    }
-                    if (updated != current) _state.value = _state.value.copy(feed = updated)
-                }
+        // Reconcile our ordered id list with the current selection.
+        repository.selectedIds
+            .onEach { ids ->
+                val known = order.value
+                val knownSet = known.toHashSet()
+                val stillSelected = known.filter { it in ids }
+                val newlySelected = ids.filter { it !in knownSet }
+                val next = newlySelected.toList() + stillSelected // new posts on top
+                if (next != known) order.value = next
             }
             .launchIn(viewModelScope)
     }
 
-    /** Move the item at [from] to [to], shifting the rest (drag reorder). */
+    val uiState: StateFlow<GridPreviewUiState> =
+        combine(order, repository.photos, profile) { ord, photos, prof ->
+            val byId = photos.associateBy { it.id }
+            GridPreviewUiState(profile = prof, feed = ord.mapNotNull { byId[it] })
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GridPreviewUiState())
+
     fun move(from: Int, to: Int) {
-        val list = _state.value.feed
+        val list = order.value
         if (from !in list.indices || to !in list.indices || from == to) return
         val mutable = list.toMutableList()
         mutable.add(to, mutable.removeAt(from))
-        _state.value = _state.value.copy(feed = mutable)
+        order.value = mutable
     }
 
     fun updateProfile(name: String, followers: Int, following: Int) {
-        _state.value = _state.value.copy(
-            profile = ProfileHeader(name = name.ifBlank { "colorhunt" }, followers = followers, following = following),
+        profile.value = ProfileHeader(
+            name = name.ifBlank { "colorhunt" },
+            followers = followers,
+            following = following,
         )
     }
 

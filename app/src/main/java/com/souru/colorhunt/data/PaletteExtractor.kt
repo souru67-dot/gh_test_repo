@@ -52,17 +52,31 @@ class PaletteExtractor(private val context: Context) {
         }
     }
 
+    /**
+     * Score each swatch by area **and** how "theme-worthy" its colour is, then take
+     * the best. This beats picking the single most-saturated swatch (which wrongly
+     * grabs a tiny vivid sign in an otherwise grey city shot) and picking the most
+     * populous swatch (which grabs the dark background of a lit subject). A large
+     * muted region wins for a filmic city scene → GRAY; a mid-tone colourful subject
+     * wins over a dark background → its true colour.
+     */
     private fun pickThemeColor(palette: Palette): Int? {
         val swatches = palette.swatches
         if (swatches.isEmpty()) return null
+        return swatches.maxByOrNull { scoreOf(it) }?.rgb
+    }
 
-        val colorful = swatches.filter { swatch ->
-            val hsv = Hsv.fromColorInt(swatch.rgb)
-            hsv.saturation >= SUBJECT_MIN_SATURATION &&
-                hsv.value in SUBJECT_MIN_VALUE..SUBJECT_MAX_VALUE
+    private fun scoreOf(swatch: Palette.Swatch): Double {
+        val hsv = Hsv.fromColorInt(swatch.rgb)
+        val satWeight = SAT_BASE + hsv.saturation
+        val valWeight = when {
+            hsv.value < DARK_CUTOFF -> DARK_WEIGHT
+            hsv.value < MID_START ->
+                DARK_WEIGHT + (hsv.value - DARK_CUTOFF) / (MID_START - DARK_CUTOFF) * (1f - DARK_WEIGHT)
+            hsv.value > BRIGHT_CUTOFF -> BRIGHT_WEIGHT
+            else -> 1f
         }
-        val pick = colorful.maxByOrNull { it.population } ?: swatches.maxByOrNull { it.population }
-        return pick?.rgb
+        return swatch.population.toDouble() * satWeight * valWeight
     }
 
     private fun averageColor(bitmap: Bitmap): Int? {
@@ -107,8 +121,12 @@ class PaletteExtractor(private val context: Context) {
         const val TARGET_MAX_DIM = 160
         const val MAX_PALETTE_COLORS = 24
 
-        const val SUBJECT_MIN_SATURATION = 0.18f
-        const val SUBJECT_MIN_VALUE = 0.20f
-        const val SUBJECT_MAX_VALUE = 0.96f
+        // Swatch scoring weights (see scoreOf).
+        const val SAT_BASE = 0.35f       // floor so a big muted region still competes
+        const val DARK_CUTOFF = 0.12f    // below this value → heavily down-weighted
+        const val DARK_WEIGHT = 0.2f
+        const val MID_START = 0.28f      // value at which weight reaches 1.0
+        const val BRIGHT_CUTOFF = 0.92f  // blown highlights down-weighted
+        const val BRIGHT_WEIGHT = 0.5f
     }
 }

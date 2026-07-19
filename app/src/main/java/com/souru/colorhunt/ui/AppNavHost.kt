@@ -40,9 +40,9 @@ enum class TopDestination(
     @StringRes val labelRes: Int,
     val icon: ImageVector,
 ) {
-    Roulette("roulette", R.string.tab_roulette, Icons.Filled.Casino),
     Sort("sort", R.string.tab_sort, Icons.Filled.PhotoLibrary),
     Collage("collage", R.string.tab_collage, Icons.Filled.GridView),
+    Roulette("roulette", R.string.tab_roulette, Icons.Filled.Casino),
     Grid("grid", R.string.tab_grid, Icons.Filled.GridOn),
     Map("map", R.string.tab_map, Icons.Filled.Place),
 }
@@ -76,7 +76,7 @@ fun ColorHuntApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = TopDestination.Roulette.route,
+            startDestination = TopDestination.Sort.route,
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(TopDestination.Roulette.route) {

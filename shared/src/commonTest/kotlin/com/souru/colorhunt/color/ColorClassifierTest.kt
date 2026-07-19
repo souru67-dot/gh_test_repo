@@ -48,6 +48,20 @@ class ColorClassifierTest {
         assertEquals(0f, Hsv.fromRgb(255, 0, 0).hue, 0.001f)
     }
 
+    // --- Accuracy regressions (device feedback) ---
+
+    /** A deep teal-leaning green (a green cafe door) should be GREEN, not CYAN. */
+    @Test fun tealGreenIsGreen() = assertEquals(ColorBucket.GREEN, bucketOf(40, 90, 70))
+
+    /** Hue ~169 still falls in GREEN after the boundary shift. */
+    @Test fun tealHue169IsGreen() = assertEquals(ColorBucket.GREEN, bucketOf(30, 140, 120))
+
+    /** True light sky-blue stays CYAN. */
+    @Test fun skyIsCyan() = assertEquals(ColorBucket.CYAN, bucketOf(38, 198, 218))
+
+    /** A muted blue-grey city scene should be GRAY, not BLUE. */
+    @Test fun mutedBlueGrayIsGray() = assertEquals(ColorBucket.GRAY, bucketOf(100, 110, 122))
+
     @Test fun colorIntRoundTrip() {
         // 0xFF3F51B5 (indigo) should land in blue/purple neighbourhood, not achromatic.
         val bucket = ColorClassifier.classify(0xFF3F51B5.toInt())

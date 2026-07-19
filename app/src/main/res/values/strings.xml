@@ -40,12 +40,13 @@
     <string name="grid_edit_profile">Edit profile</string>
     <string name="grid_name_label">Name</string>
     <string name="grid_hint">Long-press a photo and drag to reorder your feed.</string>
+    <string name="grid_empty">Select photos on the Sort tab to build your feed here.</string>
 
     <!-- Sort / import screen -->
     <string name="sort_title">Color Sort</string>
     <string name="sort_tagline">Hunt your theme color.</string>
     <string name="sort_pick">Add photos</string>
-    <string name="sort_auto">Auto-sort library</string>
+    <string name="sort_auto">Auto-sort</string>
     <string name="sort_processing_group">Analyzing</string>
     <string name="sort_permission_denied">Photo access was denied. You can still add photos manually.</string>
     <string name="sort_stat_photos">photos</string>
