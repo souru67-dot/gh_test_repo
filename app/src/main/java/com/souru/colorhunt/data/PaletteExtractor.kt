@@ -2,10 +2,14 @@ package com.souru.colorhunt.data
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.LruCache
+import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
+import coil.imageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.souru.colorhunt.domain.color.Hsv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,16 +17,18 @@ import kotlinx.coroutines.withContext
 /**
  * Extracts a representative "theme colour" from an image [Uri] using AndroidX Palette.
  *
+ * Decoding goes through **Coil** (the same decoder that renders the thumbnails),
+ * so any format the app can display — JPEG/PNG/WEBP/HEIC/AVIF/… — is handled
+ * consistently. Earlier a raw `BitmapFactory` path returned null for some device
+ * formats (e.g. HEIC), which pushed perfectly good photos into "uncategorized".
+ *
  * For a colour-hunting app the useful colour is the **colourful subject**, not the
- * largest region: a blue hydrangea shot against dark foliage is mostly dark by
- * pixel count, so Palette's population-based `dominantSwatch` would return the
- * near-black background. Instead we pick the most prominent *chromatic* swatch
- * (enough saturation, not too dark/blown-out) and only fall back to the overall
- * dominant (grey/white/black) when the photo genuinely has no colour.
+ * largest region (a blue flower on dark foliage is mostly dark by pixel count),
+ * so we pick the most prominent *chromatic* swatch and only fall back to the
+ * overall dominant (grey/white/black) when the photo genuinely has no colour.
  *
  * All heavy work runs off the main thread; results are cached by uri. Every
- * failure path returns null instead of throwing, and a last-resort average keeps
- * decodable-but-awkward photos out of the "uncategorized" bucket.
+ * failure path returns null instead of throwing.
  */
 class PaletteExtractor(private val context: Context) {
 
@@ -32,7 +38,7 @@ class PaletteExtractor(private val context: Context) {
     suspend fun extractDominantColor(uri: Uri): Int? {
         cache.get(uri.toString())?.let { return it }
 
-        val bitmap = decodeDownsampled(uri) ?: return null
+        val bitmap = decode(uri, TARGET_MAX_DIM) ?: return null
         return try {
             val palette = withContext(Dispatchers.Default) {
                 Palette.from(bitmap).clearFilters().maximumColorCount(MAX_PALETTE_COLORS).generate()
@@ -40,17 +46,12 @@ class PaletteExtractor(private val context: Context) {
             val color = pickThemeColor(palette) ?: averageColor(bitmap)
             color?.also { cache.put(uri.toString(), it) }
         } catch (t: Throwable) {
-            // Palette can throw on odd inputs; still try a plain average before giving up.
             averageColor(bitmap)?.also { cache.put(uri.toString(), it) }
         } finally {
-            bitmap.recycle()
+            if (!bitmap.isRecycled) bitmap.recycle()
         }
     }
 
-    /**
-     * Prefer the most prominent chromatic swatch; only use an achromatic one when
-     * the whole image is essentially grey/white/black.
-     */
     private fun pickThemeColor(palette: Palette): Int? {
         val swatches = palette.swatches
         if (swatches.isEmpty()) return null
@@ -60,12 +61,10 @@ class PaletteExtractor(private val context: Context) {
             hsv.saturation >= SUBJECT_MIN_SATURATION &&
                 hsv.value in SUBJECT_MIN_VALUE..SUBJECT_MAX_VALUE
         }
-        val pick = colorful.maxByOrNull { it.population }
-            ?: swatches.maxByOrNull { it.population }
+        val pick = colorful.maxByOrNull { it.population } ?: swatches.maxByOrNull { it.population }
         return pick?.rgb
     }
 
-    /** Last-resort average colour over the (already small) bitmap. */
     private fun averageColor(bitmap: Bitmap): Int? {
         if (bitmap.isRecycled || bitmap.width == 0 || bitmap.height == 0) return null
         val step = 4
@@ -87,37 +86,20 @@ class PaletteExtractor(private val context: Context) {
         return (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
     }
 
-    private suspend fun decodeDownsampled(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
+    /** Decode via Coil to a software bitmap we exclusively own (safe to recycle). */
+    private suspend fun decode(uri: Uri, maxDim: Int): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it, null, bounds)
-            } ?: return@withContext null
-
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
-
-            val opts = BitmapFactory.Options().apply {
-                inSampleSize = computeSampleSize(bounds.outWidth, bounds.outHeight, TARGET_MAX_DIM)
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-            context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it, null, opts)
-            }
+            val request = ImageRequest.Builder(context)
+                .data(uri)
+                .size(maxDim)
+                .allowHardware(false) // Palette must read pixels
+                .memoryCachePolicy(CachePolicy.DISABLED) // own the bitmap, don't share cache
+                .build()
+            val result = context.imageLoader.execute(request)
+            (result as? SuccessResult)?.drawable?.toBitmap()
         } catch (t: Throwable) {
             null
         }
-    }
-
-    private fun computeSampleSize(width: Int, height: Int, targetMax: Int): Int {
-        var sample = 1
-        var w = width
-        var h = height
-        while (w / 2 >= targetMax && h / 2 >= targetMax) {
-            w /= 2
-            h /= 2
-            sample *= 2
-        }
-        return sample
     }
 
     private companion object {
@@ -125,7 +107,6 @@ class PaletteExtractor(private val context: Context) {
         const val TARGET_MAX_DIM = 160
         const val MAX_PALETTE_COLORS = 24
 
-        // What counts as a "colourful subject" swatch rather than background.
         const val SUBJECT_MIN_SATURATION = 0.18f
         const val SUBJECT_MIN_VALUE = 0.20f
         const val SUBJECT_MAX_VALUE = 0.96f

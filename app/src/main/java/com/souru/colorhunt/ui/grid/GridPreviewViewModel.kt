@@ -16,8 +16,8 @@ import kotlinx.coroutines.flow.onEach
 /** Editable, dummy Instagram-style profile header values. */
 data class ProfileHeader(
     val name: String = "colorhunt",
-    val followers: Int = 1280,
-    val following: Int = 348,
+    val followers: Int = 1,
+    val following: Int = 1,
 )
 
 data class GridPreviewUiState(

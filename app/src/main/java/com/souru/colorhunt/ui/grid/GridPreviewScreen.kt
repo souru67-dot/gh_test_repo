@@ -62,6 +62,9 @@ import com.souru.colorhunt.ui.theme.BrandGradients
 private const val COLUMNS = 3
 private const val MIN_SLOTS = 9
 
+// Instagram's current feed grid uses 4:5 portrait tiles (width : height).
+private const val CELL_ASPECT = 4f / 5f
+
 @Composable
 fun GridPreviewScreen(
     modifier: Modifier = Modifier,
@@ -196,9 +199,9 @@ private fun ReorderableFeed(
                     onDragCancel = { draggingIndex = null },
                 )
             },
-        contentPadding = PaddingValues(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = PaddingValues(0.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+        verticalArrangement = Arrangement.spacedBy(1.5.dp),
     ) {
         items(
             count = slots,
@@ -230,7 +233,7 @@ private fun ReorderableFeed(
 
 @Composable
 private fun FeedCell(photo: HuntPhoto, modifier: Modifier = Modifier) {
-    Box(modifier.aspectRatio(1f).background(MaterialTheme.colorScheme.surfaceVariant)) {
+    Box(modifier.aspectRatio(CELL_ASPECT).background(MaterialTheme.colorScheme.surfaceVariant)) {
         AsyncImage(
             model = photo.uri,
             contentDescription = null,
@@ -255,7 +258,7 @@ private fun FeedCell(photo: HuntPhoto, modifier: Modifier = Modifier) {
 private fun EmptyCell() {
     Box(
         Modifier
-            .aspectRatio(1f)
+            .aspectRatio(CELL_ASPECT)
             .background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center,
     ) {
