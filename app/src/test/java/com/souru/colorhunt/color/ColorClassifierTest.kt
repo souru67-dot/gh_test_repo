@@ -1,0 +1,56 @@
+package com.souru.colorhunt.color
+
+import com.souru.colorhunt.domain.color.ColorBucket
+import com.souru.colorhunt.domain.color.ColorClassifier
+import com.souru.colorhunt.domain.color.Hsv
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Verifies the pure colour-classification logic. Runs on the JVM without any
+ * Android dependency, so the core algorithm can be validated independently of
+ * the Android build (and later shared with an iOS/KMP target).
+ */
+class ColorClassifierTest {
+
+    private fun bucketOf(r: Int, g: Int, b: Int): ColorBucket =
+        ColorClassifier.classify(Hsv.fromRgb(r, g, b))
+
+    @Test fun pureRed() = assertEquals(ColorBucket.RED, bucketOf(255, 0, 0))
+
+    @Test fun orange() = assertEquals(ColorBucket.ORANGE, bucketOf(255, 140, 0))
+
+    @Test fun yellow() = assertEquals(ColorBucket.YELLOW, bucketOf(255, 235, 59))
+
+    @Test fun yellowGreen() = assertEquals(ColorBucket.YELLOW_GREEN, bucketOf(154, 205, 50))
+
+    @Test fun green() = assertEquals(ColorBucket.GREEN, bucketOf(67, 160, 71))
+
+    @Test fun cyan() = assertEquals(ColorBucket.CYAN, bucketOf(38, 198, 218))
+
+    @Test fun blue() = assertEquals(ColorBucket.BLUE, bucketOf(30, 136, 229))
+
+    @Test fun purple() = assertEquals(ColorBucket.PURPLE, bucketOf(142, 36, 170))
+
+    @Test fun magentaIsPink() = assertEquals(ColorBucket.PINK, bucketOf(236, 64, 122))
+
+    @Test fun lightSoftRedBecomesPink() = assertEquals(ColorBucket.PINK, bucketOf(255, 200, 200))
+
+    @Test fun white() = assertEquals(ColorBucket.WHITE, bucketOf(245, 245, 245))
+
+    @Test fun black() = assertEquals(ColorBucket.BLACK, bucketOf(18, 18, 18))
+
+    @Test fun gray() = assertEquals(ColorBucket.GRAY, bucketOf(158, 158, 158))
+
+    @Test fun veryDarkColorIsBlackNotHue() = assertEquals(ColorBucket.BLACK, bucketOf(10, 0, 0))
+
+    @Test fun hueOfPureRedIsZero() {
+        assertEquals(0f, Hsv.fromRgb(255, 0, 0).hue, 0.001f)
+    }
+
+    @Test fun colorIntRoundTrip() {
+        // 0xFF3F51B5 (indigo) should land in blue/purple neighbourhood, not achromatic.
+        val bucket = ColorClassifier.classify(0xFF3F51B5.toInt())
+        assertEquals(ColorBucket.BLUE, bucket)
+    }
+}

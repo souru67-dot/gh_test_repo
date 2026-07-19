@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Koyomi"
+rootProject.name = "ColorHunt"
 include(":app")

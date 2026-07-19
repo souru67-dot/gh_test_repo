@@ -1,81 +1,65 @@
 <resources>
-    <string name="app_name">Koyomi</string>
+    <string name="app_name">ColorHunt</string>
 
-    <!-- Month screen -->
-    <string name="month_title_pattern">MMMM yyyy</string>
-    <string name="sheet_date_pattern">EEE, MMM d</string>
-    <string name="back_to_today">Today</string>
-    <string name="no_events">No events</string>
-    <string name="all_day">All-day</string>
-    <string name="more_events">+%1$d</string>
-    <string name="add_event">Add event</string>
-    <string name="permission_banner">Calendar access is not granted. Events cannot be shown.</string>
-    <string name="open_settings">Open settings</string>
+    <!-- Navigation -->
+    <string name="tab_sort">Sort</string>
+    <string name="tab_collage">Collage</string>
 
-    <!-- Event detail -->
-    <string name="edit">Edit</string>
-    <string name="duplicate">Duplicate</string>
-    <string name="delete">Delete</string>
-    <string name="close">Close</string>
-    <string name="delete_confirm_title">Delete this event?</string>
-    <string name="delete_confirm_message">"%1$s" will be removed from your calendar. Recurring events are deleted with all occurrences.</string>
-    <string name="cancel">Cancel</string>
-    <string name="untitled">(No title)</string>
+    <!-- Sort / import screen -->
+    <string name="sort_title">Color Sort</string>
+    <string name="sort_pick">Add photos</string>
+    <string name="sort_empty_title">No photos yet</string>
+    <string name="sort_empty_body">Pick photos and ColorHunt sorts them by their dominant color.</string>
+    <string name="sort_filter_all">All</string>
+    <string name="sort_selected_count">%1$d selected</string>
+    <string name="sort_make_collage">Make collage</string>
+    <string name="sort_clear">Clear all</string>
+    <string name="sort_analyzing">Analyzing…</string>
+    <string name="sort_no_color">Color unavailable</string>
+    <string name="sort_no_color_group">Uncategorized</string>
 
-    <!-- Editor -->
-    <string name="new_event">New event</string>
-    <string name="edit_event">Edit event</string>
-    <string name="save">Save</string>
-    <string name="title_hint">Title</string>
-    <string name="starts">Starts</string>
-    <string name="ends">Ends</string>
-    <string name="calendar">Calendar</string>
-    <string name="location">Location</string>
-    <string name="notification">Notification</string>
-    <string name="repeat">Repeat</string>
-    <string name="memo">Memo</string>
-    <string name="ok">OK</string>
-    <string name="select_time">Select time</string>
-    <string name="no_writable_calendar">No writable calendar was found. Add a calendar account to the device first.</string>
+    <!-- Collage screen -->
+    <string name="collage_title">Collage</string>
+    <string name="collage_empty_title">Nothing selected</string>
+    <string name="collage_empty_body">Select photos on the Sort tab, then tap \"Make collage\".</string>
+    <string name="collage_cells">Cells</string>
+    <string name="collage_size">SNS size</string>
+    <string name="collage_spacing">Spacing</string>
+    <string name="collage_corner">Corner radius</string>
+    <string name="collage_border">Border width</string>
+    <string name="collage_border_color">Border color</string>
+    <string name="collage_background">Background</string>
+    <string name="collage_bg_follow_theme">Use theme color</string>
+    <string name="collage_hue_sort">Sort by hue</string>
+    <string name="collage_save">Save</string>
+    <string name="collage_share">Share</string>
+    <string name="collage_saved">Saved to gallery</string>
+    <string name="collage_save_failed">Could not save</string>
+    <string name="collage_share_failed">Could not share</string>
+    <string name="collage_rendering">Rendering…</string>
+    <string name="collage_count_custom">Custom</string>
+    <string name="collage_pro_locked">Pro</string>
+    <string name="collage_save_permission">Storage permission is needed to save on this device.</string>
 
-    <string name="reminder_none">None</string>
-    <string name="reminder_at_time">At time of event</string>
-    <string name="reminder_minutes">%1$d minutes before</string>
-    <string name="reminder_hours">%1$d hours before</string>
-    <string name="reminder_days">%1$d days before</string>
+    <string name="share_chooser_title">Share collage</string>
 
-    <string name="repeat_none">Does not repeat</string>
-    <string name="repeat_daily">Every day</string>
-    <string name="repeat_weekly">Every week</string>
-    <string name="repeat_monthly">Every month</string>
-    <string name="repeat_yearly">Every year</string>
-    <string name="repeat_custom">Custom</string>
+    <!-- Color bucket names -->
+    <string name="bucket_red">Red</string>
+    <string name="bucket_orange">Orange</string>
+    <string name="bucket_yellow">Yellow</string>
+    <string name="bucket_yellow_green">Yellow-green</string>
+    <string name="bucket_green">Green</string>
+    <string name="bucket_cyan">Cyan</string>
+    <string name="bucket_blue">Blue</string>
+    <string name="bucket_purple">Purple</string>
+    <string name="bucket_pink">Pink</string>
+    <string name="bucket_white">White</string>
+    <string name="bucket_black">Black</string>
+    <string name="bucket_gray">Gray</string>
 
-    <!-- Views & settings -->
-    <string name="switch_view">Switch view</string>
-    <string name="view_week">Week</string>
-    <string name="view_day">Day</string>
-    <string name="settings">Settings</string>
-    <string name="settings_week_start">Week starts on</string>
-    <string name="week_start_sunday">Sunday</string>
-    <string name="week_start_monday">Monday</string>
-    <string name="settings_month_scroll">Month view scrolling</string>
-    <string name="settings_vertical_scroll">Continuous vertical scroll</string>
-    <string name="settings_theme">Theme</string>
-    <string name="theme_system">Follow system</string>
-    <string name="theme_light">Light</string>
-    <string name="theme_dark">Dark</string>
-    <string name="settings_calendars">Calendars to show</string>
-
-    <!-- Widgets -->
-    <string name="widget_month_label">Month calendar</string>
-    <string name="widget_month_description">This month at a glance, with dots on busy days.</string>
-    <string name="widget_today_label">Today\'s events</string>
-    <string name="widget_today_description">Today\'s and tomorrow\'s events with times.</string>
-
-    <!-- Onboarding -->
-    <string name="onboarding_title">Your calendars, at a glance</string>
-    <string name="onboarding_body">Koyomi reads and writes the calendars already on this device — Google Calendar, Exchange and others — so everything stays in sync. To show and create events, allow access to your calendar.</string>
-    <string name="onboarding_grant">Allow access</string>
-    <string name="onboarding_skip">Not now</string>
+    <!-- SNS size labels -->
+    <string name="size_square">1:1</string>
+    <string name="size_portrait">4:5</string>
+    <string name="size_story">9:16</string>
+    <string name="size_landscape">16:9</string>
 </resources>

@@ -1,63 +1,86 @@
-# Koyomi(こよみ)
+# ColorHunt
 
-FirstSeed Calendar にインスパイアされた、月表示中心・片手操作のミニマルな Android カレンダーアプリ。
+SNSで流行中の「カラーハンティング」（テーマ色を決めて街で撮り、まとめて投稿する遊び）に
+特化した Android ネイティブアプリ。写真をドミナントカラーで自動仕分けし、コラージュにして
+SNS 用に書き出し／共有します。
+
+> 後の英語圏・アジア圏展開と iOS 版を見据え、文字列は英語をデフォルト（`values/`）＋日本語
+> （`values-ja/`）で用意し、色分類などのコアロジックは Android 非依存の純 Kotlin に切り出して
+> あります（将来 KMP / iOS へ移植しやすくするため）。
 
 ## 技術スタック
 
-- Kotlin / Jetpack Compose / Material 3(Dynamic Color 対応)
-- MVVM + 単方向データフロー(ViewModel + StateFlow)
-- データは Android **CalendarProvider** に直結(Google カレンダー / Exchange と同期)。独自 DB は持たず、設定のみ DataStore
-- minSdk 26 / targetSdk 35
+- Kotlin / Jetpack Compose / Material 3（Dynamic Color 対応）
+- MVVM + 単方向データフロー（ViewModel + StateFlow）
+- minSdk 26 / targetSdk 35 / Gradle Kotlin DSL
+- 写真取り込み: **Photo Picker**（`PickMultipleVisualMedia`）— ストレージ権限不要
+- ドミナントカラー抽出: `androidx.palette:palette-ktx`（バックグラウンド＋LRUキャッシュ）
+- Exif（回転・GPS）: `androidx.exifinterface`
+- 画像読み込み: Coil
+- 保存: `MediaStore` / 共有: `FileProvider` + `ACTION_SEND`
 
-## モジュール構成
+## フェーズ進捗
+
+| Phase | 内容 | 状態 |
+|------|------|------|
+| 1 | 取り込み・色仕分け・コラージュ・書き出し | 実装済み（本ブランチ） |
+| 2 | Instagram グリッドプレビュー | 未着手 |
+| 3 | カラーマップ（osmdroid） | 未着手 |
+| 4 | お題ルーレット / Play Billing | seam のみ（`FeatureFlags.isPro`） |
+
+## モジュール構成（Phase 1）
 
 ```
-app/src/main/java/com/souru/koyomi/
-├── KoyomiApplication.kt      # AppContainer(手動DI)
+app/src/main/java/com/souru/colorhunt/
+├── ColorHuntApplication.kt / AppContainer.kt   # 手動DIコンテナ
 ├── MainActivity.kt
+├── domain/                                      # Android非依存のコア
+│   ├── color/  Hsv / ColorBucket / ColorClassifier   # HSV→バケツ分類（定数化）
+│   ├── config/ SnsSize / CollagePresets / FeatureFlags
+│   └── model/  HuntPhoto
 ├── data/
-│   ├── model/                # CalendarInfo / EventInstance / EventDetails / EventDraft
-│   ├── CalendarRepository.kt # CalendarProvider の読み書き + ContentObserver Flow
-│   ├── SettingsRepository.kt # DataStore(週の開始曜日など)
-│   └── holiday/JapaneseHolidays.kt # 日本の祝日をアルゴリズム計算(1980–2099)
-├── ui/
-│   ├── theme/                # M3 テーマ + 曜日カラー(CompositionLocal)
-│   ├── AppNavHost.kt         # onboarding / month / editor
-│   ├── month/                # 月表示(HorizontalPager + 6週固定グリッド + 常設ボトムシート)
-│   ├── event/                # 予定の作成・編集
-│   └── onboarding/           # 権限の説明とリクエスト
-└── util/Dates.kt             # 月グリッド計算・ページ⇔月の変換
+│   ├── PaletteExtractor.kt   # Palette抽出（コルーチン＋キャッシュ）
+│   ├── PhotoRepository.kt    # 選択写真の共有ストア（並列解析・選択保持）
+│   ├── BitmapLoader.kt       # Exif回転込みのダウンサンプリング読み込み
+│   └── export/  CollageRenderer / ImageExporter / ShareHelper
+└── ui/
+    ├── theme/               # M3テーマ
+    ├── AppNavHost.kt        # 下部ナビ（Sort / Collage、以降のPhaseでタブ追加）
+    ├── imports/  SortScreen / SortViewModel     # 取り込み・色仕分け
+    └── collage/  CollageScreen / CollageViewModel
 ```
 
-## 機能
+## 色分類の仕様
 
-**月表示(メイン)**
-- 横スワイプページング(設定で縦の連続スクロールに切替可)、6週固定グリッド、予定チップ+「+N」表示、今日ハイライト、日本の祝日・土日の色分け
-- 常設ボトムシート:選択日の予定リスト → 詳細 → 編集 / 複製 / 削除(カレンダー本体を隠さない)
-- 日付セル長押しで新規予定のクイック作成、予定チップ長押しでドラッグ&ドロップ移動
+各写真のドミナントカラーを HSV に変換し、以下のバケツへ自動仕分けします。
+先に彩度・明度で無彩色（白／黒／グレー）を分離し、残りを色相で分類します。
 
-**予定の作成・編集**
-- タイトル・終日・開始/終了(M3 DatePicker / TimePicker)・カレンダー選択・場所・通知・繰り返し(RRULE)・メモ。タイトル+日時だけで即保存可
+`赤 / 橙 / 黄 / 黄緑 / 緑 / 水色 / 青 / 紫 / ピンク` ＋ `白 / 黒 / グレー`
 
-**週 / 日表示**
-- シンプルなタイムライン形式(重なりはレーン分割)。終日行・祝日色対応
+バケツ名・境界値はすべて `domain/color/ColorClassifier.kt`（`ColorClassifierConfig`）と
+`ColorBucket.kt` に定数化してあり、後から調整できます。
 
-**設定**
-- 週の開始曜日(日/月)、月表示のスクロール方向、表示するカレンダーの選択、テーマ(システム/ライト/ダーク)
+## Phase 1 でできること
 
-**ウィジェット(Glance)**
-- 月カレンダー(4x4):当月グリッド+予定のある日にドット、今日ハイライト
-- 今日の予定リスト(4x2):今日〜明日の予定を時刻付き表示、予定なしの日は「予定はありません」
-- どちらもタップでアプリの該当日を開く。日付変更(深夜0時)と予定変更(WorkManagerのContentUriTrigger)で自動更新、システムテーマ/Dynamic Color追従
-
-**その他**
-- 権限オンボーディング(拒否時も空のカレンダー+設定への導線)
-- 日本語 / 英語ロケール、ライト / ダークテーマ、Dynamic Color
+- **仕分け画面**: Photo Picker で複数選択 → 各写真のドミナントカラーを抽出 → 色バケツごとに
+  グリッド表示。上部の色チップでテーマ色フィルタ、各サムネイルに抽出色ドット。
+  取得できない写真は「未分類」に分け、クラッシュしない。
+- **コラージュ画面**: 枚数プリセット（3/4/6/9/カスタム）、SNSサイズ（1:1 / 4:5 / 9:16 / 16:9）、
+  セル間余白・角丸・枠線・背景色（テーマ色連動可）、色相グラデーション自動整列。
+  「保存」（MediaStore）と「共有」（FileProvider + 共有シート）。書き出し解像度はサイズプリセット準拠。
+- **Phase 4 seam**: `FeatureFlags.isPro` で透かし・SNSサイズ・枚数上限のゲート分岐を用意。
 
 ## ビルド
 
-```
-./gradlew assembleDebug
+```bash
+./gradlew assembleDebug        # デバッグAPK
+./gradlew test                 # 単体テスト（色分類ロジック）
 ```
 
-JDK 17 と Android SDK(compileSdk 35)が必要です。CI(GitHub Actions)でユニットテストと debug APK のビルドを行います。
+Android SDK（platform 35 / build-tools）と Google Maven リポジトリへのアクセスが必要です。
+
+> **注記（本コミットの検証状況）**: 本ブランチが生成された CI 実行環境は、組織の egress ポリシーにより
+> `dl.google.com`（Android SDK と Google Maven）への接続がブロックされていたため、`assembleDebug`
+> による APK ビルドはこの環境では実行できていません。一方で、Android 非依存の色分類ロジックは
+> Maven Central 経由の独立した JVM プロジェクトで **単体テスト16件すべてパス**することを確認済みです。
+> 通常の開発環境（Android SDK と Google Maven に到達可能）ではそのままビルドできます。

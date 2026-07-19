@@ -1,80 +1,65 @@
 <resources>
-    <string name="app_name">こよみ</string>
+    <string name="app_name">ColorHunt</string>
 
-    <!-- Month screen -->
-    <string name="month_title_pattern">yyyy年M月</string>
-    <string name="sheet_date_pattern">M月d日(EEE)</string>
-    <string name="back_to_today">今日</string>
-    <string name="no_events">予定はありません</string>
-    <string name="all_day">終日</string>
-    <string name="add_event">予定を追加</string>
-    <string name="permission_banner">カレンダーへのアクセスが許可されていないため、予定を表示できません。</string>
-    <string name="open_settings">設定を開く</string>
+    <!-- Navigation -->
+    <string name="tab_sort">仕分け</string>
+    <string name="tab_collage">コラージュ</string>
 
-    <!-- Event detail -->
-    <string name="edit">編集</string>
-    <string name="duplicate">複製</string>
-    <string name="delete">削除</string>
-    <string name="close">閉じる</string>
-    <string name="delete_confirm_title">この予定を削除しますか?</string>
-    <string name="delete_confirm_message">「%1$s」をカレンダーから削除します。繰り返しの予定はすべての回がまとめて削除されます。</string>
-    <string name="cancel">キャンセル</string>
-    <string name="untitled">(タイトルなし)</string>
+    <!-- Sort / import screen -->
+    <string name="sort_title">色で仕分け</string>
+    <string name="sort_pick">写真を追加</string>
+    <string name="sort_empty_title">まだ写真がありません</string>
+    <string name="sort_empty_body">写真を選ぶと、ドミナントカラーで自動的に仕分けします。</string>
+    <string name="sort_filter_all">すべて</string>
+    <string name="sort_selected_count">%1$d枚を選択中</string>
+    <string name="sort_make_collage">コラージュを作成</string>
+    <string name="sort_clear">すべてクリア</string>
+    <string name="sort_analyzing">解析中…</string>
+    <string name="sort_no_color">色を取得できません</string>
+    <string name="sort_no_color_group">未分類</string>
 
-    <!-- Editor -->
-    <string name="new_event">新規予定</string>
-    <string name="edit_event">予定を編集</string>
-    <string name="save">保存</string>
-    <string name="title_hint">タイトル</string>
-    <string name="starts">開始</string>
-    <string name="ends">終了</string>
-    <string name="calendar">カレンダー</string>
-    <string name="location">場所</string>
-    <string name="notification">通知</string>
-    <string name="repeat">繰り返し</string>
-    <string name="memo">メモ</string>
-    <string name="ok">OK</string>
-    <string name="select_time">時刻を選択</string>
-    <string name="no_writable_calendar">書き込み可能なカレンダーが見つかりません。端末にカレンダーアカウントを追加してください。</string>
+    <!-- Collage screen -->
+    <string name="collage_title">コラージュ</string>
+    <string name="collage_empty_title">写真が未選択です</string>
+    <string name="collage_empty_body">「仕分け」タブで写真を選び、「コラージュを作成」を押してください。</string>
+    <string name="collage_cells">枚数</string>
+    <string name="collage_size">SNSサイズ</string>
+    <string name="collage_spacing">余白</string>
+    <string name="collage_corner">角丸</string>
+    <string name="collage_border">枠線の太さ</string>
+    <string name="collage_border_color">枠線の色</string>
+    <string name="collage_background">背景色</string>
+    <string name="collage_bg_follow_theme">テーマ色を使う</string>
+    <string name="collage_hue_sort">色相で自動整列</string>
+    <string name="collage_save">保存</string>
+    <string name="collage_share">共有</string>
+    <string name="collage_saved">ギャラリーに保存しました</string>
+    <string name="collage_save_failed">保存できませんでした</string>
+    <string name="collage_share_failed">共有できませんでした</string>
+    <string name="collage_rendering">生成中…</string>
+    <string name="collage_count_custom">カスタム</string>
+    <string name="collage_pro_locked">Pro</string>
+    <string name="collage_save_permission">この端末で保存するにはストレージ権限が必要です。</string>
 
-    <string name="reminder_none">なし</string>
-    <string name="reminder_at_time">予定の時刻</string>
-    <string name="reminder_minutes">%1$d分前</string>
-    <string name="reminder_hours">%1$d時間前</string>
-    <string name="reminder_days">%1$d日前</string>
+    <string name="share_chooser_title">コラージュを共有</string>
 
-    <string name="repeat_none">繰り返さない</string>
-    <string name="repeat_daily">毎日</string>
-    <string name="repeat_weekly">毎週</string>
-    <string name="repeat_monthly">毎月</string>
-    <string name="repeat_yearly">毎年</string>
-    <string name="repeat_custom">カスタム</string>
+    <!-- Color bucket names -->
+    <string name="bucket_red">赤</string>
+    <string name="bucket_orange">橙</string>
+    <string name="bucket_yellow">黄</string>
+    <string name="bucket_yellow_green">黄緑</string>
+    <string name="bucket_green">緑</string>
+    <string name="bucket_cyan">水色</string>
+    <string name="bucket_blue">青</string>
+    <string name="bucket_purple">紫</string>
+    <string name="bucket_pink">ピンク</string>
+    <string name="bucket_white">白</string>
+    <string name="bucket_black">黒</string>
+    <string name="bucket_gray">グレー</string>
 
-    <!-- Views & settings -->
-    <string name="switch_view">表示切替</string>
-    <string name="view_week">週表示</string>
-    <string name="view_day">日表示</string>
-    <string name="settings">設定</string>
-    <string name="settings_week_start">週の開始曜日</string>
-    <string name="week_start_sunday">日曜日</string>
-    <string name="week_start_monday">月曜日</string>
-    <string name="settings_month_scroll">月表示のスクロール</string>
-    <string name="settings_vertical_scroll">縦方向に連続スクロール</string>
-    <string name="settings_theme">テーマ</string>
-    <string name="theme_system">システムに合わせる</string>
-    <string name="theme_light">ライト</string>
-    <string name="theme_dark">ダーク</string>
-    <string name="settings_calendars">表示するカレンダー</string>
-
-    <!-- Widgets -->
-    <string name="widget_month_label">月カレンダー</string>
-    <string name="widget_month_description">今月をひと目で。予定のある日にドットを表示します。</string>
-    <string name="widget_today_label">今日の予定</string>
-    <string name="widget_today_description">今日と明日の予定を時刻付きで一覧表示します。</string>
-
-    <!-- Onboarding -->
-    <string name="onboarding_title">端末のカレンダーを、そのまま</string>
-    <string name="onboarding_body">こよみは、GoogleカレンダーやExchangeなど端末に登録済みのカレンダーをそのまま読み書きします。予定の表示と作成のために、カレンダーへのアクセスを許可してください。</string>
-    <string name="onboarding_grant">アクセスを許可</string>
-    <string name="onboarding_skip">あとで</string>
+    <!-- SNS size labels -->
+    <string name="size_square">1:1</string>
+    <string name="size_portrait">4:5</string>
+    <string name="size_story">9:16</string>
+    <string name="size_landscape">16:9</string>
 </resources>

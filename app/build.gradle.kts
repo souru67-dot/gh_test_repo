@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.souru.koyomi"
+    namespace = "com.souru.colorhunt"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.souru.koyomi"
+        applicationId = "com.souru.colorhunt"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -46,14 +46,22 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
-    implementation(libs.androidx.work.runtime)
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Photo color analysis (Phase 1) & Exif GPS (used in Phase 3)
+    implementation(libs.androidx.palette.ktx)
+    implementation(libs.androidx.exifinterface)
+
+    // Async image loading in Compose grids
+    implementation(libs.coil.compose)
+
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
+
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
