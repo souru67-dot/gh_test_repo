@@ -89,22 +89,27 @@ object CollageRenderer {
             }
         }
 
-        layout.palette?.let { drawPalette(canvas, paletteColors, it, density) }
+        layout.palette?.let {
+            drawPalette(canvas, paletteColors, it, density, translucent = style.palette == PalettePlacement.OVERLAY)
+        }
         if (addWatermark) drawWatermark(canvas, widthPx, heightPx, density)
         return output
     }
 
     /**
      * The HEX palette column (組写風). One block per photo, its hex code centred
-     * in a refined light sans-serif with generous letter-spacing, auto-sized to
-     * never overflow. Works as a centre column or a side rail — the caller's
-     * rectangle decides.
+     * in a refined serif with generous letter-spacing, auto-sized to never
+     * overflow. Works as a centre column or a side rail — the caller's rectangle
+     * decides. With [translucent] the blocks are alpha-blended so the column
+     * floats over the photos and melts into them (OVERLAY placement); a soft
+     * text shadow keeps the codes legible on busy backgrounds.
      */
     private fun drawPalette(
         canvas: Canvas,
         colors: List<Int>,
         rect: CollageGeometry.Rect,
         density: Float,
+        translucent: Boolean = false,
     ) {
         val n = colors.size
         if (n == 0) return
@@ -112,33 +117,43 @@ object CollageRenderer {
         val right = rect.right
         val railWidth = rect.width
         val blockH = rect.height / n
+        val fillAlpha = if (translucent) 150 else 255
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         // An elegant serif (mincho-like) face for the hex codes — feels editorial.
         val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
-            letterSpacing = 0.12f
+            letterSpacing = 0.06f
+            if (translucent) {
+                setShadowLayer(2.5f * density, 0f, 1f * density, Color.argb(150, 0, 0, 0))
+            }
         }
         val sep = Paint().apply {
-            color = Color.argb(30, 0, 0, 0)
+            color = Color.argb(if (translucent) 18 else 30, 0, 0, 0)
             strokeWidth = (1f * density).coerceAtLeast(1f)
         }
 
         val cx = left + railWidth / 2f
-        val maxTextWidth = railWidth * 0.82f
+        // Reference look (組写): a small, quiet serif that sits inside the block
+        // rather than filling it — sized to the block but never wider than ~70%.
+        val maxTextWidth = railWidth * 0.70f
         colors.forEachIndexed { i, color ->
             val top = rect.top + i * blockH
-            fill.color = color or (0xFF shl 24)
+            fill.color = Color.argb(fillAlpha, Color.red(color), Color.green(color), Color.blue(color))
             canvas.drawRect(left, top, right, top + blockH, fill)
 
             val hex = "#%06X".format(0xFFFFFF and color)
-            text.textSize = (blockH * 0.20f).coerceAtLeast(6f * density)
+            text.textSize = (blockH * 0.14f).coerceAtLeast(6f * density)
             val measured = text.measureText(hex)
             if (measured > maxTextWidth) text.textSize *= maxTextWidth / measured
 
             val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
-            text.color = if (luminance > 135) Color.argb(235, 20, 20, 26) else Color.argb(235, 245, 245, 250)
+            text.color = if (!translucent && luminance > 135) {
+                Color.argb(205, 25, 25, 32)
+            } else {
+                Color.argb(if (translucent) 235 else 205, 240, 240, 244)
+            }
             val cy = top + blockH / 2f - (text.ascent() + text.descent()) / 2f
             canvas.drawText(hex, cx, cy, text)
 

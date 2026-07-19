@@ -56,8 +56,10 @@ enum class CollageLayout { GRID, VERTICAL, TWO_COLUMN }
  * - [CENTER] a slim column down the middle, splitting the photos left/right (組写風).
  * - [SIDE] a rail down the right edge.
  * - [LEFT] a rail down the left edge.
+ * - [OVERLAY] a translucent centre column floating over the photos — the photos
+ *   keep their full width and the palette melts into them.
  */
-enum class PalettePlacement { NONE, CENTER, SIDE, LEFT }
+enum class PalettePlacement { NONE, CENTER, SIDE, LEFT, OVERLAY }
 
 /**
  * Adjustable collage styling. Pure data so it can be snapshotted, previewed and

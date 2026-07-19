@@ -86,6 +86,7 @@
     <string name="collage_palette_center">中央</string>
     <string name="collage_palette_side">右</string>
     <string name="collage_palette_left">左</string>
+    <string name="collage_palette_overlay">重ねる</string>
     <string name="collage_hex_overlay">HEXチップを写真に重ねる</string>
     <string name="collage_empty_title">写真が未選択です</string>
     <string name="collage_empty_body">「ハント」タブで写真を選び、「コラージュを作成」を押してください。</string>
@@ -109,6 +110,11 @@
     <string name="collage_save_permission">この端末で保存するにはストレージ権限が必要です。</string>
     <string name="collage_upgrade">Proにアップグレード</string>
     <string name="collage_templates">テンプレート</string>
+    <string name="collage_template_white">ホワイト</string>
+    <string name="collage_template_film">フィルム</string>
+    <string name="collage_template_kumisha">組写</string>
+    <string name="collage_template_magazine">マガジン</string>
+    <string name="collage_template_seamless">シームレス</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

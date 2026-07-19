@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -73,6 +74,7 @@ import androidx.compose.ui.unit.em
 import coil.compose.AsyncImage
 import com.souru.colorhunt.domain.config.CollageGeometry
 import com.souru.colorhunt.domain.config.CollageLayout
+import com.souru.colorhunt.domain.config.CollageTemplates
 import com.souru.colorhunt.domain.config.PalettePlacement
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -247,6 +249,34 @@ private fun CollageContent(
             Spacer(Modifier.size(12.dp))
         }
 
+        // One-tap magazine presets (trend-curated). Applying one just rewrites the
+        // style + size; photo order and crop focals stay untouched.
+        SectionLabel(stringResource(R.string.collage_templates))
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CollageTemplates.all.forEach { tpl ->
+                val locked = tpl.proOnly && !state.isPro
+                FilterChip(
+                    selected = false,
+                    onClick = {
+                        if (locked) {
+                            onUpgrade()
+                        } else {
+                            tpl.size?.let(onSizeSelected)
+                            onStyleChange(tpl.apply)
+                        }
+                    },
+                    leadingIcon = if (locked) {
+                        { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    label = { Text(templateLabel(tpl.id)) },
+                )
+            }
+        }
+        Spacer(Modifier.size(12.dp))
+
         // Card 1 — composition: cell count, SNS size, layout.
         ControlCard {
             SectionLabel(stringResource(R.string.collage_cells))
@@ -305,10 +335,14 @@ private fun CollageContent(
                     ProPill(onClick = onUpgrade)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 val placements = listOf(
                     PalettePlacement.NONE to R.string.collage_palette_none,
                     PalettePlacement.CENTER to R.string.collage_palette_center,
+                    PalettePlacement.OVERLAY to R.string.collage_palette_overlay,
                     PalettePlacement.LEFT to R.string.collage_palette_left,
                     PalettePlacement.SIDE to R.string.collage_palette_side,
                 )
@@ -609,6 +643,17 @@ private fun SegItem(text: String, selected: Boolean, modifier: Modifier = Modifi
         )
     }
 }
+
+@Composable
+private fun templateLabel(id: String): String = stringResource(
+    when (id) {
+        "white" -> R.string.collage_template_white
+        "film" -> R.string.collage_template_film
+        "kumisha" -> R.string.collage_template_kumisha
+        "magazine" -> R.string.collage_template_magazine
+        else -> R.string.collage_template_seamless
+    },
+)
 
 /** A rounded surface that groups related controls — the Hunt tab's card look. */
 @Composable

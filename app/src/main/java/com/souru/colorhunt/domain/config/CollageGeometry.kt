@@ -53,11 +53,14 @@ object CollageGeometry {
         val spacing = spacingFrac * width
         val hasPalette = placement != PalettePlacement.NONE
         val railW = if (hasPalette) width * PALETTE_RATIO else 0f
+        // OVERLAY floats above the photos, so it reserves no horizontal space.
+        val overlay = placement == PalettePlacement.OVERLAY
+        val reserved = if (overlay) 0f else railW
         // The centre column only makes sense with >= 2 columns; otherwise fall back to a side rail.
         val center = placement == PalettePlacement.CENTER && columns >= 2
         val leftRail = placement == PalettePlacement.LEFT
 
-        val cellW = ((width - railW - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
+        val cellW = ((width - reserved - spacing * (columns + 1)) / columns).coerceAtLeast(1f)
         val cellH = ((height - spacing * (rows + 1)) / rows).coerceAtLeast(1f)
 
         val leftCols = if (center) columns / 2 else columns
@@ -75,6 +78,7 @@ object CollageGeometry {
 
         val palette: Rect? = when {
             !hasPalette -> null
+            overlay -> Rect((width - railW) / 2f, 0f, (width + railW) / 2f, height)
             center -> {
                 // Sit in the gap between the left and right groups.
                 val leftEnd = spacing + (leftCols - 1) * (cellW + spacing) + cellW

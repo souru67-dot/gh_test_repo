@@ -86,6 +86,7 @@
     <string name="collage_palette_center">Center</string>
     <string name="collage_palette_side">Right</string>
     <string name="collage_palette_left">Left</string>
+    <string name="collage_palette_overlay">Overlay</string>
     <string name="collage_hex_overlay">HEX chips on photos</string>
     <string name="collage_empty_title">Nothing selected</string>
     <string name="collage_empty_body">Pick photos on the Hunt tab, then tap \"Make collage\".</string>
@@ -109,6 +110,11 @@
     <string name="collage_save_permission">Storage permission is needed to save on this device.</string>
     <string name="collage_upgrade">Upgrade to Pro</string>
     <string name="collage_templates">Templates</string>
+    <string name="collage_template_white">White</string>
+    <string name="collage_template_film">Film</string>
+    <string name="collage_template_kumisha">Duo</string>
+    <string name="collage_template_magazine">Magazine</string>
+    <string name="collage_template_seamless">Seamless</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>
