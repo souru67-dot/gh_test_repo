@@ -6,7 +6,7 @@
     <string name="tab_collage">コラージュ</string>
     <string name="tab_grid">グリッド</string>
     <string name="tab_map">マップ</string>
-    <string name="tab_roulette">お題</string>
+    <string name="tab_roulette">今日の色</string>
 
     <!-- Roulette / today's color (Phase 4) -->
     <string name="roulette_title">今日の色</string>
@@ -40,7 +40,8 @@
     <string name="grid_edit_profile">プロフィールを編集</string>
     <string name="grid_name_label">名前</string>
     <string name="grid_hint">写真を長押ししてドラッグすると並べ替えできます。</string>
-    <string name="grid_empty">「仕分け」タブで写真を選ぶと、ここにフィードが組めます。</string>
+    <string name="grid_empty">写真を選んでフィードのレイアウトを組みましょう。</string>
+    <string name="grid_add">写真を追加</string>
 
     <!-- Sort / import screen -->
     <string name="sort_title">色で仕分け</string>
@@ -98,6 +99,7 @@
     <string name="paywall_b_cells">コラージュ枚数が無制限</string>
     <string name="paywall_b_map">散歩ログを高解像度で書き出し</string>
     <string name="paywall_purchase">購入する</string>
+    <string name="paywall_debug_unlock">デバッグ: Proを有効化</string>
 
     <string name="share_chooser_title">コラージュを共有</string>
 

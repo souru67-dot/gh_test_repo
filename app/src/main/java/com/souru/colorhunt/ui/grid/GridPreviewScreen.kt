@@ -1,5 +1,9 @@
 package com.souru.colorhunt.ui.grid
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,8 +29,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,7 +79,25 @@ fun GridPreviewScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
 
-    Scaffold(modifier = modifier, containerColor = MaterialTheme.colorScheme.background) { padding ->
+    val picker = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { uris ->
+        if (uris.isNotEmpty()) viewModel.addUris(uris)
+    }
+    val launchPicker = { picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }
+
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            if (!state.isEmpty) {
+                ExtendedFloatingActionButton(
+                    onClick = launchPicker,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.grid_add)) },
+                )
+            }
+        },
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             ProfileBar(
                 profile = state.profile,
@@ -90,6 +115,8 @@ fun GridPreviewScreen(
             ReorderableFeed(
                 feed = state.feed,
                 onMove = viewModel::move,
+                onRemove = viewModel::remove,
+                onPick = launchPicker,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -157,10 +184,12 @@ private fun Stat(value: String, label: String) {
 private fun ReorderableFeed(
     feed: List<HuntPhoto>,
     onMove: (Int, Int) -> Unit,
+    onRemove: (String) -> Unit,
+    onPick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (feed.isEmpty()) {
-        GridEmptyState(modifier)
+        GridEmptyState(onPick, modifier)
         return
     }
 
@@ -215,6 +244,7 @@ private fun ReorderableFeed(
             val isDragging = draggingIndex == i
             FeedCell(
                 photo = feed[i],
+                onRemove = { onRemove(feed[i].id) },
                 modifier = Modifier.graphicsLayer {
                     if (isDragging) {
                         val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == i }
@@ -233,7 +263,7 @@ private fun ReorderableFeed(
 }
 
 @Composable
-private fun GridEmptyState(modifier: Modifier = Modifier) {
+private fun GridEmptyState(onPick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -251,11 +281,17 @@ private fun GridEmptyState(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(16.dp))
+        FilledTonalButton(onClick = onPick) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.grid_add))
+        }
     }
 }
 
 @Composable
-private fun FeedCell(photo: HuntPhoto, modifier: Modifier = Modifier) {
+private fun FeedCell(photo: HuntPhoto, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.aspectRatio(CELL_ASPECT).background(MaterialTheme.colorScheme.surfaceVariant)) {
         AsyncImage(
             model = photo.uri,
@@ -273,6 +309,19 @@ private fun FeedCell(photo: HuntPhoto, modifier: Modifier = Modifier) {
                     .background(Color(photo.dominantColor))
                     .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             )
+        }
+        // Remove badge.
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(onClick = onRemove),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
         }
     }
 }

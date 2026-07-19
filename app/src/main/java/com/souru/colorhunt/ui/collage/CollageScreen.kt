@@ -60,9 +60,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.souru.colorhunt.BuildConfig
 import com.souru.colorhunt.ColorHuntApplication
 import com.souru.colorhunt.R
 import com.souru.colorhunt.data.export.ShareHelper
+import com.souru.colorhunt.domain.pro.ProState
 import com.souru.colorhunt.domain.config.CellCountPreset
 import com.souru.colorhunt.domain.config.CollageStyle
 import com.souru.colorhunt.domain.config.SnsSize
@@ -155,6 +157,12 @@ private fun PaywallDialog(onDismiss: () -> Unit, onPurchase: () -> Unit) {
                 Text("・" + stringResource(R.string.paywall_b_sizes), style = MaterialTheme.typography.bodySmall)
                 Text("・" + stringResource(R.string.paywall_b_cells), style = MaterialTheme.typography.bodySmall)
                 Text("・" + stringResource(R.string.paywall_b_map), style = MaterialTheme.typography.bodySmall)
+                if (BuildConfig.DEBUG) {
+                    Spacer(Modifier.size(12.dp))
+                    TextButton(onClick = { ProState.update(true); onDismiss() }) {
+                        Text(stringResource(R.string.paywall_debug_unlock))
+                    }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onPurchase) { Text(stringResource(R.string.paywall_purchase)) } },

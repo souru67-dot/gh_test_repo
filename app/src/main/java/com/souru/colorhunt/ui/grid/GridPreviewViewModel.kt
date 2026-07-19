@@ -1,5 +1,6 @@
 package com.souru.colorhunt.ui.grid
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -11,8 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
 /** Editable, dummy Instagram-style profile header values. */
@@ -33,35 +32,33 @@ data class GridPreviewUiState(
 /**
  * Phase 2 — Instagram grid preview.
  *
- * The feed is exactly the photos the user has **selected** (on the Sort tab):
- * you build your grid by choosing shots, then drag to arrange. Newly selected
- * photos enter at the top; deselected ones drop out; manual order is preserved.
- * No placeholder cells. No real posting.
+ * The grid has its **own** photo set: you pick images here (independent of the
+ * Sort tab), then drag to arrange or remove them. Picked photos are also fed to
+ * the shared store so their dominant colour is analysed for the corner dot.
  */
 class GridPreviewViewModel(private val repository: PhotoRepository) : ViewModel() {
 
     private val order = MutableStateFlow<List<String>>(emptyList())
     private val profile = MutableStateFlow(ProfileHeader())
 
-    init {
-        // Reconcile our ordered id list with the current selection.
-        repository.selectedIds
-            .onEach { ids ->
-                val known = order.value
-                val knownSet = known.toHashSet()
-                val stillSelected = known.filter { it in ids }
-                val newlySelected = ids.filter { it !in knownSet }
-                val next = newlySelected.toList() + stillSelected // new posts on top
-                if (next != known) order.value = next
-            }
-            .launchIn(viewModelScope)
-    }
-
     val uiState: StateFlow<GridPreviewUiState> =
         combine(order, repository.photos, profile) { ord, photos, prof ->
             val byId = photos.associateBy { it.id }
             GridPreviewUiState(profile = prof, feed = ord.mapNotNull { byId[it] })
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GridPreviewUiState())
+
+    /** Add photos chosen directly on the grid tab. */
+    fun addUris(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        repository.addPhotos(uris) // analyse for colour dots
+        val known = order.value.toHashSet()
+        val fresh = uris.map { it.toString() }.filter { it !in known }
+        if (fresh.isNotEmpty()) order.value = order.value + fresh
+    }
+
+    fun remove(id: String) {
+        order.value = order.value - id
+    }
 
     fun move(from: Int, to: Int) {
         val list = order.value

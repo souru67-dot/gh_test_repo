@@ -40,7 +40,8 @@
     <string name="grid_edit_profile">Edit profile</string>
     <string name="grid_name_label">Name</string>
     <string name="grid_hint">Long-press a photo and drag to reorder your feed.</string>
-    <string name="grid_empty">Select photos on the Sort tab to build your feed here.</string>
+    <string name="grid_empty">Pick photos to plan your feed layout.</string>
+    <string name="grid_add">Add photos</string>
 
     <!-- Sort / import screen -->
     <string name="sort_title">Color Sort</string>
@@ -98,6 +99,7 @@
     <string name="paywall_b_cells">Unlimited collage cells</string>
     <string name="paywall_b_map">High-res walk-log export</string>
     <string name="paywall_purchase">Purchase</string>
+    <string name="paywall_debug_unlock">DEBUG: Unlock Pro</string>
 
     <string name="share_chooser_title">Share collage</string>
 

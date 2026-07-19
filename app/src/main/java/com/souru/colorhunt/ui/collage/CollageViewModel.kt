@@ -94,10 +94,10 @@ class CollageViewModel(
     ) { spec, prev, isRendering, isLoading, isPro ->
         CollageUiState(
             loading = isLoading,
-            photoCount = photos.size,
+            photoCount = spec.order.size,
             size = spec.size,
             countPreset = spec.countPreset,
-            cellCount = resolveCellCount(spec.countPreset, photos.size),
+            cellCount = resolveCellCount(spec.countPreset, spec.order.size),
             style = spec.style,
             preview = prev,
             rendering = isRendering,
@@ -106,27 +106,43 @@ class CollageViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CollageUiState())
 
     init {
-        loadSelection()
+        observeSelection()
         observeAndRender()
         // Re-render (e.g. drop the watermark) the moment Pro status changes.
         viewModelScope.launch { ProState.isPro.collect { renderTick.value += 1 } }
     }
 
-    private fun loadSelection() {
+    /**
+     * Keep the collage in sync with the live selection: still-selected photos keep
+     * their manual order, newly selected ones append, deselected ones drop out.
+     * This fixes the "nothing selected" flicker where a one-shot snapshot went stale.
+     */
+    private fun observeSelection() {
         viewModelScope.launch {
-            photos = repository.selectedPhotos()
-            order.value = photos.map { it.id }
-            withContext(Dispatchers.IO) {
-                photos.forEach { photo ->
-                    if (!bitmaps.containsKey(photo.id)) {
-                        BitmapLoader.load(appContext, photo.uri, SOURCE_MAX_DIM)?.let {
-                            bitmaps[photo.id] = it
-                        }
-                    }
+            combine(repository.selectedIds, repository.photos) { ids, ph -> ids to ph }
+                .collect { (ids, ph) ->
+                    photos = ph
+                    val known = order.value
+                    val knownSet = known.toHashSet()
+                    val stillSelected = known.filter { it in ids }
+                    val newlySelected = ids.filter { it !in knownSet }
+                    val next = stillSelected + newlySelected
+                    if (next != known) order.value = next
+                    ensureBitmaps(next, ph)
+                    loading.value = false
+                    renderTick.value += 1
+                }
+        }
+    }
+
+    private suspend fun ensureBitmaps(ids: List<String>, photos: List<HuntPhoto>) {
+        withContext(Dispatchers.IO) {
+            ids.forEach { id ->
+                if (!bitmaps.containsKey(id)) {
+                    val uri = photos.firstOrNull { it.id == id }?.uri ?: return@forEach
+                    BitmapLoader.load(appContext, uri, SOURCE_MAX_DIM)?.let { bitmaps[id] = it }
                 }
             }
-            loading.value = false
-            renderTick.value += 1 // bitmaps are ready — refresh the preview.
         }
     }
 
@@ -139,7 +155,7 @@ class CollageViewModel(
                     rendering.value = true
                     preview.value = renderCollage(
                         spec.size,
-                        resolveCellCount(spec.countPreset, photos.size),
+                        resolveCellCount(spec.countPreset, spec.order.size),
                         spec.style,
                         spec.order,
                     )
@@ -191,10 +207,19 @@ class CollageViewModel(
 
     /** Reorder cells so photos run around the colour wheel (spec: 色相グラデーション自動整列). */
     fun sortByHue() {
-        val sorted = photos.sortedBy { photo ->
-            photo.dominantColor?.let { Hsv.fromColorInt(it).hue } ?: Float.MAX_VALUE
+        val byId = photos.associateBy { it.id }
+        order.value = order.value.sortedBy { id ->
+            byId[id]?.dominantColor?.let { Hsv.fromColorInt(it).hue } ?: Float.MAX_VALUE
         }
-        order.value = sorted.map { it.id }
+    }
+
+    /** Drag-rearrange a cell from one position to another. */
+    fun move(from: Int, to: Int) {
+        val list = order.value
+        if (from !in list.indices || to !in list.indices || from == to) return
+        val mutable = list.toMutableList()
+        mutable.add(to, mutable.removeAt(from))
+        order.value = mutable
     }
 
     fun save() {
@@ -227,7 +252,7 @@ class CollageViewModel(
     }
 
     private suspend fun currentExportBitmap(): Bitmap =
-        renderCollage(size.value, resolveCellCount(countPreset.value, photos.size), style.value, order.value)
+        renderCollage(size.value, resolveCellCount(countPreset.value, order.value.size), style.value, order.value)
 
     private fun colorFor(id: String): Int? = photos.firstOrNull { it.id == id }?.dominantColor
 
