@@ -253,6 +253,46 @@ private fun CollageContent(
         )
         Spacer(Modifier.size(16.dp))
 
+        // Pro template: palette strip (hex codes)
+        SectionLabel(stringResource(R.string.collage_templates))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.collage_palette_strip), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.collage_palette_strip_sub), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (state.isPro) {
+                Switch(
+                    checked = state.style.paletteStrip,
+                    onCheckedChange = { on -> onStyleChange { it.copy(paletteStrip = on) } },
+                )
+            } else {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable(onClick = onUpgrade)
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.collage_pro_locked),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.size(16.dp))
+
         // Sliders
         StyleSlider(
             label = stringResource(R.string.collage_spacing),

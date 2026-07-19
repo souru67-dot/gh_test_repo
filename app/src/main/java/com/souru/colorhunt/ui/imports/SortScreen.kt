@@ -66,8 +66,10 @@ import com.souru.colorhunt.R
 import com.souru.colorhunt.domain.color.ColorBucket
 import com.souru.colorhunt.domain.model.AnalysisState
 import com.souru.colorhunt.domain.model.HuntPhoto
+import com.souru.colorhunt.ui.common.HueRing
 import com.souru.colorhunt.ui.common.composeColor
 import com.souru.colorhunt.ui.common.label
+import com.souru.colorhunt.ui.common.toHexCode
 import com.souru.colorhunt.ui.theme.BrandGradients
 
 private fun readImagesPermission(): String =
@@ -157,6 +159,15 @@ fun SortScreen(
 
             if (state.isEmpty) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "empty") { EmptyHint() }
+            }
+
+            if (state.activeFilter == null) {
+                val wheelColors = state.groups.flatMap { it.photos }.mapNotNull { it.dominantColor }
+                if (wheelColors.size >= 3) {
+                    item(span = { GridItemSpan(maxLineSpan) }, key = "wheel") {
+                        HueRingCard(wheelColors, state.availableFilters.size)
+                    }
+                }
             }
 
             state.groups.forEach { group ->
@@ -348,6 +359,32 @@ private fun ColorFilterChip(dot: Color?, label: String, selected: Boolean, onCli
 }
 
 @Composable
+private fun HueRingCard(colors: List<Int>, colorCount: Int) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.sort_wheel_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            stringResource(R.string.sort_wheel_sub, colorCount),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(12.dp))
+        HueRing(colors = colors, modifier = Modifier.size(190.dp))
+    }
+}
+
+@Composable
 private fun SectionHeader(color: Color, title: String, count: Int) {
     Row(
         Modifier
@@ -421,15 +458,27 @@ private fun PhotoThumb(photo: HuntPhoto, selected: Boolean, onClick: () -> Unit)
         )
 
         if (photo.dominantColor != null) {
-            Box(
+            Row(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(6.dp)
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(Color(photo.dominantColor))
-                    .border(2.dp, Color.White.copy(alpha = 0.85f), CircleShape),
-            )
+                    .padding(5.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .padding(start = 4.dp, end = 7.dp, top = 3.dp, bottom = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(12.dp).clip(CircleShape).background(Color(photo.dominantColor))
+                        .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    photo.dominantColor.toHexCode(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
         } else if (photo.analysis == AnalysisState.Pending) {
             CircularProgressIndicator(
                 Modifier.align(Alignment.BottomStart).padding(6.dp).size(16.dp),

@@ -157,6 +157,11 @@ class CollageViewModel(
         val cells: List<Bitmap?> = (0 until cellCount).map { order.getOrNull(it)?.let { id -> bitmaps[id] } }
         val bg = if (style.backgroundFollowsTheme) themeColor() else style.backgroundColor
         val density = size.exportWidth / REFERENCE_WIDTH_DP
+        val paletteColors = if (style.paletteStrip && FeatureFlags.isPro) {
+            (0 until cellCount).mapNotNull { i -> order.getOrNull(i)?.let { id -> colorFor(id) } }
+        } else {
+            emptyList()
+        }
         CollageRenderer.render(
             cells = cells,
             cellCount = cellCount,
@@ -165,6 +170,7 @@ class CollageViewModel(
             heightPx = size.exportHeight,
             density = density,
             addWatermark = !FeatureFlags.isPro,
+            paletteColors = paletteColors,
         )
     }
 
@@ -222,6 +228,8 @@ class CollageViewModel(
 
     private suspend fun currentExportBitmap(): Bitmap =
         renderCollage(size.value, resolveCellCount(countPreset.value, photos.size), style.value, order.value)
+
+    private fun colorFor(id: String): Int? = photos.firstOrNull { it.id == id }?.dominantColor
 
     private fun resolveCellCount(preset: CellCountPreset, photoCount: Int): Int {
         val raw = preset.count ?: photoCount

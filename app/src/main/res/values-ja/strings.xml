@@ -51,6 +51,8 @@
     <string name="sort_permission_denied">写真へのアクセスが拒否されました。手動でも写真を追加できます。</string>
     <string name="sort_stat_photos">枚</string>
     <string name="sort_stat_colors">色</string>
+    <string name="sort_wheel_title">あなたのカラーホイール</string>
+    <string name="sort_wheel_sub">%1$d色を集めました</string>
     <string name="sort_empty_title">まだ写真がありません</string>
     <string name="sort_empty_body">写真を選ぶと、ドミナントカラーで自動的に仕分けします。</string>
     <string name="sort_filter_all">すべて</string>
@@ -84,6 +86,9 @@
     <string name="collage_pro_locked">Pro</string>
     <string name="collage_save_permission">この端末で保存するにはストレージ権限が必要です。</string>
     <string name="collage_upgrade">Proにアップグレード</string>
+    <string name="collage_templates">テンプレート</string>
+    <string name="collage_palette_strip">カラーパレット帯</string>
+    <string name="collage_palette_strip_sub">コラージュ下にHEXコード付きの色帯を追加</string>
 
     <!-- Paywall (Phase 4 billing) -->
     <string name="paywall_title">ColorHunt Pro</string>

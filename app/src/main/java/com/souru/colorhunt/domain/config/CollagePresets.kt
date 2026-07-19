@@ -54,6 +54,8 @@ data class CollageStyle(
     val backgroundColor: Int = 0xFFFFFFFF.toInt(),
     /** When true the background follows the current theme colour instead of [backgroundColor]. */
     val backgroundFollowsTheme: Boolean = false,
+    /** Pro template: append a bottom strip of the photos' dominant colours + hex codes. */
+    val paletteStrip: Boolean = false,
 )
 
 /** Grid geometry for a given cell count, chosen to stay close to square. */
