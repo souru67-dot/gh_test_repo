@@ -125,11 +125,12 @@ object CollageRenderer {
         val fillAlpha = if (translucent) 150 else 255
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-        // An elegant serif (mincho-like) face for the hex codes — feels editorial.
+        // Angular, mincho-like typewriter serif (Cutive) — matches the 組写
+        // reference and keeps hex digits evenly spaced.
         val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-            typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+            typeface = Typeface.create("serif-monospace", Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
-            letterSpacing = 0.06f
+            letterSpacing = 0.04f
             if (translucent) {
                 setShadowLayer(2.5f * density, 0f, 1f * density, Color.argb(150, 0, 0, 0))
             }
@@ -201,9 +202,9 @@ object CollageRenderer {
         val chipH = (cell.height() * 0.11f).coerceIn(9f * density, 16f * density)
         val margin = chipH * 0.45f
         val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-            typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+            typeface = Typeface.create("serif-monospace", Typeface.NORMAL)
             textSize = chipH * 0.58f
-            letterSpacing = 0.05f
+            letterSpacing = 0.03f
             this.color = Color.argb(240, 255, 255, 255)
         }
         val hex = "#%06X".format(0xFFFFFF and color)
@@ -234,8 +235,8 @@ object CollageRenderer {
         canvas.drawText(hex, tx, ty, text)
     }
 
-    /** Crops [bitmap] to fill [dest] (clipped to rounded corners), positioning the
-     *  crop window by [focal] (0.5/0.5 = centre). */
+    /** Crops [bitmap] to fill [dest] (clipped to rounded corners): the crop window
+     *  is shrunk by [FocalPoint.scale] (zoom) and positioned by the focal point. */
     private fun drawCenterCropped(
         canvas: Canvas,
         bitmap: Bitmap,
@@ -246,17 +247,22 @@ object CollageRenderer {
     ) {
         val srcRatio = bitmap.width.toFloat() / bitmap.height
         val dstRatio = dest.width() / dest.height()
-        val src = if (srcRatio > dstRatio) {
-            // Source is wider: crop the sides, panned by focal.x.
-            val cropW = (bitmap.height * dstRatio).toInt().coerceAtMost(bitmap.width)
-            val x = ((bitmap.width - cropW) * focal.x).toInt().coerceIn(0, bitmap.width - cropW)
-            Rect(x, 0, x + cropW, bitmap.height)
+        // Base fill-crop, then zoom shrinks the window.
+        val baseW: Float
+        val baseH: Float
+        if (srcRatio > dstRatio) {
+            baseH = bitmap.height.toFloat()
+            baseW = baseH * dstRatio
         } else {
-            // Source is taller: crop top/bottom, panned by focal.y.
-            val cropH = (bitmap.width / dstRatio).toInt().coerceAtMost(bitmap.height)
-            val y = ((bitmap.height - cropH) * focal.y).toInt().coerceIn(0, bitmap.height - cropH)
-            Rect(0, y, bitmap.width, y + cropH)
+            baseW = bitmap.width.toFloat()
+            baseH = baseW / dstRatio
         }
+        val zoom = focal.scale.coerceIn(1f, FocalPoint.MAX_SCALE)
+        val cropW = (baseW / zoom).toInt().coerceIn(1, bitmap.width)
+        val cropH = (baseH / zoom).toInt().coerceIn(1, bitmap.height)
+        val x = ((bitmap.width - cropW) * focal.x).toInt().coerceIn(0, bitmap.width - cropW)
+        val y = ((bitmap.height - cropH) * focal.y).toInt().coerceIn(0, bitmap.height - cropH)
+        val src = Rect(x, y, x + cropW, y + cropH)
 
         val save = canvas.save()
         val clip = android.graphics.Path().apply { addRoundRect(dest, radius, radius, android.graphics.Path.Direction.CW) }

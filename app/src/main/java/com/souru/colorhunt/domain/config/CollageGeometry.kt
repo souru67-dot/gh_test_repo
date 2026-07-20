@@ -3,12 +3,21 @@ package com.souru.colorhunt.domain.config
 import kotlin.math.ceil
 
 /**
- * Normalised focal point for a cell's crop window (0..1 on each axis). 0.5/0.5 is
- * the centre crop; users can pan it so the aspect-ratio crop keeps what matters.
+ * A cell's crop window: normalised focal point (0..1 per axis, 0.5/0.5 = centre)
+ * plus a zoom factor. [scale] 1 = the plain fill-crop; larger values shrink the
+ * crop window (zoom in), still positioned by the focal point.
  */
-data class FocalPoint(val x: Float = 0.5f, val y: Float = 0.5f) {
+data class FocalPoint(
+    val x: Float = 0.5f,
+    val y: Float = 0.5f,
+    val scale: Float = 1f,
+) {
     fun shifted(dx: Float, dy: Float) =
-        FocalPoint((x + dx).coerceIn(0f, 1f), (y + dy).coerceIn(0f, 1f))
+        FocalPoint((x + dx).coerceIn(0f, 1f), (y + dy).coerceIn(0f, 1f), scale)
+
+    companion object {
+        const val MAX_SCALE = 4f
+    }
 }
 
 /**

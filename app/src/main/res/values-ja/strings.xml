@@ -76,7 +76,11 @@
     <string name="collage_photo_count">%1$d枚</string>
     <string name="collage_mode_reorder">並べ替え</string>
     <string name="collage_mode_crop">位置調整</string>
-    <string name="collage_mode_crop_hint">写真をドラッグしてトリミング位置を調整</string>
+    <string name="collage_mode_crop_hint">写真をタップして位置と拡大を調整</string>
+    <string name="collage_crop_title">トリミング調整</string>
+    <string name="collage_crop_hint">ドラッグで位置・ピンチで拡大縮小</string>
+    <string name="collage_crop_reset">リセット</string>
+    <string name="collage_crop_done">完了</string>
     <string name="collage_layout">レイアウト</string>
     <string name="collage_layout_grid">グリッド</string>
     <string name="collage_layout_vertical">縦並び</string>

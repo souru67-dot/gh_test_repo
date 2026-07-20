@@ -7,8 +7,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,9 +60,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -71,11 +74,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.souru.colorhunt.domain.config.CollageGeometry
 import com.souru.colorhunt.domain.config.CollageLayout
 import com.souru.colorhunt.domain.config.CollageTemplates
+import com.souru.colorhunt.domain.config.FocalPoint
 import com.souru.colorhunt.domain.config.PalettePlacement
+import com.souru.colorhunt.domain.model.HuntPhoto
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.BuildConfig
@@ -147,7 +155,7 @@ fun CollageScreen(
                 onShare = viewModel::share,
                 onUpgrade = { showPaywall = true },
                 onMove = viewModel::move,
-                onFocalDrag = viewModel::adjustFocal,
+                onSetFocal = viewModel::setFocal,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -219,12 +227,19 @@ private fun CollageContent(
     onShare: () -> Unit,
     onUpgrade: () -> Unit,
     onMove: (Int, Int) -> Unit,
-    onFocalDrag: (Int, Float, Float) -> Unit,
+    onSetFocal: (Int, FocalPoint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var adjustMode by remember { mutableStateOf(false) }
+    // Cell being crop-edited: index + its aspect ratio (for the editor frame).
+    var editTarget by remember { mutableStateOf<Pair<Int, Float>?>(null) }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        PreviewArea(state, adjustMode, onMove, onFocalDrag)
+        PreviewArea(
+            state = state,
+            adjustMode = adjustMode,
+            onMove = onMove,
+            onEditCell = { index, ratio -> editTarget = index to ratio },
+        )
         Spacer(Modifier.size(10.dp))
         PreviewModeToggle(adjustMode = adjustMode, onChange = { adjustMode = it })
         Spacer(Modifier.size(16.dp))
@@ -469,6 +484,24 @@ private fun CollageContent(
         }
         Spacer(Modifier.size(24.dp))
     }
+
+    editTarget?.let { (index, ratio) ->
+        val photo = state.orderedPhotos.getOrNull(index)
+        if (photo == null) {
+            editTarget = null
+        } else {
+            CropEditorDialog(
+                photo = photo,
+                cellRatio = ratio,
+                initial = state.focals[photo.id] ?: FocalPoint(),
+                onConfirm = { focal ->
+                    onSetFocal(index, focal)
+                    editTarget = null
+                },
+                onDismiss = { editTarget = null },
+            )
+        }
+    }
 }
 
 /**
@@ -481,7 +514,7 @@ private fun PreviewArea(
     state: CollageUiState,
     adjustMode: Boolean,
     onMove: (Int, Int) -> Unit,
-    onFocalDrag: (Int, Float, Float) -> Unit,
+    onEditCell: (index: Int, cellRatio: Float) -> Unit,
 ) {
     val cellCount = state.cellCount
     val placement = if (state.isPro) state.style.palette else PalettePlacement.NONE
@@ -491,7 +524,6 @@ private fun PreviewArea(
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragTo by remember { mutableStateOf<Int?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
-    var panCell by remember { mutableStateOf<Int?>(null) }
 
     // Cap the preview height so tall ratios (9:16) don't fill the whole screen —
     // for those the box shrinks in width and stays centered.
@@ -545,23 +577,16 @@ private fun PreviewArea(
 
         // Drag layer: transparent, sits over the rendered preview.
         if (adjustMode) {
-            // Pan the touched cell's crop window.
+            // Tap a cell to open the dedicated crop editor (pan + pinch-zoom).
             Box(
                 Modifier
                     .fillMaxSize()
                     .pointerInput(cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
-                        detectDragGestures(
-                            onDragStart = { offset -> panCell = cellAt(offset) },
-                            onDragEnd = { panCell = null },
-                            onDragCancel = { panCell = null },
-                            onDrag = { change, drag ->
-                                change.consume()
-                                val c = panCell
-                                if (c != null && c < cells.size) {
-                                    onFocalDrag(c, drag.x / cells[c].width, drag.y / cells[c].height)
-                                }
-                            },
-                        )
+                        detectTapGestures { offset ->
+                            cellAt(offset)?.let { i ->
+                                if (i < cells.size) onEditCell(i, cells[i].width / cells[i].height)
+                            }
+                        }
                     },
             )
         } else if (filled > 1) {
@@ -626,6 +651,128 @@ private fun PreviewArea(
             CircularProgressIndicator(Modifier.align(Alignment.Center))
         }
     }
+        }
+    }
+}
+
+/**
+ * Dedicated crop editor: the cell's frame at its real aspect ratio, drag to pan
+ * and pinch to zoom, WYSIWYG with the renderer's crop maths. Commits only on
+ * 完了 so backing out never mangles the collage.
+ */
+@Composable
+private fun CropEditorDialog(
+    photo: HuntPhoto,
+    cellRatio: Float,
+    initial: FocalPoint,
+    onConfirm: (FocalPoint) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var scale by remember { mutableStateOf(initial.scale.coerceIn(1f, FocalPoint.MAX_SCALE)) }
+    var focalX by remember { mutableStateOf(initial.x) }
+    var focalY by remember { mutableStateOf(initial.y) }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(16.dp),
+        ) {
+            Text(
+                stringResource(R.string.collage_crop_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                stringResource(R.string.collage_crop_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.size(12.dp))
+
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(cellRatio)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black),
+            ) {
+                val density = LocalDensity.current
+                val boxW = with(density) { maxWidth.toPx() }
+                val boxH = boxW / cellRatio
+                val painter = rememberAsyncImagePainter(model = photo.uri)
+                val intrinsic = painter.intrinsicSize
+                val imgRatio =
+                    if (intrinsic.isSpecified && intrinsic.height > 0f) intrinsic.width / intrinsic.height
+                    else cellRatio
+                // Base fill size at zoom 1, then zoom scales it up.
+                val baseW: Float
+                val baseH: Float
+                if (imgRatio > cellRatio) {
+                    baseH = boxH
+                    baseW = boxH * imgRatio
+                } else {
+                    baseW = boxW
+                    baseH = boxW / imgRatio
+                }
+                val dispW = baseW * scale
+                val dispH = baseH * scale
+                val overX = (dispW - boxW).coerceAtLeast(0f)
+                val overY = (dispH - boxH).coerceAtLeast(0f)
+                val ox = (0.5f - focalX) * overX
+                val oy = (0.5f - focalY) * overY
+
+                androidx.compose.foundation.Image(
+                    painter = painter,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(with(density) { dispW.toDp() }, with(density) { dispH.toDp() })
+                        .graphicsLayer {
+                            translationX = ox
+                            translationY = oy
+                        },
+                )
+
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .pointerInput(imgRatio, boxW, boxH) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                // Recompute from live state — the gesture coroutine
+                                // outlives recompositions.
+                                val curScale = scale
+                                val curOverX = (baseW * curScale - boxW).coerceAtLeast(0f)
+                                val curOverY = (baseH * curScale - boxH).coerceAtLeast(0f)
+                                val newScale = (curScale * zoom).coerceIn(1f, FocalPoint.MAX_SCALE)
+                                val nOverX = (baseW * newScale - boxW).coerceAtLeast(0f)
+                                val nOverY = (baseH * newScale - boxH).coerceAtLeast(0f)
+                                val nOx = ((0.5f - focalX) * curOverX + pan.x).coerceIn(-nOverX / 2f, nOverX / 2f)
+                                val nOy = ((0.5f - focalY) * curOverY + pan.y).coerceIn(-nOverY / 2f, nOverY / 2f)
+                                focalX = if (nOverX > 0f) 0.5f - nOx / nOverX else 0.5f
+                                focalY = if (nOverY > 0f) 0.5f - nOy / nOverY else 0.5f
+                                scale = newScale
+                            }
+                        },
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { scale = 1f; focalX = 0.5f; focalY = 0.5f }) {
+                    Text(stringResource(R.string.collage_crop_reset))
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                Spacer(Modifier.width(4.dp))
+                Button(onClick = { onConfirm(FocalPoint(focalX, focalY, scale)) }) {
+                    Text(stringResource(R.string.collage_crop_done))
+                }
+            }
         }
     }
 }

@@ -59,6 +59,8 @@ data class CollageUiState(
     val isPro: Boolean = FeatureFlags.isPro,
     /** Selected photos in cell order — for the interactive drag overlay. */
     val orderedPhotos: List<HuntPhoto> = emptyList(),
+    /** Per-photo crop windows (pan + zoom), keyed by photo id. */
+    val focals: Map<String, FocalPoint> = emptyMap(),
 ) {
     val isEmpty: Boolean get() = !loading && photoCount == 0
 }
@@ -95,7 +97,7 @@ class CollageViewModel(
     val events: SharedFlow<CollageEvent> = _events
 
     val uiState: StateFlow<CollageUiState> = combine(
-        combine(size, countPreset, style, order) { s, c, st, o -> Spec(s, c, st, o) },
+        combine(size, countPreset, style, order, focals) { s, c, st, o, f -> Spec(s, c, st, o, f) },
         preview, rendering, loading, ProState.isPro,
     ) { spec, prev, isRendering, isLoading, isPro ->
         CollageUiState(
@@ -109,6 +111,7 @@ class CollageViewModel(
             rendering = isRendering,
             isPro = isPro,
             orderedPhotos = spec.order.mapNotNull { id -> photos.firstOrNull { it.id == id } },
+            focals = spec.focals,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CollageUiState())
 
@@ -251,14 +254,10 @@ class CollageViewModel(
         order.value = mutable
     }
 
-    /**
-     * Pan a cell's crop window. [dxFrac]/[dyFrac] are drag deltas as a fraction of
-     * the cell size; dragging the photo one way reveals the opposite edge.
-     */
-    fun adjustFocal(cellIndex: Int, dxFrac: Float, dyFrac: Float) {
+    /** Commit a cell's crop window (pan + zoom) from the crop editor. */
+    fun setFocal(cellIndex: Int, focal: FocalPoint) {
         val id = order.value.getOrNull(cellIndex) ?: return
-        val current = focals.value[id] ?: FocalPoint()
-        focals.value = focals.value + (id to current.shifted(-dxFrac, -dyFrac))
+        focals.value = focals.value + (id to focal)
         renderTick.value += 1
     }
 
@@ -329,6 +328,7 @@ class CollageViewModel(
         val countPreset: CellCountPreset,
         val style: CollageStyle,
         val order: List<String>,
+        val focals: Map<String, FocalPoint> = emptyMap(),
     )
 
     companion object {
