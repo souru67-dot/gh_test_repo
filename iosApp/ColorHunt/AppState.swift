@@ -37,7 +37,7 @@ final class AppState: ObservableObject {
 
     /// Buckets that actually have photos, in the shared display order.
     var groupedByBucket: [(key: String, photos: [HuntPhoto])] {
-        let order = (ColorBridge.shared.buckets() as? [ColorBucket])?.map { $0.name } ?? []
+        let order = ColorBridge.shared.bucketKeys()   // [String] — bridges cleanly
         let groups = Dictionary(grouping: photos.filter { $0.bucketKey != nil }, by: { $0.bucketKey! })
         return order.compactMap { key in groups[key].map { (key, $0) } }
     }
@@ -177,6 +177,32 @@ extension Color {
 
 func hexString(_ packed: Int32) -> String {
     String(format: "#%06X", Int(UInt32(bitPattern: packed)) & 0xFFFFFF)
+}
+
+// MARK: - Collage layout decoding (shared geometry)
+
+struct DecodedCollageLayout {
+    var cells: [CGRect]
+    var palette: CGRect?
+}
+
+/// Decodes the flat FloatArray from `CollageBridge.computeFlat` — see its KDoc
+/// for the layout. Uses only primitive access so it's robust to how Kotlin
+/// stdlib types are named in the generated framework.
+func decodeLayout(_ arr: KotlinFloatArray) -> DecodedCollageLayout {
+    func f(_ i: Int) -> CGFloat { CGFloat(arr.get(index: Int32(i))) }
+    let n = Int(arr.get(index: 0))
+    let hasPalette = arr.get(index: 1) > 0.5
+    let palette: CGRect? = hasPalette
+        ? CGRect(x: f(2), y: f(3), width: f(4) - f(2), height: f(5) - f(3))
+        : nil
+    var cells: [CGRect] = []
+    cells.reserveCapacity(n)
+    for i in 0..<n {
+        let b = 6 + i * 4
+        cells.append(CGRect(x: f(b), y: f(b + 1), width: f(b + 2) - f(b), height: f(b + 3) - f(b + 1)))
+    }
+    return DecodedCollageLayout(cells: cells, palette: palette)
 }
 
 /// Localised bucket names (v0: ja). Move to Localizable.strings for expansion.

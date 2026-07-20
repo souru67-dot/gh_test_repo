@@ -132,14 +132,12 @@ struct HuntView: View {
             }
             .onTapGesture { state.toggleSelection(photo.id) }
             .contextMenu {
-                if let buckets = ColorBridge.shared.buckets() as? [ColorBucket] {
-                    ForEach(buckets, id: \.name) { bucket in
-                        Button {
-                            state.rebucket(photo.id, to: bucket.name)
-                        } label: {
-                            Label(bucketLabel(bucket.name),
-                                  systemImage: photo.bucketKey == bucket.name ? "checkmark.circle" : "circle")
-                        }
+                ForEach(ColorBridge.shared.bucketKeys(), id: \.self) { key in
+                    Button {
+                        state.rebucket(photo.id, to: key)
+                    } label: {
+                        Label(bucketLabel(key),
+                              systemImage: photo.bucketKey == key ? "checkmark.circle" : "circle")
                     }
                 }
             }

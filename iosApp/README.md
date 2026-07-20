@@ -48,13 +48,23 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
 
 5. Info.plist: `NSPhotoLibraryAddUsageDescription`（コラージュ保存）を追加。
 
-## 共有 API の Swift からの使い方
+## 共有 API の Swift からの使い方（プリミティブのみ・ブリッジ安全）
 
-- `ColorClassifier.shared.classify(colorInt: Int32)` → `ColorBucket`（`.name` / `.swatch`）
-- `ColorBridge.shared`: `buckets()` / `classifyKey(colorInt:)` / `swatchOf(key:)`
-  — enum ブリッジの罠を避ける安定キーAPI
-- `CollageBridge.shared.compute(...)` — レイアウト/パレット配置は **ordinal 指定**
-  （0=GRID…、0=NONE…4=OVERLAY）で、Android と同一の `Layout`（`cells` + `palette` 矩形）を返す
+iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字列配列・Float配列**
+だけを受け取ります（ObjC ブリッジの生成名に依存しないため堅牢）。
+
+- `ColorBridge.shared.bucketKeys()` → `[String]`（例: `["RED", "ORANGE", ...]`）
+- `ColorBridge.shared.classifyKey(colorInt: Int32)` → `String`（安定キー）
+- `ColorBridge.shared.swatchOf(key: String)` → `Int32`（0xFFRRGGBB）
+- `CollageBridge.shared.computeFlat(...)` → `KotlinFloatArray`（フラット配列）
+  - `[0]`=セル数, `[1]`=パレット有無, `[2..5]`=パレット矩形(L,T,R,B),
+    `[6..]`=各セル L,T,R,B の並び。Swift 側は `decodeLayout(_:)`（AppState.swift）で
+    `CGRect` 配列に変換
+  - 配置は **ordinal 指定**: layout 0=GRID/1=VERTICAL/2=TWO_COLUMN、
+    placement 0=NONE/1=CENTER/2=SIDE/3=LEFT/4=OVERLAY
+
+> 唯一の KMP 標準型依存は `KotlinFloatArray`（`decodeLayout` 内）。生成名が
+> フレームワーク接頭辞付き等で異なる場合は、その一箇所だけ合わせてください。
 
 ## 残タスク（次パス）
 

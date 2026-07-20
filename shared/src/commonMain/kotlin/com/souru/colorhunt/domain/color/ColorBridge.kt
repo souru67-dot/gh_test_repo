@@ -6,8 +6,12 @@ package com.souru.colorhunt.domain.color
  */
 object ColorBridge {
 
-    /** All buckets in display order. Swift receives an NSArray of ColorBucket. */
-    fun buckets(): List<ColorBucket> = ColorBucket.entries
+    /**
+     * Bucket keys in display order — e.g. ["RED", "ORANGE", ...]. A `List<String>`
+     * bridges to Swift as a plain `[String]`, so the iOS side never has to touch
+     * the Kotlin `ColorBucket` enum (whose ObjC bridging is unpredictable).
+     */
+    fun bucketKeys(): List<String> = ColorBucket.entries.map { it.name }
 
     /** Stable key for localisation lookups on iOS (e.g. "RED", "YELLOW_GREEN"). */
     fun keyOf(bucket: ColorBucket): String = bucket.name

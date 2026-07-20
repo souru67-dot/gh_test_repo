@@ -115,11 +115,12 @@ struct CollageView: View {
     // MARK: rendering (shared geometry)
 
     /// Draws the collage at [width] pts; the same view renders the on-screen
-    /// preview and, at export scale, the shared image.
+    /// preview and, at export scale, the shared image. Consumes the flat float
+    /// layout from the shared module (no nested Kotlin types to bridge).
     private func canvas(width: CGFloat) -> some View {
         let photos = state.selectedPhotos
         let height = width / aspect
-        let layout = CollageBridge.shared.compute(
+        let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(photos.count),
             layoutOrdinal: layoutOrdinal,
             placementOrdinal: placementOrdinal,
@@ -130,21 +131,21 @@ struct CollageView: View {
             overlayPosFrac: 0.5,
             overlayWidthFrac: 0.16,
         )
-        let cells = (layout.cells as? [CollageGeometryRect]) ?? []
+        let layout = decodeLayout(flat)
 
         return ZStack(alignment: .topLeading) {
             Color(argb: 0xFF0E0E12)
 
             ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                if index < cells.count {
-                    let r = cells[index]
+                if index < layout.cells.count {
+                    let r = layout.cells[index]
                     Image(uiImage: photo.image)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: CGFloat(r.width), height: CGFloat(r.height))
+                        .frame(width: r.width, height: r.height)
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .offset(x: CGFloat(r.left), y: CGFloat(r.top))
+                        .offset(x: r.minX, y: r.minY)
                 }
             }
 
@@ -155,9 +156,9 @@ struct CollageView: View {
         .frame(width: width, height: height)
     }
 
-    private func paletteRail(_ rect: CollageGeometryRect, photos: [HuntPhoto], translucent: Bool) -> some View {
+    private func paletteRail(_ rect: CGRect, photos: [HuntPhoto], translucent: Bool) -> some View {
         let colors = photos.compactMap { $0.dominantColor }
-        let blockH = CGFloat(rect.height) / CGFloat(max(colors.count, 1))
+        let blockH = rect.height / CGFloat(max(colors.count, 1))
         return VStack(spacing: 0) {
             ForEach(Array(colors.enumerated()), id: \.offset) { _, c in
                 ZStack {
@@ -170,8 +171,8 @@ struct CollageView: View {
                 .frame(height: blockH)
             }
         }
-        .frame(width: CGFloat(rect.width), height: CGFloat(rect.height))
-        .offset(x: CGFloat(rect.left), y: CGFloat(rect.top))
+        .frame(width: rect.width, height: rect.height)
+        .offset(x: rect.minX, y: rect.minY)
     }
 
     // MARK: export
