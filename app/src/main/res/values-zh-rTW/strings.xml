@@ -20,6 +20,7 @@
     <string name="roulette_reset_today">今日之色</string>
     <string name="roulette_hunt">用這個顏色去尋色</string>
     <string name="roulette_reminder">每日提醒</string>
+    <string name="roulette_reminder_time">提醒時間</string>
     <string name="roulette_channel_name">今日之色</string>
     <string name="roulette_channel_desc">每天提醒你今天要收集的主題色。</string>
     <string name="roulette_notif_title">今日之色已就緒</string>

@@ -84,6 +84,7 @@ import com.souru.colorhunt.domain.config.CollageTemplates
 import com.souru.colorhunt.domain.config.FocalPoint
 import com.souru.colorhunt.domain.config.PalettePlacement
 import com.souru.colorhunt.domain.model.HuntPhoto
+import com.souru.colorhunt.ui.common.brandSwitchColors
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.BuildConfig
@@ -428,6 +429,7 @@ private fun CollageContent(
                     Switch(
                         checked = state.style.hexOverlay,
                         onCheckedChange = { on -> onStyleChange { it.copy(hexOverlay = on) } },
+                        colors = brandSwitchColors(),
                     )
                 } else {
                     ProPill(onClick = onUpgrade)
@@ -475,6 +477,7 @@ private fun CollageContent(
                 Switch(
                     checked = state.style.backgroundFollowsTheme,
                     onCheckedChange = { on -> onStyleChange { it.copy(backgroundFollowsTheme = on) } },
+                    colors = brandSwitchColors(),
                 )
             }
             if (!state.style.backgroundFollowsTheme) {
@@ -589,13 +592,15 @@ private fun PreviewArea(
             )
         }
 
-        // Drag layer: transparent, sits over the rendered preview.
+        // Drag layer: transparent, sits over the rendered preview. `adjustMode`
+        // is in the pointerInput key so switching modes restarts the gesture
+        // detector (otherwise Compose reuses the node and keeps the old one).
         if (adjustMode) {
             // Tap a cell to open the dedicated crop editor (pan + pinch-zoom).
             Box(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
+                    .pointerInput(adjustMode, cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
                         detectTapGestures { offset ->
                             cellAt(offset)?.let { i ->
                                 if (i < cells.size) onEditCell(i, cells[i].width / cells[i].height)
@@ -608,7 +613,7 @@ private fun PreviewArea(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
+                    .pointerInput(adjustMode, cellCount, state.style.layout, placement, spacingFrac, wPx, hPx, filled) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { offset ->
                                 dragFrom = cellAt(offset)

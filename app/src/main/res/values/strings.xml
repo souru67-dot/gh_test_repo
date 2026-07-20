@@ -20,6 +20,7 @@
     <string name="roulette_reset_today">Today\'s color</string>
     <string name="roulette_hunt">Hunt this color</string>
     <string name="roulette_reminder">Daily reminder</string>
+    <string name="roulette_reminder_time">Reminder time</string>
     <string name="roulette_channel_name">Today\'s color</string>
     <string name="roulette_channel_desc">A daily nudge with the theme color to hunt.</string>
     <string name="roulette_notif_title">Today\'s color is ready</string>

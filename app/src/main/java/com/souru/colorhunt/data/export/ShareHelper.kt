@@ -1,5 +1,6 @@
 package com.souru.colorhunt.data.export
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -40,6 +41,9 @@ object ShareHelper {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "image/*"
             putExtra(Intent.EXTRA_STREAM, uri)
+            // ClipData (with the uri as data) makes the share sheet render a
+            // rich image thumbnail instead of a generic file icon.
+            clipData = ClipData.newUri(context.contentResolver, "ColorHunt", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         launchChooser(context, intent, chooserTitle)

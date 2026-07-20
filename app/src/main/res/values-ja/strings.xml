@@ -20,6 +20,7 @@
     <string name="roulette_reset_today">今日の色に戻す</string>
     <string name="roulette_hunt">この色をハントする</string>
     <string name="roulette_reminder">毎日の通知</string>
+    <string name="roulette_reminder_time">通知の時刻</string>
     <string name="roulette_channel_name">今日の色</string>
     <string name="roulette_channel_desc">今日狩るテーマ色を毎日お知らせします。</string>
     <string name="roulette_notif_title">今日の色が決まりました</string>

@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +42,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +68,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.souru.colorhunt.R
+import com.souru.colorhunt.ui.common.brandSwitchColors
 import com.souru.colorhunt.ui.common.label
 import com.souru.colorhunt.ui.common.toHexCode
 import kotlinx.coroutines.launch
@@ -100,9 +107,12 @@ fun RouletteScreen(
         }
     }
 
+    var showTimePicker by remember { mutableStateOf(false) }
+
     Scaffold(modifier = modifier, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+            Modifier.fillMaxSize().padding(padding).statusBarsPadding()
+                .verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(stringResource(R.string.roulette_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
@@ -169,16 +179,79 @@ fun RouletteScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            Row(
+            Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
             ) {
-                Text(stringResource(R.string.roulette_reminder), Modifier.weight(1f))
-                Switch(checked = state.reminderEnabled, onCheckedChange = onToggleReminder)
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.roulette_reminder), Modifier.weight(1f))
+                    Switch(
+                        checked = state.reminderEnabled,
+                        onCheckedChange = onToggleReminder,
+                        colors = brandSwitchColors(),
+                    )
+                }
+                if (state.reminderEnabled) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .clickable { showTimePicker = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.roulette_reminder_time), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "%02d:%02d".format(state.reminderHour, state.reminderMinute),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
         }
     }
+
+    if (showTimePicker) {
+        ReminderTimeDialog(
+            initialHour = state.reminderHour,
+            initialMinute = state.reminderMinute,
+            onConfirm = { h, m -> viewModel.setReminderTime(h, m); showTimePicker = false },
+            onDismiss = { showTimePicker = false },
+        )
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderTimeDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val timeState = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute, is24Hour = true)
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.roulette_reminder_time), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                TimePicker(state = timeState)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(timeState.hour, timeState.minute) }) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 /**

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -138,7 +139,9 @@ fun MapScreen(
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        // statusBarsPadding keeps the filter chips clear of the status bar even
+        // when the nested Scaffold's top inset gets consumed upstream.
+        Column(Modifier.fillMaxSize().padding(padding).statusBarsPadding()) {
             if (state.availableFilters.isNotEmpty()) {
                 MapFilterRow(state.availableFilters, state.activeFilter, viewModel::setFilter)
             }

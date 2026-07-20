@@ -23,6 +23,8 @@ data class TodayColorUiState(
     /** True when the colour came from "today's color" auto-pick rather than manual. */
     val isToday: Boolean = false,
     val reminderEnabled: Boolean = false,
+    val reminderHour: Int = ThemeReminderScheduler.DEFAULT_HOUR,
+    val reminderMinute: Int = ThemeReminderScheduler.DEFAULT_MINUTE,
 )
 
 class RouletteViewModel(application: Application) : AndroidViewModel(application) {
@@ -30,7 +32,11 @@ class RouletteViewModel(application: Application) : AndroidViewModel(application
     private val prefs = application.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private val _state = MutableStateFlow(
-        TodayColorUiState(reminderEnabled = prefs.getBoolean(KEY_REMINDER, false)),
+        TodayColorUiState(
+            reminderEnabled = prefs.getBoolean(KEY_REMINDER, false),
+            reminderHour = prefs.getInt(KEY_REMINDER_HOUR, ThemeReminderScheduler.DEFAULT_HOUR),
+            reminderMinute = prefs.getInt(KEY_REMINDER_MINUTE, ThemeReminderScheduler.DEFAULT_MINUTE),
+        ),
     )
     val uiState: StateFlow<TodayColorUiState> = _state.asStateFlow()
 
@@ -51,13 +57,26 @@ class RouletteViewModel(application: Application) : AndroidViewModel(application
     fun setReminder(enabled: Boolean) {
         _state.update { it.copy(reminderEnabled = enabled) }
         prefs.edit().putBoolean(KEY_REMINDER, enabled).apply()
+        val s = _state.value
         val context = getApplication<Application>()
-        if (enabled) ThemeReminderScheduler.enable(context) else ThemeReminderScheduler.disable(context)
+        if (enabled) ThemeReminderScheduler.enable(context, s.reminderHour, s.reminderMinute)
+        else ThemeReminderScheduler.disable(context)
+    }
+
+    /** Change the daily reminder time; reschedules if the reminder is on. */
+    fun setReminderTime(hour: Int, minute: Int) {
+        _state.update { it.copy(reminderHour = hour, reminderMinute = minute) }
+        prefs.edit().putInt(KEY_REMINDER_HOUR, hour).putInt(KEY_REMINDER_MINUTE, minute).apply()
+        if (_state.value.reminderEnabled) {
+            ThemeReminderScheduler.enable(getApplication(), hour, minute)
+        }
     }
 
     companion object {
         private const val PREFS = "colorhunt_prefs"
         private const val KEY_REMINDER = "daily_reminder_enabled"
+        private const val KEY_REMINDER_HOUR = "daily_reminder_hour"
+        private const val KEY_REMINDER_MINUTE = "daily_reminder_minute"
 
         val Factory = viewModelFactory {
             initializer {
