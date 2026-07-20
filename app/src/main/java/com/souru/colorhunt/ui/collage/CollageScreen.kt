@@ -358,6 +358,34 @@ private fun CollageContent(
                     )
                 }
             }
+            // OVERLAY fine-tuning: orientation, position along the axis, band width.
+            if (state.isPro && state.style.palette == PalettePlacement.OVERLAY) {
+                Spacer(Modifier.size(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !state.style.overlayHorizontal,
+                        onClick = { onStyleChange { it.copy(overlayHorizontal = false) } },
+                        label = { Text(stringResource(R.string.collage_overlay_vertical)) },
+                    )
+                    FilterChip(
+                        selected = state.style.overlayHorizontal,
+                        onClick = { onStyleChange { it.copy(overlayHorizontal = true) } },
+                        label = { Text(stringResource(R.string.collage_overlay_horizontal)) },
+                    )
+                }
+                StyleSlider(
+                    label = stringResource(R.string.collage_overlay_pos),
+                    value = state.style.overlayPosFrac * 100f,
+                    range = 0f..100f,
+                    onChange = { v -> onStyleChange { it.copy(overlayPosFrac = v / 100f) } },
+                )
+                StyleSlider(
+                    label = stringResource(R.string.collage_overlay_size),
+                    value = state.style.overlayWidthFrac * 100f,
+                    range = 8f..50f,
+                    onChange = { v -> onStyleChange { it.copy(overlayWidthFrac = v / 100f) } },
+                )
+            }
             Spacer(Modifier.size(10.dp))
 
             // Pro: on-photo dot + HEX chips (like the Hunt thumbnails).
@@ -493,6 +521,9 @@ private fun PreviewArea(
             spacingFrac = spacingFrac,
             width = wPx,
             height = hPx,
+            overlayHorizontal = state.style.overlayHorizontal,
+            overlayPosFrac = state.style.overlayPosFrac,
+            overlayWidthFrac = state.style.overlayWidthFrac,
         )
         val cells = geo.cells
         fun cellAt(p: Offset): Int? {

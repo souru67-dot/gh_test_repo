@@ -77,6 +77,12 @@ data class CollageStyle(
     val layout: CollageLayout = CollageLayout.GRID,
     /** Pro template: a HEX colour palette, placed in the centre column or a side rail. */
     val palette: PalettePlacement = PalettePlacement.NONE,
+    /** OVERLAY only: horizontal band (top/bottom) instead of a vertical column. */
+    val overlayHorizontal: Boolean = false,
+    /** OVERLAY only: band position along its axis — 0 = left/top edge, 1 = right/bottom edge. */
+    val overlayPosFrac: Float = 0.5f,
+    /** OVERLAY only: band thickness as a fraction of the canvas (0.08..0.5). */
+    val overlayWidthFrac: Float = 0.16f,
     /** Pro template: overlay each photo with a small dot + HEX chip. */
     val hexOverlay: Boolean = false,
 )

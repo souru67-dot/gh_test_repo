@@ -87,6 +87,45 @@ class CollageGeometryTest {
     }
 
     @Test
+    fun `overlay position slides the band from flush left to flush right`() {
+        val flushLeft = CollageGeometry.compute(
+            4, CollageLayout.GRID, PalettePlacement.OVERLAY, 0f, w, h, overlayPosFrac = 0f,
+        ).palette!!
+        assertEquals(0f, flushLeft.left, 0.5f)
+
+        val flushRight = CollageGeometry.compute(
+            4, CollageLayout.GRID, PalettePlacement.OVERLAY, 0f, w, h, overlayPosFrac = 1f,
+        ).palette!!
+        assertEquals(w, flushRight.right, 0.5f)
+    }
+
+    @Test
+    fun `horizontal overlay is a full-width band positioned vertically`() {
+        val top = CollageGeometry.compute(
+            4, CollageLayout.GRID, PalettePlacement.OVERLAY, 0f, w, h,
+            overlayHorizontal = true, overlayPosFrac = 0f, overlayWidthFrac = 0.2f,
+        ).palette!!
+        assertEquals(0f, top.left, 0.5f)
+        assertEquals(w, top.right, 0.5f)
+        assertEquals(0f, top.top, 0.5f)
+        assertEquals(h * 0.2f, top.height, 0.5f)
+
+        val bottom = CollageGeometry.compute(
+            4, CollageLayout.GRID, PalettePlacement.OVERLAY, 0f, w, h,
+            overlayHorizontal = true, overlayPosFrac = 1f,
+        ).palette!!
+        assertEquals(h, bottom.bottom, 0.5f)
+    }
+
+    @Test
+    fun `overlay width fraction controls band thickness`() {
+        val wide = CollageGeometry.compute(
+            4, CollageLayout.GRID, PalettePlacement.OVERLAY, 0f, w, h, overlayWidthFrac = 0.4f,
+        ).palette!!
+        assertEquals(w * 0.4f, wide.width, 0.5f)
+    }
+
+    @Test
     fun `center palette with a single column falls back to a side rail`() {
         val layout = compute(2, layout = CollageLayout.VERTICAL, placement = PalettePlacement.CENTER)
         assertEquals(w, layout.palette!!.right, 0.5f)

@@ -87,6 +87,10 @@
     <string name="collage_palette_side">右</string>
     <string name="collage_palette_left">左</string>
     <string name="collage_palette_overlay">重ねる</string>
+    <string name="collage_overlay_vertical">縦の帯</string>
+    <string name="collage_overlay_horizontal">横の帯</string>
+    <string name="collage_overlay_pos">帯の位置</string>
+    <string name="collage_overlay_size">帯の幅</string>
     <string name="collage_hex_overlay">HEXチップを写真に重ねる</string>
     <string name="collage_empty_title">写真が未選択です</string>
     <string name="collage_empty_body">「ハント」タブで写真を選び、「コラージュを作成」を押してください。</string>

@@ -45,6 +45,12 @@ object CollageGeometry {
         spacingFrac: Float,
         width: Float,
         height: Float,
+        /** OVERLAY only: horizontal band instead of a vertical column. */
+        overlayHorizontal: Boolean = false,
+        /** OVERLAY only: 0 = flush left/top, 1 = flush right/bottom. */
+        overlayPosFrac: Float = 0.5f,
+        /** OVERLAY only: band thickness as a fraction of the canvas. */
+        overlayWidthFrac: Float = PALETTE_RATIO,
     ): Layout {
         val count = cellCount.coerceAtLeast(1)
         val columns = CollageGrid.columnsFor(count, layout).coerceAtLeast(1)
@@ -78,7 +84,19 @@ object CollageGeometry {
 
         val palette: Rect? = when {
             !hasPalette -> null
-            overlay -> Rect((width - railW) / 2f, 0f, (width + railW) / 2f, height)
+            overlay -> {
+                val pos = overlayPosFrac.coerceIn(0f, 1f)
+                val frac = overlayWidthFrac.coerceIn(0.05f, 0.6f)
+                if (overlayHorizontal) {
+                    val bandH = height * frac
+                    val top = (height - bandH) * pos
+                    Rect(0f, top, width, top + bandH)
+                } else {
+                    val bandW = width * frac
+                    val left = (width - bandW) * pos
+                    Rect(left, 0f, left + bandW, height)
+                }
+            }
             center -> {
                 // Sit in the gap between the left and right groups.
                 val leftEnd = spacing + (leftCols - 1) * (cellW + spacing) + cellW

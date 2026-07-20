@@ -63,6 +63,9 @@ object CollageRenderer {
             spacingFrac = spacingFrac,
             width = widthPx.toFloat(),
             height = heightPx.toFloat(),
+            overlayHorizontal = style.overlayHorizontal,
+            overlayPosFrac = style.overlayPosFrac,
+            overlayWidthFrac = style.overlayWidthFrac,
         )
 
         val radius = style.cornerRadiusDp * density
@@ -113,6 +116,8 @@ object CollageRenderer {
     ) {
         val n = colors.size
         if (n == 0) return
+        // A wider-than-tall rect (horizontal overlay band) lays blocks left-to-right.
+        val horizontal = rect.width > rect.height
         val left = rect.left
         val right = rect.right
         val railWidth = rect.width
@@ -134,6 +139,38 @@ object CollageRenderer {
             strokeWidth = (1f * density).coerceAtLeast(1f)
         }
 
+        fun textColorFor(color: Int) {
+            val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
+            text.color = if (!translucent && luminance > 135) {
+                Color.argb(205, 25, 25, 32)
+            } else {
+                Color.argb(if (translucent) 235 else 205, 240, 240, 244)
+            }
+        }
+
+        if (horizontal) {
+            // Left-to-right blocks across the band (top/bottom overlay).
+            val blockW = railWidth / n
+            val maxTextWidth = blockW * 0.80f
+            colors.forEachIndexed { i, color ->
+                val bLeft = left + i * blockW
+                fill.color = Color.argb(fillAlpha, Color.red(color), Color.green(color), Color.blue(color))
+                canvas.drawRect(bLeft, rect.top, bLeft + blockW, rect.bottom, fill)
+
+                val hex = "#%06X".format(0xFFFFFF and color)
+                text.textSize = (rect.height * 0.18f).coerceAtLeast(6f * density)
+                val measured = text.measureText(hex)
+                if (measured > maxTextWidth) text.textSize *= maxTextWidth / measured
+
+                textColorFor(color)
+                val cy = rect.top + rect.height / 2f - (text.ascent() + text.descent()) / 2f
+                canvas.drawText(hex, bLeft + blockW / 2f, cy, text)
+
+                if (i > 0) canvas.drawLine(bLeft, rect.top, bLeft, rect.bottom, sep)
+            }
+            return
+        }
+
         val cx = left + railWidth / 2f
         // Reference look (組写): a small, quiet serif that sits inside the block
         // rather than filling it — sized to the block but never wider than ~70%.
@@ -148,12 +185,7 @@ object CollageRenderer {
             val measured = text.measureText(hex)
             if (measured > maxTextWidth) text.textSize *= maxTextWidth / measured
 
-            val luminance = 0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)
-            text.color = if (!translucent && luminance > 135) {
-                Color.argb(205, 25, 25, 32)
-            } else {
-                Color.argb(if (translucent) 235 else 205, 240, 240, 244)
-            }
+            textColorFor(color)
             val cy = top + blockH / 2f - (text.ascent() + text.descent()) / 2f
             canvas.drawText(hex, cx, cy, text)
 
