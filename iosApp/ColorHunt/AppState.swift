@@ -1,0 +1,199 @@
+import SwiftUI
+import PhotosUI
+import SharedColor
+
+// MARK: - Model
+
+/// A hunted photo on iOS — mirrors Android's `HuntPhoto`.
+struct HuntPhoto: Identifiable, Equatable {
+    let id = UUID()
+    let image: UIImage
+    /// Packed 0xFFRRGGBB dominant colour, nil while analysing / on failure.
+    var dominantColor: Int32?
+    /// Stable bucket key from the shared classifier (e.g. "RED"), nil = unanalysed.
+    var bucketKey: String?
+
+    static func == (lhs: HuntPhoto, rhs: HuntPhoto) -> Bool { lhs.id == rhs.id }
+}
+
+enum AppTab: Hashable {
+    case hunt, collage, today, grid, map
+}
+
+// MARK: - App state
+
+/// Single source of truth shared by all tabs — mirrors Android's PhotoRepository.
+@MainActor
+final class AppState: ObservableObject {
+    @Published var selectedTab: AppTab = .hunt
+
+    @Published var photos: [HuntPhoto] = []
+    @Published var selection: Set<UUID> = []
+
+    /// Photos the Grid tab picked independently (parity with Android's Grid).
+    @Published var gridPhotos: [UIImage] = []
+
+    var selectedPhotos: [HuntPhoto] { photos.filter { selection.contains($0.id) } }
+
+    /// Buckets that actually have photos, in the shared display order.
+    var groupedByBucket: [(key: String, photos: [HuntPhoto])] {
+        let order = (ColorBridge.shared.buckets() as? [ColorBucket])?.map { $0.name } ?? []
+        let groups = Dictionary(grouping: photos.filter { $0.bucketKey != nil }, by: { $0.bucketKey! })
+        return order.compactMap { key in groups[key].map { (key, $0) } }
+    }
+
+    var unanalysed: [HuntPhoto] { photos.filter { $0.bucketKey == nil } }
+
+    // MARK: Intake & analysis
+
+    func add(images: [UIImage]) {
+        let fresh = images.map { HuntPhoto(image: $0, dominantColor: nil, bucketKey: nil) }
+        photos.append(contentsOf: fresh)
+        for photo in fresh {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                let color = DominantColor.extract(from: photo.image)
+                await self?.finishAnalysis(id: photo.id, color: color)
+            }
+        }
+    }
+
+    private func finishAnalysis(id: UUID, color: Int32?) {
+        guard let idx = photos.firstIndex(where: { $0.id == id }) else { return }
+        photos[idx].dominantColor = color
+        if let color {
+            // Same classifier as Android (KMP shared module).
+            photos[idx].bucketKey = ColorBridge.shared.classifyKey(colorInt: color)
+        }
+    }
+
+    func toggleSelection(_ id: UUID) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+    }
+
+    /// Manual override — the hunter has the final say (parity with Android).
+    func rebucket(_ id: UUID, to key: String) {
+        guard let idx = photos.firstIndex(where: { $0.id == id }) else { return }
+        photos[idx].bucketKey = key
+    }
+
+    func clearAll() {
+        photos.removeAll()
+        selection.removeAll()
+    }
+}
+
+// MARK: - Dominant colour extraction
+
+/// Mirrors Android's PaletteExtractor heuristics: downsample, build a coarse
+/// histogram, then score population × (0.35 + saturation) × value-weight so the
+/// subject's colour beats dark backgrounds and blown highlights.
+enum DominantColor {
+
+    static func extract(from image: UIImage) -> Int32? {
+        guard let cg = downsample(image, to: 48) else { return nil }
+        guard let data = cg.dataProvider?.data as Data? else { return nil }
+
+        let bytesPerRow = cg.bytesPerRow
+        let width = cg.width
+        let height = cg.height
+        guard cg.bitsPerPixel == 32 else { return nil }
+
+        // Quantise to 4 bits/channel; accumulate population and true colour sums.
+        var population = [Int: (count: Int, r: Int, g: Int, b: Int)]()
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            guard let base = raw.baseAddress else { return }
+            for y in 0..<height {
+                let row = base + y * bytesPerRow
+                for x in 0..<width {
+                    let p = row + x * 4
+                    // CGImage from UIImage is RGBA or BGRA depending on source;
+                    // read via alphaInfo-agnostic RGBA assumption after redraw
+                    // (downsample() draws into an RGBA8888 context).
+                    let r = Int(p.load(fromByteOffset: 0, as: UInt8.self))
+                    let g = Int(p.load(fromByteOffset: 1, as: UInt8.self))
+                    let b = Int(p.load(fromByteOffset: 2, as: UInt8.self))
+                    let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+                    var e = population[key] ?? (0, 0, 0, 0)
+                    e = (e.count + 1, e.r + r, e.g + g, e.b + b)
+                    population[key] = e
+                }
+            }
+        }
+        guard !population.isEmpty else { return nil }
+
+        var bestScore = -1.0
+        var best: (r: Int, g: Int, b: Int)? = nil
+        for (_, e) in population {
+            let r = Double(e.r) / Double(e.count) / 255.0
+            let g = Double(e.g) / Double(e.count) / 255.0
+            let b = Double(e.b) / Double(e.count) / 255.0
+            let maxC = max(r, g, b), minC = min(r, g, b)
+            let value = maxC
+            let sat = maxC == 0 ? 0 : (maxC - minC) / maxC
+            // Same shape as Android's PaletteExtractor.scoreOf.
+            let valueWeight: Double
+            if value < 0.12 { valueWeight = 0.2 }
+            else if value < 0.28 { valueWeight = 0.2 + 0.8 * (value - 0.12) / 0.16 }
+            else if value > 0.92 { valueWeight = 0.5 }
+            else { valueWeight = 1.0 }
+            let score = Double(e.count) * (0.35 + sat) * valueWeight
+            if score > bestScore {
+                bestScore = score
+                best = (e.r / e.count, e.g / e.count, e.b / e.count)
+            }
+        }
+        guard let c = best else { return nil }
+        let packed = (0xFF << 24) | (c.r << 16) | (c.g << 8) | c.b
+        return Int32(truncatingIfNeeded: packed)
+    }
+
+    private static func downsample(_ image: UIImage, to dim: Int) -> CGImage? {
+        let size = CGSize(width: dim, height: dim)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let img = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        return img.cgImage
+    }
+}
+
+// MARK: - Small helpers
+
+extension Color {
+    /// Packed 0xAARRGGBB / 0xFFRRGGBB → SwiftUI Color.
+    init(argb: Int64) {
+        let r = Double((argb >> 16) & 0xFF) / 255.0
+        let g = Double((argb >> 8) & 0xFF) / 255.0
+        let b = Double(argb & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
+    }
+
+    init(packed: Int32) {
+        self.init(argb: Int64(UInt32(bitPattern: packed)))
+    }
+}
+
+func hexString(_ packed: Int32) -> String {
+    String(format: "#%06X", Int(UInt32(bitPattern: packed)) & 0xFFFFFF)
+}
+
+/// Localised bucket names (v0: ja). Move to Localizable.strings for expansion.
+func bucketLabel(_ key: String) -> String {
+    switch key {
+    case "RED": return "赤"
+    case "ORANGE": return "橙"
+    case "YELLOW": return "黄"
+    case "YELLOW_GREEN": return "黄緑"
+    case "GREEN": return "緑"
+    case "CYAN": return "水色"
+    case "BLUE": return "青"
+    case "PURPLE": return "紫"
+    case "PINK": return "ピンク"
+    case "WHITE": return "白"
+    case "BLACK": return "黒"
+    case "GRAY": return "グレー"
+    default: return key
+    }
+}
