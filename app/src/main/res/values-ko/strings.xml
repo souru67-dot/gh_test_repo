@@ -158,4 +158,12 @@
     <string name="size_portrait">4:5</string>
     <string name="size_story">9:16</string>
     <string name="size_landscape">16:9</string>
+    <!-- First-launch onboarding -->
+    <string name="onboard_title">ColorHunt에 오신 것을 환영해요</string>
+    <string name="onboard_body">테마 색을 모으고, 사진을 색으로 정리하고, 감각적인 콜라주를 SNS에.</string>
+    <string name="onboard_perk_photos">사진을 대표 색으로 자동 분류</string>
+    <string name="onboard_perk_location">위치 정보가 있는 사진을 컬러 맵에 표시</string>
+    <string name="onboard_perk_notify">매일 「오늘의 색」 알림 (선택)</string>
+    <string name="onboard_start">접근 허용하고 시작</string>
+    <string name="onboard_skip">나중에</string>
 </resources>

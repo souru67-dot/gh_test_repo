@@ -158,4 +158,12 @@
     <string name="size_portrait">4:5</string>
     <string name="size_story">9:16</string>
     <string name="size_landscape">16:9</string>
+    <!-- First-launch onboarding -->
+    <string name="onboard_title">歡迎使用 ColorHunt</string>
+    <string name="onboard_body">收集主題色，依顏色整理照片，製作精緻拼貼發到社群。</string>
+    <string name="onboard_perk_photos">依主色自動整理你的照片</string>
+    <string name="onboard_perk_location">在色彩地圖上顯示帶位置資訊的照片</string>
+    <string name="onboard_perk_notify">每日「今日之色」提醒（選用）</string>
+    <string name="onboard_start">允許存取並開始</string>
+    <string name="onboard_skip">稍後</string>
 </resources>

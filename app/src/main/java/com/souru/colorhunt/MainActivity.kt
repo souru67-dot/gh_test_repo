@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.souru.colorhunt.ui.ColorHuntApp
+import com.souru.colorhunt.ui.onboarding.WelcomeGate
 import com.souru.colorhunt.ui.theme.ColorHuntTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +14,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ColorHuntTheme {
-                ColorHuntApp()
+                // Ask for photo/location/notification access on first launch,
+                // then show the app.
+                WelcomeGate {
+                    ColorHuntApp()
+                }
             }
         }
     }

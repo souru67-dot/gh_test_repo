@@ -158,4 +158,12 @@
     <string name="size_portrait">4:5</string>
     <string name="size_story">9:16</string>
     <string name="size_landscape">16:9</string>
+    <!-- First-launch onboarding -->
+    <string name="onboard_title">Welcome to ColorHunt</string>
+    <string name="onboard_body">Collect your theme colors, sort photos by color, and make stylish collages for SNS.</string>
+    <string name="onboard_perk_photos">Sort your photos automatically by their color</string>
+    <string name="onboard_perk_location">Plot geotagged photos on your color map</string>
+    <string name="onboard_perk_notify">Get a daily "today\'s color" nudge (optional)</string>
+    <string name="onboard_start">Allow access &amp; start</string>
+    <string name="onboard_skip">Not now</string>
 </resources>

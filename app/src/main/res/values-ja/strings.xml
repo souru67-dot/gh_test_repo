@@ -158,4 +158,12 @@
     <string name="size_portrait">4:5</string>
     <string name="size_story">9:16</string>
     <string name="size_landscape">16:9</string>
+    <!-- First-launch onboarding -->
+    <string name="onboard_title">ColorHunt へようこそ</string>
+    <string name="onboard_body">テーマ色を集めて、写真を色で仕分け。おしゃれなコラージュをSNSへ。</string>
+    <string name="onboard_perk_photos">写真をドミナントカラーで自動仕分け</string>
+    <string name="onboard_perk_location">位置情報つきの写真をカラーマップに表示</string>
+    <string name="onboard_perk_notify">「今日の色」を毎日おしらせ（任意）</string>
+    <string name="onboard_start">アクセスを許可して始める</string>
+    <string name="onboard_skip">あとで</string>
 </resources>
