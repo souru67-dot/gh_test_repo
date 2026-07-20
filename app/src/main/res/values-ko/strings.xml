@@ -1,0 +1,160 @@
+<resources>
+    <string name="app_name">ColorHunt</string>
+
+    <!-- Navigation -->
+    <string name="tab_sort">헌트</string>
+    <string name="tab_collage">콜라주</string>
+    <string name="tab_grid">그리드</string>
+    <string name="tab_map">지도</string>
+    <string name="tab_roulette">오늘의 색</string>
+
+    <!-- Roulette / today's color -->
+    <string name="roulette_title">오늘의 색</string>
+    <string name="roulette_subtitle">휠에서 색을 고르거나, 오늘의 색을 자동으로.</string>
+    <string name="roulette_auto">오늘의 색 자동 선택</string>
+    <string name="roulette_chosen">선택한 색</string>
+    <string name="roulette_pick_hint">휠을 터치해 색을 골라 보세요.</string>
+    <string name="roulette_today">오늘</string>
+    <string name="roulette_random">랜덤</string>
+    <string name="roulette_spin">돌리기</string>
+    <string name="roulette_reset_today">오늘의 색</string>
+    <string name="roulette_hunt">이 색으로 헌트</string>
+    <string name="roulette_reminder">매일 알림</string>
+    <string name="roulette_channel_name">오늘의 색</string>
+    <string name="roulette_channel_desc">오늘 수집할 테마 색을 매일 알려드립니다.</string>
+    <string name="roulette_notif_title">오늘의 색이 정해졌어요</string>
+    <string name="roulette_notif_text">오늘은 「%1$s」을(를) 찾으러 가요!</string>
+
+    <!-- Color map -->
+    <string name="map_title">컬러 맵</string>
+    <string name="map_no_location">위치 정보 없음</string>
+    <string name="map_export">산책 로그</string>
+    <string name="map_empty">위치 정보가 있는 사진이 아직 없어요. 사진 접근을 허용하면 Exif GPS를 읽습니다.</string>
+
+    <!-- Generic actions -->
+    <string name="action_ok">확인</string>
+    <string name="action_cancel">취소</string>
+
+    <!-- Grid preview -->
+    <string name="grid_title">그리드 미리보기</string>
+    <string name="grid_posts">게시물</string>
+    <string name="grid_followers">팔로워</string>
+    <string name="grid_following">팔로잉</string>
+    <string name="grid_edit_profile">프로필 편집</string>
+    <string name="grid_name_label">이름</string>
+    <string name="grid_hint">사진을 길게 눌러 드래그하면 순서를 바꿀 수 있어요.</string>
+    <string name="grid_empty">사진을 골라 피드 레이아웃을 구성해 보세요.</string>
+    <string name="grid_add">사진 추가</string>
+
+    <!-- Sort / import screen -->
+    <string name="sort_title">컬러 정리</string>
+    <string name="sort_tagline">테마 색을 모아 보세요.</string>
+    <string name="sort_pick">사진 선택</string>
+    <string name="sort_auto">자동 분류</string>
+    <string name="sort_auto_hint">자동 분류는 최근 %1$d장을 불러옵니다</string>
+    <string name="sort_rebucket_hint">색은 자동으로 판별됩니다. 다르게 느껴지면 사진을 길게 눌러 바꿀 수 있어요.</string>
+    <string name="sort_rebucket_title">이 사진의 색 변경</string>
+    <string name="sort_processing_group">분석 중</string>
+    <string name="sort_permission_denied">사진 접근이 거부되었어요. 수동으로도 추가할 수 있습니다.</string>
+    <string name="sort_stat_photos">장</string>
+    <string name="sort_stat_colors">색</string>
+    <string name="sort_wheel_title">나의 컬러 휠</string>
+    <string name="sort_wheel_sub">%1$d가지 색을 모았어요</string>
+    <string name="sort_empty_title">아직 사진이 없어요</string>
+    <string name="sort_empty_body">사진을 고르면 대표 색으로 자동 분류합니다.</string>
+    <string name="sort_filter_all">전체</string>
+    <string name="sort_selected_count">%1$d장 선택됨</string>
+    <string name="sort_make_collage">콜라주 만들기</string>
+    <string name="sort_clear">모두 지우기</string>
+    <string name="sort_analyzing">분석 중…</string>
+    <string name="sort_no_color">색을 가져올 수 없음</string>
+    <string name="sort_no_color_group">미분류</string>
+
+    <!-- Collage screen -->
+    <string name="collage_title">콜라주</string>
+    <string name="collage_header_hint">타일을 길게 눌러 순서 바꾸기</string>
+    <string name="collage_photo_count">%1$d장</string>
+    <string name="collage_mode_reorder">순서 변경</string>
+    <string name="collage_mode_crop">위치 조정</string>
+    <string name="collage_mode_crop_hint">사진을 탭해 위치와 확대를 조정</string>
+    <string name="collage_crop_title">자르기 조정</string>
+    <string name="collage_crop_hint">드래그로 이동 · 핀치로 확대/축소</string>
+    <string name="collage_crop_reset">초기화</string>
+    <string name="collage_crop_done">완료</string>
+    <string name="collage_layout">레이아웃</string>
+    <string name="collage_layout_grid">그리드</string>
+    <string name="collage_layout_vertical">세로</string>
+    <string name="collage_layout_two_col">2열</string>
+    <string name="collage_palette">컬러 팔레트</string>
+    <string name="collage_palette_none">없음</string>
+    <string name="collage_palette_center">중앙</string>
+    <string name="collage_palette_side">오른쪽</string>
+    <string name="collage_palette_left">왼쪽</string>
+    <string name="collage_palette_overlay">오버레이</string>
+    <string name="collage_overlay_vertical">세로 밴드</string>
+    <string name="collage_overlay_horizontal">가로 밴드</string>
+    <string name="collage_overlay_pos">밴드 위치</string>
+    <string name="collage_overlay_size">밴드 너비</string>
+    <string name="collage_hex_overlay">사진 위 HEX 칩</string>
+    <string name="collage_empty_title">선택된 사진이 없어요</string>
+    <string name="collage_empty_body">「헌트」 탭에서 사진을 고르고 「콜라주 만들기」를 눌러 주세요.</string>
+    <string name="collage_cells">장수</string>
+    <string name="collage_size">SNS 크기</string>
+    <string name="collage_spacing">여백</string>
+    <string name="collage_corner">모서리 둥글기</string>
+    <string name="collage_border">테두리 두께</string>
+    <string name="collage_border_color">테두리 색</string>
+    <string name="collage_background">배경</string>
+    <string name="collage_bg_follow_theme">테마 색 사용</string>
+    <string name="collage_hue_sort">색상순 자동 정렬</string>
+    <string name="collage_save">저장</string>
+    <string name="collage_share">공유</string>
+    <string name="collage_saved">갤러리에 저장했어요</string>
+    <string name="collage_save_failed">저장하지 못했어요</string>
+    <string name="collage_share_failed">공유하지 못했어요</string>
+    <string name="collage_rendering">생성 중…</string>
+    <string name="collage_count_custom">사용자 지정</string>
+    <string name="collage_pro_locked">Pro</string>
+    <string name="collage_save_permission">이 기기에서 저장하려면 저장소 권한이 필요해요.</string>
+    <string name="collage_upgrade">Pro로 업그레이드</string>
+    <string name="collage_templates">템플릿</string>
+    <string name="collage_template_white">화이트</string>
+    <string name="collage_template_film">필름</string>
+    <string name="collage_template_kumisha">듀오</string>
+    <string name="collage_template_magazine">매거진</string>
+    <string name="collage_template_seamless">심리스</string>
+
+    <!-- Paywall -->
+    <string name="paywall_title">ColorHunt Pro</string>
+    <string name="paywall_body">한 번 결제로 모든 기능이 열립니다.</string>
+    <string name="paywall_b_watermark">워터마크 제거</string>
+    <string name="paywall_b_sizes">모든 SNS 크기 + 사용자 지정</string>
+    <string name="paywall_b_cells">콜라주 장수 무제한</string>
+    <string name="paywall_b_map">산책 로그 고해상도 내보내기</string>
+    <string name="paywall_purchase">구매하기</string>
+    <string name="paywall_debug_unlock">DEBUG: Pro 활성화</string>
+
+    <string name="share_chooser_title">콜라주 공유</string>
+    <string name="share_caption">ColorHunt로 색 모으기 🎨📸 #컬러헌트 #색감모음 #colorhunt #colorpalette</string>
+    <string name="share_caption_copied">해시태그 캡션을 복사했어요. 붙여넣기만 하면 됩니다.</string>
+
+    <!-- Color bucket names -->
+    <string name="bucket_red">빨강</string>
+    <string name="bucket_orange">주황</string>
+    <string name="bucket_yellow">노랑</string>
+    <string name="bucket_yellow_green">연두</string>
+    <string name="bucket_green">초록</string>
+    <string name="bucket_cyan">하늘</string>
+    <string name="bucket_blue">파랑</string>
+    <string name="bucket_purple">보라</string>
+    <string name="bucket_pink">핑크</string>
+    <string name="bucket_white">하양</string>
+    <string name="bucket_black">검정</string>
+    <string name="bucket_gray">회색</string>
+
+    <!-- SNS size labels -->
+    <string name="size_square">1:1</string>
+    <string name="size_portrait">4:5</string>
+    <string name="size_story">9:16</string>
+    <string name="size_landscape">16:9</string>
+</resources>

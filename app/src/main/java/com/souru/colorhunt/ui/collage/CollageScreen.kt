@@ -117,6 +117,8 @@ fun CollageScreen(
     val shareFailedMsg = stringResource(R.string.collage_share_failed)
     val permissionMsg = stringResource(R.string.collage_save_permission)
     val shareTitle = stringResource(R.string.share_chooser_title)
+    val shareCaption = stringResource(R.string.share_caption)
+    val captionCopiedMsg = stringResource(R.string.share_caption_copied)
 
     val storagePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -132,7 +134,19 @@ fun CollageScreen(
                     snackbar.showSnackbar(permissionMsg)
                     storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 }
-                is CollageEvent.ShareReady -> ShareHelper.shareSingle(context, event.uri, shareTitle)
+                is CollageEvent.ShareReady -> {
+                    // Share assist: put a ready-made hashtag caption on the clipboard
+                    // so posting is paste-and-go.
+                    runCatching {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(
+                            android.content.ClipData.newPlainText("ColorHunt", shareCaption),
+                        )
+                    }
+                    ShareHelper.shareSingle(context, event.uri, shareTitle)
+                    snackbar.showSnackbar(captionCopiedMsg)
+                }
             }
         }
     }
@@ -182,10 +196,10 @@ private fun PaywallDialog(onDismiss: () -> Unit, onPurchase: () -> Unit) {
             Column {
                 Text(stringResource(R.string.paywall_body), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.size(8.dp))
-                Text("・" + stringResource(R.string.paywall_b_watermark), style = MaterialTheme.typography.bodySmall)
-                Text("・" + stringResource(R.string.paywall_b_sizes), style = MaterialTheme.typography.bodySmall)
-                Text("・" + stringResource(R.string.paywall_b_cells), style = MaterialTheme.typography.bodySmall)
-                Text("・" + stringResource(R.string.paywall_b_map), style = MaterialTheme.typography.bodySmall)
+                Text("• " + stringResource(R.string.paywall_b_watermark), style = MaterialTheme.typography.bodySmall)
+                Text("• " + stringResource(R.string.paywall_b_sizes), style = MaterialTheme.typography.bodySmall)
+                Text("• " + stringResource(R.string.paywall_b_cells), style = MaterialTheme.typography.bodySmall)
+                Text("• " + stringResource(R.string.paywall_b_map), style = MaterialTheme.typography.bodySmall)
                 if (BuildConfig.DEBUG) {
                     Spacer(Modifier.size(12.dp))
                     TextButton(onClick = { ProState.update(true); onDismiss() }) {

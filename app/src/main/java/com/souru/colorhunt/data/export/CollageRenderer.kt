@@ -271,17 +271,47 @@ object CollageRenderer {
         canvas.restoreToCount(save)
     }
 
+    /**
+     * Free-tier watermark doubling as the brand funnel: a subtle rounded pill
+     * with a rainbow dot + app name, bottom-right. Understated enough not to
+     * spoil the post, recognisable enough that viewers can find the app.
+     */
     private fun drawWatermark(canvas: Canvas, width: Int, height: Int, density: Float) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(140, 255, 255, 255)
-            textSize = 14f * density
-            setShadowLayer(2f * density, 0f, 0f, Color.argb(120, 0, 0, 0))
+        val text = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            textSize = 11f * density
+            letterSpacing = 0.04f
+            color = Color.argb(235, 255, 255, 255)
         }
-        val text = WATERMARK_TEXT
+        val label = WATERMARK_TEXT
+        val padH = 8f * density
+        val dotR = 3.5f * density
+        val gap = 5f * density
+        val textW = text.measureText(label)
+        val pillH = text.textSize + 10f * density
+        val pillW = padH + dotR * 2 + gap + textW + padH
         val margin = 10f * density
-        val x = width - paint.measureText(text) - margin
-        val y = height - margin
-        canvas.drawText(text, x, y, paint)
+        val rect = RectF(width - margin - pillW, height - margin - pillH, width - margin, height - margin)
+
+        val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(110, 10, 10, 14) }
+        canvas.drawRoundRect(rect, pillH / 2f, pillH / 2f, scrim)
+
+        val dotCx = rect.left + padH + dotR
+        val dotCy = rect.centerY()
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = android.graphics.SweepGradient(
+                dotCx, dotCy,
+                intArrayOf(
+                    0xFFE53935.toInt(), 0xFFFDD835.toInt(), 0xFF43A047.toInt(),
+                    0xFF1E88E5.toInt(), 0xFF8E24AA.toInt(), 0xFFE53935.toInt(),
+                ),
+                null,
+            )
+        }
+        canvas.drawCircle(dotCx, dotCy, dotR, dot)
+
+        val ty = rect.centerY() - (text.ascent() + text.descent()) / 2f
+        canvas.drawText(label, dotCx + dotR + gap, ty, text)
     }
 
     private const val WATERMARK_TEXT = "ColorHunt"

@@ -1,0 +1,160 @@
+<resources>
+    <string name="app_name">ColorHunt</string>
+
+    <!-- Navigation -->
+    <string name="tab_sort">尋色</string>
+    <string name="tab_collage">拼貼</string>
+    <string name="tab_grid">網格</string>
+    <string name="tab_map">地圖</string>
+    <string name="tab_roulette">今日色</string>
+
+    <!-- Roulette / today's color -->
+    <string name="roulette_title">今日之色</string>
+    <string name="roulette_subtitle">在色輪上選色，或自動抽取今日之色。</string>
+    <string name="roulette_auto">自動抽取今日色</string>
+    <string name="roulette_chosen">你的顏色</string>
+    <string name="roulette_pick_hint">觸碰色輪選擇顏色。</string>
+    <string name="roulette_today">今日</string>
+    <string name="roulette_random">隨機</string>
+    <string name="roulette_spin">轉動</string>
+    <string name="roulette_reset_today">今日之色</string>
+    <string name="roulette_hunt">用這個顏色去尋色</string>
+    <string name="roulette_reminder">每日提醒</string>
+    <string name="roulette_channel_name">今日之色</string>
+    <string name="roulette_channel_desc">每天提醒你今天要收集的主題色。</string>
+    <string name="roulette_notif_title">今日之色已就緒</string>
+    <string name="roulette_notif_text">今天去尋找「%1$s」吧！</string>
+
+    <!-- Color map -->
+    <string name="map_title">色彩地圖</string>
+    <string name="map_no_location">無位置資訊</string>
+    <string name="map_export">漫步紀錄</string>
+    <string name="map_empty">還沒有帶位置資訊的照片。授予照片權限即可讀取 Exif GPS。</string>
+
+    <!-- Generic actions -->
+    <string name="action_ok">確定</string>
+    <string name="action_cancel">取消</string>
+
+    <!-- Grid preview -->
+    <string name="grid_title">網格預覽</string>
+    <string name="grid_posts">貼文</string>
+    <string name="grid_followers">粉絲</string>
+    <string name="grid_following">追蹤中</string>
+    <string name="grid_edit_profile">編輯個人檔案</string>
+    <string name="grid_name_label">名字</string>
+    <string name="grid_hint">長按照片拖曳即可調整順序。</string>
+    <string name="grid_empty">選擇照片來規劃你的版面配置。</string>
+    <string name="grid_add">新增照片</string>
+
+    <!-- Sort / import screen -->
+    <string name="sort_title">依色整理</string>
+    <string name="sort_tagline">收集你的主題色。</string>
+    <string name="sort_pick">選擇照片</string>
+    <string name="sort_auto">自動整理</string>
+    <string name="sort_auto_hint">自動整理會讀取最近 %1$d 張照片</string>
+    <string name="sort_rebucket_hint">顏色為自動辨識。若與感覺不符，長按照片即可更改。</string>
+    <string name="sort_rebucket_title">更改這張照片的顏色</string>
+    <string name="sort_processing_group">分析中</string>
+    <string name="sort_permission_denied">照片存取遭拒。你仍可以手動新增照片。</string>
+    <string name="sort_stat_photos">張</string>
+    <string name="sort_stat_colors">色</string>
+    <string name="sort_wheel_title">你的色輪</string>
+    <string name="sort_wheel_sub">已收集 %1$d 種顏色</string>
+    <string name="sort_empty_title">還沒有照片</string>
+    <string name="sort_empty_body">選擇照片後將依主色自動整理。</string>
+    <string name="sort_filter_all">全部</string>
+    <string name="sort_selected_count">已選擇 %1$d 張</string>
+    <string name="sort_make_collage">製作拼貼</string>
+    <string name="sort_clear">全部清除</string>
+    <string name="sort_analyzing">分析中…</string>
+    <string name="sort_no_color">無法取得顏色</string>
+    <string name="sort_no_color_group">未分類</string>
+
+    <!-- Collage screen -->
+    <string name="collage_title">拼貼</string>
+    <string name="collage_header_hint">長按圖塊調整順序</string>
+    <string name="collage_photo_count">%1$d 張</string>
+    <string name="collage_mode_reorder">排序</string>
+    <string name="collage_mode_crop">位置調整</string>
+    <string name="collage_mode_crop_hint">點按照片調整位置與縮放</string>
+    <string name="collage_crop_title">裁切調整</string>
+    <string name="collage_crop_hint">拖曳移動 · 雙指縮放</string>
+    <string name="collage_crop_reset">重設</string>
+    <string name="collage_crop_done">完成</string>
+    <string name="collage_layout">版面</string>
+    <string name="collage_layout_grid">網格</string>
+    <string name="collage_layout_vertical">縱向</string>
+    <string name="collage_layout_two_col">兩欄</string>
+    <string name="collage_palette">調色盤</string>
+    <string name="collage_palette_none">無</string>
+    <string name="collage_palette_center">置中</string>
+    <string name="collage_palette_side">右側</string>
+    <string name="collage_palette_left">左側</string>
+    <string name="collage_palette_overlay">疊加</string>
+    <string name="collage_overlay_vertical">直向色帶</string>
+    <string name="collage_overlay_horizontal">橫向色帶</string>
+    <string name="collage_overlay_pos">色帶位置</string>
+    <string name="collage_overlay_size">色帶寬度</string>
+    <string name="collage_hex_overlay">照片上的 HEX 標籤</string>
+    <string name="collage_empty_title">未選擇照片</string>
+    <string name="collage_empty_body">請在「尋色」頁選擇照片，然後點按「製作拼貼」。</string>
+    <string name="collage_cells">數量</string>
+    <string name="collage_size">社群尺寸</string>
+    <string name="collage_spacing">間距</string>
+    <string name="collage_corner">圓角</string>
+    <string name="collage_border">邊框寬度</string>
+    <string name="collage_border_color">邊框顏色</string>
+    <string name="collage_background">背景</string>
+    <string name="collage_bg_follow_theme">使用主題色</string>
+    <string name="collage_hue_sort">依色相排序</string>
+    <string name="collage_save">儲存</string>
+    <string name="collage_share">分享</string>
+    <string name="collage_saved">已儲存到相簿</string>
+    <string name="collage_save_failed">儲存失敗</string>
+    <string name="collage_share_failed">分享失敗</string>
+    <string name="collage_rendering">產生中…</string>
+    <string name="collage_count_custom">自訂</string>
+    <string name="collage_pro_locked">Pro</string>
+    <string name="collage_save_permission">在此裝置上儲存需要儲存空間權限。</string>
+    <string name="collage_upgrade">升級至 Pro</string>
+    <string name="collage_templates">範本</string>
+    <string name="collage_template_white">純白</string>
+    <string name="collage_template_film">底片</string>
+    <string name="collage_template_kumisha">組照</string>
+    <string name="collage_template_magazine">雜誌</string>
+    <string name="collage_template_seamless">無縫</string>
+
+    <!-- Paywall -->
+    <string name="paywall_title">ColorHunt Pro</string>
+    <string name="paywall_body">一次購買，解鎖全部功能。</string>
+    <string name="paywall_b_watermark">移除浮水印</string>
+    <string name="paywall_b_sizes">全部社群尺寸 + 自訂</string>
+    <string name="paywall_b_cells">拼貼數量不限</string>
+    <string name="paywall_b_map">高解析度匯出漫步紀錄</string>
+    <string name="paywall_purchase">購買</string>
+    <string name="paywall_debug_unlock">DEBUG: 啟用 Pro</string>
+
+    <string name="share_chooser_title">分享拼貼</string>
+    <string name="share_caption">用 ColorHunt 收集色彩 🎨📸 #尋色 #色卡 #colorhunt #colorpalette</string>
+    <string name="share_caption_copied">已複製含主題標籤的文案，貼上即可發佈。</string>
+
+    <!-- Color bucket names -->
+    <string name="bucket_red">紅</string>
+    <string name="bucket_orange">橙</string>
+    <string name="bucket_yellow">黃</string>
+    <string name="bucket_yellow_green">黃綠</string>
+    <string name="bucket_green">綠</string>
+    <string name="bucket_cyan">青</string>
+    <string name="bucket_blue">藍</string>
+    <string name="bucket_purple">紫</string>
+    <string name="bucket_pink">粉紅</string>
+    <string name="bucket_white">白</string>
+    <string name="bucket_black">黑</string>
+    <string name="bucket_gray">灰</string>
+
+    <!-- SNS size labels -->
+    <string name="size_square">1:1</string>
+    <string name="size_portrait">4:5</string>
+    <string name="size_story">9:16</string>
+    <string name="size_landscape">16:9</string>
+</resources>

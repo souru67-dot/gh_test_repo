@@ -135,6 +135,8 @@
     <string name="paywall_debug_unlock">デバッグ: Proを有効化</string>
 
     <string name="share_chooser_title">コラージュを共有</string>
+    <string name="share_caption">ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt</string>
+    <string name="share_caption_copied">ハッシュタグ入りキャプションをコピーしました。貼り付けて投稿できます。</string>
 
     <!-- Color bucket names -->
     <string name="bucket_red">赤</string>

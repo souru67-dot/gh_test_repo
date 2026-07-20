@@ -135,6 +135,8 @@
     <string name="paywall_debug_unlock">DEBUG: Unlock Pro</string>
 
     <string name="share_chooser_title">Share collage</string>
+    <string name="share_caption">Color hunting with ColorHunt 🎨📸 #colorhunt #colorpalette #photodump #カラーハント</string>
+    <string name="share_caption_copied">Hashtag caption copied — just paste it into your post.</string>
 
     <!-- Color bucket names -->
     <string name="bucket_red">Red</string>
