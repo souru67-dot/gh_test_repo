@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import Photos
+import CoreLocation
 import SharedColor
 
 // MARK: - Model
@@ -38,6 +39,10 @@ final class AppState: ObservableObject {
 
     /// True while an auto-sort library import is running (drives the spinner).
     @Published var importing = false
+
+    /// Geotagged photos for the colour map (recovered from PHAsset locations).
+    @Published var mapPhotos: [MapPin] = []
+    @Published var mapLoading = false
 
     var selectedPhotos: [HuntPhoto] { photos.filter { selection.contains($0.id) } }
 
@@ -185,6 +190,61 @@ final class AppState: ObservableObject {
             }
         }
     }
+
+    // MARK: Colour map (parity with Android's Exif-GPS map)
+
+    /// Fetches recent geotagged library photos, classifies each colour and drops a
+    /// colour pin at its location. PhotosPicker strips GPS, so — like Android's
+    /// media-store path — we read PHAsset.location directly.
+    func loadMapPhotos(limit: Int = 300) {
+        guard !mapLoading else { return }
+        mapLoading = true
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { [weak self] status in
+            guard status == .authorized || status == .limited else {
+                Task { @MainActor in self?.mapLoading = false }
+                return
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let options = PHFetchOptions()
+                options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                options.fetchLimit = limit
+                let assets = PHAsset.fetchAssets(with: .image, options: options)
+
+                let manager = PHImageManager.default()
+                let req = PHImageRequestOptions()
+                req.deliveryMode = .fastFormat
+                req.isSynchronous = true
+                req.resizeMode = .fast
+
+                var pins: [MapPin] = []
+                assets.enumerateObjects { asset, _, _ in
+                    guard let loc = asset.location else { return }
+                    manager.requestImage(
+                        for: asset,
+                        targetSize: CGSize(width: 240, height: 240),
+                        contentMode: .aspectFill,
+                        options: req
+                    ) { image, _ in
+                        guard let image, let color = DominantColor.extract(from: image) else { return }
+                        pins.append(MapPin(coordinate: loc.coordinate, color: color, thumbnail: image))
+                    }
+                }
+                let collected = pins
+                Task { @MainActor in
+                    self?.mapPhotos = collected
+                    self?.mapLoading = false
+                }
+            }
+        }
+    }
+}
+
+/// A geotagged photo on the colour map.
+struct MapPin: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+    let color: Int32
+    let thumbnail: UIImage
 }
 
 // MARK: - Dominant colour extraction
