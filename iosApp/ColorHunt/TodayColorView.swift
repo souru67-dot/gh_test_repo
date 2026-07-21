@@ -7,16 +7,27 @@ import SharedColor
 struct TodayColorView: View {
     @EnvironmentObject private var state: AppState
 
-    @State private var hue: Double = 210 // degrees
+    // Continuous angle in degrees — can exceed 360 while spinning (several turns).
+    // Mirrors Android's Animatable(hueAnim); colour derives from the wrapped value.
+    @State private var hue: Double = 210
     @State private var picked = false
     @State private var spinning = false
 
+    private static let spinTurns = 4
+
+    /// Wrapped hue in 0..<360. Colour must use this — SwiftUI `Color(hue:)` clamps
+    /// its argument to 0...1, so feeding hue/360 while spinning (>1) froze the hue.
+    private var displayHue: Double {
+        let m = hue.truncatingRemainder(dividingBy: 360)
+        return m < 0 ? m + 360 : m
+    }
+
     private var pickedColor: Color {
-        Color(hue: hue / 360.0, saturation: 0.92, brightness: 1.0)
+        Color(hue: displayHue / 360.0, saturation: 0.92, brightness: 1.0)
     }
 
     private var packedColor: Int32 {
-        let ui = UIColor(hue: hue / 360.0, saturation: 0.92, brightness: 1.0, alpha: 1)
+        let ui = UIColor(hue: CGFloat(displayHue / 360.0), saturation: 0.92, brightness: 1.0, alpha: 1)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         ui.getRed(&r, green: &g, blue: &b, alpha: &a)
         let packed = (0xFF << 24) | (Int(r * 255) << 16) | (Int(g * 255) << 8) | Int(b * 255)
@@ -128,16 +139,18 @@ struct TodayColorView: View {
     }
 
     /// Roulette: several turns easing out onto a random hue — varied every press.
+    /// The ring stays put (a full rainbow); the marker races and the centre cycles
+    /// through hues, then settles — matching Android's ColorWheel spin.
     private func spin() {
+        guard !spinning else { return }
         spinning = true
-        picked = false
         let target = Double.random(in: 0..<360)
-        let landing = hue - hue.truncatingRemainder(dividingBy: 360) + 4 * 360 + target
+        // Continue forward from wherever the marker sits, land on target after N turns.
+        let base = hue - hue.truncatingRemainder(dividingBy: 360)
+        let landing = base + Double(Self.spinTurns) * 360 + target
         withAnimation(.easeOut(duration: 1.8)) {
             hue = landing
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.85) {
-            hue = target
+        } completion: {
             picked = true
             spinning = false
         }

@@ -19,10 +19,15 @@ struct GridPreviewView: View {
                 } else {
                     LazyVGrid(columns: columns, spacing: 2) {
                         ForEach(Array(state.gridPhotos.enumerated()), id: \.offset) { index, image in
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .aspectRatio(4.0 / 5.0, contentMode: .fill)
+                            // 4:5 feed tile: clear spacer fixes the cell, image fills
+                            // it, then clip — so it can't overflow into the next column.
+                            Color.clear
+                                .aspectRatio(4.0 / 5.0, contentMode: .fit)
+                                .overlay {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                }
                                 .clipped()
                                 .contextMenu {
                                     Button(role: .destructive) {

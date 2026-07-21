@@ -13,27 +13,27 @@ struct HuntView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                heroHeader
-                    .padding(.horizontal)
+                // Each bucket = a full-width header followed by its own grid, mirroring
+                // Android's SortScreen (a spanning SectionHeader then adaptive tiles).
+                // Sections inside a single LazyVGrid overflow in SwiftUI, so we nest
+                // one LazyVGrid per bucket inside a LazyVStack instead.
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    heroHeader
 
-                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(state.groupedByBucket, id: \.key) { group in
-                        Section {
-                            ForEach(group.photos) { photo in
-                                thumb(photo)
-                            }
-                        } header: {
-                            bucketHeader(group.key, count: group.photos.count)
+                        bucketHeader(group.key, count: group.photos.count)
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(group.photos) { photo in thumb(photo) }
                         }
                     }
+
                     if !state.unanalysed.isEmpty {
-                        Section {
+                        Text("解析中…")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                        LazyVGrid(columns: columns, spacing: 8) {
                             ForEach(state.unanalysed) { photo in thumb(photo) }
-                        } header: {
-                            Text("解析中…")
-                                .font(.subheadline.bold())
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 8)
                         }
                     }
                 }
@@ -108,11 +108,16 @@ struct HuntView: View {
 
     private func thumb(_ photo: HuntPhoto) -> some View {
         let selected = state.selection.contains(photo.id)
-        return Image(uiImage: photo.image)
-            .resizable()
-            .scaledToFill()
-            .frame(minWidth: 0, maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fill)
+        // Square tile that never overflows its grid cell: a clear 1:1 spacer sets
+        // the cell size, the image fills it via overlay, then we clip. (scaledToFill
+        // + aspectRatio(.fill) directly on the Image bleeds past the cell.)
+        return Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                Image(uiImage: photo.image)
+                    .resizable()
+                    .scaledToFill()
+            }
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(alignment: .bottomLeading) {
                 if let c = photo.dominantColor {

@@ -158,21 +158,49 @@ struct CollageView: View {
 
     private func paletteRail(_ rect: CGRect, photos: [HuntPhoto], translucent: Bool) -> some View {
         let colors = photos.compactMap { $0.dominantColor }
-        let blockH = rect.height / CGFloat(max(colors.count, 1))
+        let n = max(colors.count, 1)
+        let blockH = rect.height / CGFloat(n)
+        // Match Android CollageRenderer.drawPalette: a quiet, even-spaced serif-mono
+        // hex, sized to the block but never wider than the rail — a single centred
+        // line (the old size scaled with block height and wrapped when tall).
+        let fontSize = min(blockH * 0.14, rect.width * 0.16)
         return VStack(spacing: 0) {
-            ForEach(Array(colors.enumerated()), id: \.offset) { _, c in
+            ForEach(Array(colors.enumerated()), id: \.offset) { idx, c in
                 ZStack {
                     Color(packed: c).opacity(translucent ? 0.59 : 1.0)
                     Text(hexString(c))
-                        .font(.system(size: max(blockH * 0.13, 7), design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .shadow(color: translucent ? .black.opacity(0.5) : .clear, radius: 2)
+                        .font(.system(size: fontSize, weight: .regular, design: .monospaced))
+                        .tracking(fontSize * 0.04)
+                        .foregroundStyle(paletteTextColor(c, translucent: translucent))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
+                        .shadow(color: translucent ? .black.opacity(0.5) : .clear, radius: 2, y: 1)
+                        .frame(width: rect.width * 0.86)
                 }
                 .frame(height: blockH)
+                .overlay(alignment: .top) {
+                    if idx > 0 {
+                        Rectangle()
+                            .fill(.black.opacity(translucent ? 0.07 : 0.12))
+                            .frame(height: 1)
+                    }
+                }
             }
         }
         .frame(width: rect.width, height: rect.height)
         .offset(x: rect.minX, y: rect.minY)
+    }
+
+    /// Mirrors Android's luminance rule: near-black ink on light swatches, off-white
+    /// on dark ones (always off-white when the column floats over the photos).
+    private func paletteTextColor(_ packed: Int32, translucent: Bool) -> Color {
+        let v = Int(UInt32(bitPattern: packed))
+        let r = Double((v >> 16) & 0xFF), g = Double((v >> 8) & 0xFF), b = Double(v & 0xFF)
+        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        if !translucent && luminance > 135 {
+            return Color(red: 25 / 255, green: 25 / 255, blue: 32 / 255).opacity(0.8)
+        }
+        return Color(red: 240 / 255, green: 240 / 255, blue: 244 / 255).opacity(translucent ? 0.92 : 0.8)
     }
 
     // MARK: export
