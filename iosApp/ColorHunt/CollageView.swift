@@ -31,6 +31,7 @@ struct CollageView: View {
     @State private var dragTo: Int?
     @State private var shareImage: UIImage?
     @State private var showShare = false
+    @State private var showPaywall = false
 
     private static let swatches: [Int64] = [
         0xFFFFFFFF, 0xFF000000, 0xFFF5F5F5, 0xFF212121,
@@ -70,6 +71,32 @@ struct CollageView: View {
                 }
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(
+                product: state.proProduct,
+                onPurchase: { Task { await state.purchasePro(); if state.isPro { showPaywall = false } } },
+                onRestore: { Task { await state.restorePro(); if state.isPro { showPaywall = false } } },
+                onDebugUnlock: { state.debugUnlockPro(); showPaywall = false }
+            )
+        }
+    }
+
+    private var proBanner: some View {
+        Button {
+            showPaywall = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "crown.fill").foregroundStyle(Color(argb: 0xFFFFC107))
+                Text("Proにアップグレード（透かしを削除）")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.white)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(Color(argb: 0xFF7C4DFF).opacity(0.18), in: RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -91,6 +118,10 @@ struct CollageView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                 modeToggle
+
+                if !state.isPro {
+                    proBanner
+                }
 
                 controls
 
@@ -347,11 +378,35 @@ struct CollageView: View {
             }
         }
         .frame(width: width, height: height)
+        .overlay(alignment: .bottomTrailing) {
+            if !state.isPro {
+                watermarkPill(scale: scale).padding(10 * scale)
+            }
+        }
         .overlay {
             if interactive && reorderMode && photos.count > 1 {
                 reorderLayer(cells: layout.cells, count: photos.count)
             }
         }
+    }
+
+    /// Free-tier brand watermark — a rainbow-dot pill bottom-right, echoing
+    /// Android's drawWatermark. Rendered into the export too (WYSIWYG); Pro hides it.
+    private func watermarkPill(scale: CGFloat) -> some View {
+        HStack(spacing: 5 * scale) {
+            Circle()
+                .fill(AngularGradient(
+                    colors: [.red, .yellow, .green, .blue, .purple, .red],
+                    center: .center
+                ))
+                .frame(width: 7 * scale, height: 7 * scale)
+            Text("ColorHunt")
+                .font(.system(size: 11 * scale, weight: .medium))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 8 * scale)
+        .padding(.vertical, 5 * scale)
+        .background(.black.opacity(0.43), in: Capsule())
     }
 
     /// Transparent gesture layer active only in reorder mode: long-press a cell
@@ -708,6 +763,77 @@ struct CropEditorView: View {
         focal.x = nOverX > 0 ? 0.5 - nOx / nOverX : 0.5
         focal.y = nOverY > 0 ? 0.5 - nOy / nOverY : 0.5
         focal.scale = newScale
+    }
+}
+
+/// Pro upgrade sheet — StoreKit 2 purchase + restore, with a DEBUG-only manual
+/// unlock so the flow is testable before the App Store Connect product exists.
+struct PaywallView: View {
+    let product: Product?
+    let onPurchase: () -> Void
+    let onRestore: () -> Void
+    let onDebugUnlock: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(Color(argb: 0xFFFFC107))
+                .padding(.top, 28)
+            Text("ColorHunt Pro").font(.title2.bold())
+
+            VStack(alignment: .leading, spacing: 10) {
+                benefit("透かしなしで書き出し")
+                benefit("すべてのテンプレート・パレット配置")
+                benefit("今後のPro機能もすべて")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+
+            Button {
+                onPurchase()
+            } label: {
+                Text(product.map { "購入する（\($0.displayPrice)）" } ?? "購入する")
+                    .font(.callout.bold())
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(product == nil)
+
+            Button("購入を復元") { onRestore() }
+                .font(.subheadline)
+
+            if product == nil {
+                Text("※ 製品情報を読み込めませんでした（App Store Connect 設定後に有効）")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            #if DEBUG
+            Button("デバッグ解除") { onDebugUnlock() }
+                .font(.caption).foregroundStyle(.secondary)
+            #endif
+
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .presentationDetents([.medium, .large])
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2).foregroundStyle(.secondary)
+            }
+            .padding()
+        }
+    }
+
+    private func benefit(_ text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(argb: 0xFF7C4DFF))
+            Text(text).font(.callout)
+        }
     }
 }
 

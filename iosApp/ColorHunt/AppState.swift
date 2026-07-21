@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import Photos
 import CoreLocation
+import StoreKit
 import SharedColor
 
 // MARK: - Model
@@ -43,6 +44,16 @@ final class AppState: ObservableObject {
     /// Geotagged photos for the colour map (recovered from PHAsset locations).
     @Published var mapPhotos: [MapPin] = []
     @Published var mapLoading = false
+
+    // MARK: Pro (StoreKit 2) — free tier shows the collage watermark.
+    @Published var isPro: Bool = UserDefaults.standard.bool(forKey: "isPro")
+    @Published var proProduct: Product?
+    private let proID = "com.souru.colorhunt.pro"
+
+    init() {
+        // Restore entitlements and keep listening for purchases/renewals.
+        Task { await startPro() }
+    }
 
     var selectedPhotos: [HuntPhoto] { photos.filter { selection.contains($0.id) } }
 
@@ -236,6 +247,52 @@ final class AppState: ObservableObject {
                 }
             }
         }
+    }
+}
+
+extension AppState {
+
+    /// Load the product, restore entitlements, and observe future transactions.
+    func startPro() async {
+        proProduct = try? await Product.products(for: [proID]).first
+        await refreshEntitlements()
+        for await update in Transaction.updates {
+            if case .verified(let txn) = update, txn.productID == proID {
+                await txn.finish()
+                setPro(true)
+            }
+        }
+    }
+
+    func purchasePro() async {
+        guard let product = proProduct else { return }
+        guard let result = try? await product.purchase() else { return }
+        if case .success(let verification) = result, case .verified(let txn) = verification {
+            await txn.finish()
+            setPro(true)
+        }
+    }
+
+    func restorePro() async {
+        try? await AppStore.sync()
+        await refreshEntitlements()
+    }
+
+    private func refreshEntitlements() async {
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let txn) = result, txn.productID == proID {
+                setPro(true)
+                return
+            }
+        }
+    }
+
+    /// Debug-only manual unlock, so the Pro path is testable without App Store Connect.
+    func debugUnlockPro() { setPro(true) }
+
+    private func setPro(_ value: Bool) {
+        isPro = value
+        UserDefaults.standard.set(value, forKey: "isPro")
     }
 }
 
