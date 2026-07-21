@@ -129,7 +129,7 @@ struct CollageView: View {
             height: Float(height),
             overlayHorizontal: false,
             overlayPosFrac: 0.5,
-            overlayWidthFrac: 0.16,
+            overlayWidthFrac: 0.16
         )
         let layout = decodeLayout(flat)
 

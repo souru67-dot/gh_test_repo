@@ -13,8 +13,8 @@ struct HuntMapView: View {
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 35.681, longitude: 139.767),
-            span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3),
-        ),
+            span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3)
+        )
     )
 
     var body: some View {

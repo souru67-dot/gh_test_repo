@@ -68,7 +68,7 @@ struct TodayColorView: View {
             ZStack {
                 AngularGradient(
                     colors: (0...12).map { Color(hue: Double($0) / 12.0, saturation: 1, brightness: 1) },
-                    center: .center,
+                    center: .center
                 )
                 .mask(Circle().strokeBorder(style: StrokeStyle(lineWidth: ringWidth)))
 
@@ -83,7 +83,7 @@ struct TodayColorView: View {
                     .frame(width: ringWidth * 0.9, height: ringWidth * 0.9)
                     .offset(
                         x: cos(hue * .pi / 180) * (size / 2 - ringWidth / 2),
-                        y: sin(hue * .pi / 180) * (size / 2 - ringWidth / 2),
+                        y: sin(hue * .pi / 180) * (size / 2 - ringWidth / 2)
                     )
             }
             .contentShape(Circle())
@@ -96,7 +96,7 @@ struct TodayColorView: View {
                     if deg < 0 { deg += 360 }
                     hue = deg
                     picked = true
-                },
+                }
             )
         }
     }

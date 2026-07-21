@@ -85,9 +85,9 @@ struct HuntView: View {
         .background(
             LinearGradient(
                 colors: [Color(argb: 0xFF7C4DFF), Color(argb: 0xFFEC407A), Color(argb: 0xFFFFA726)],
-                startPoint: .topLeading, endPoint: .bottomTrailing,
+                startPoint: .topLeading, endPoint: .bottomTrailing
             ),
-            in: RoundedRectangle(cornerRadius: 22),
+            in: RoundedRectangle(cornerRadius: 22)
         )
     }
 
