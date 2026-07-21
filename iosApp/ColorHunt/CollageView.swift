@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import SharedColor
 
 /// コラージュ — renders the selected photos with the SAME geometry maths as
@@ -25,10 +26,8 @@ struct CollageView: View {
     // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
     @State private var focals: [UUID: CellFocal] = [:]
     @State private var editTarget: EditTarget?
-    // Preview interaction mode: crop a cell vs. drag to reorder.
-    @State private var reorderMode = false
-    @State private var dragFrom: Int?
-    @State private var dragTo: Int?
+    // Cell being drag-reordered in the preview (long-press to pick up).
+    @State private var dragCell: Int?
     @State private var shareImage: UIImage?
     @State private var showShare = false
     @State private var showPaywall = false
@@ -117,7 +116,7 @@ struct CollageView: View {
                 canvas(width: 340)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                modeToggle
+                previewHint
 
                 if !state.isPro {
                     proBanner
@@ -241,6 +240,7 @@ struct CollageView: View {
                 Text("1:1").tag(CGFloat(1))
                 Text("4:5").tag(CGFloat(4.0 / 5.0))
                 Text("9:16").tag(CGFloat(9.0 / 16.0))
+                Text("16:9").tag(CGFloat(16.0 / 9.0))
             }
             .pickerStyle(.segmented)
 
@@ -267,18 +267,15 @@ struct CollageView: View {
         Text(LocalizedStringKey(text)).font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
     }
 
-    /// Segmented toggle above the preview: crop a cell vs. drag to reorder.
-    private var modeToggle: some View {
-        VStack(spacing: 6) {
-            Picker("モード", selection: $reorderMode) {
-                Text("トリミング").tag(false)
-                Text("並べ替え").tag(true)
-            }
-            .pickerStyle(.segmented)
-            Text(reorderMode ? "セルを長押しして別のセルへドラッグ" : "セルをタップして写真をトリミング")
-                .font(.caption2).foregroundStyle(.white.opacity(0.6))
-                .frame(maxWidth: .infinity, alignment: .leading)
+    /// One-line hint under the preview explaining the direct gestures.
+    private var previewHint: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "hand.tap").font(.caption2)
+            Text("タップでトリミング・長押しで並べ替え")
+                .font(.caption2)
         }
+        .foregroundStyle(.white.opacity(0.6))
+        .frame(maxWidth: .infinity)
     }
 
     /// A labelled slider with a live integer read-out (Android's StyleSlider look).
@@ -355,37 +352,28 @@ struct CollageView: View {
                         }
                         .frame(width: r.width, height: r.height)
                         .offset(x: r.minX, y: r.minY)
+                        .opacity(dragCell == index ? 0.35 : 1)
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            if interactive && !reorderMode {
+                        .modifier(CellGestures(
+                            enabled: interactive,
+                            index: index,
+                            dragCell: $dragCell,
+                            onCrop: {
                                 editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
-                            }
-                        }
+                            },
+                            onMove: { from, to in state.moveCollage(from: from, to: to) }
+                        ))
                 }
             }
 
             if let rail = layout.palette {
                 paletteRail(rail, photos: photos, translucent: placementOrdinal == 4)
             }
-
-            // Drop-target highlight while dragging in reorder mode.
-            if let to = dragTo, to < layout.cells.count {
-                let r = layout.cells[to]
-                RoundedRectangle(cornerRadius: cornerRadius * scale)
-                    .stroke(Color(argb: 0xFF7C4DFF), lineWidth: 3)
-                    .frame(width: r.width, height: r.height)
-                    .offset(x: r.minX, y: r.minY)
-            }
         }
         .frame(width: width, height: height)
         .overlay(alignment: .bottomTrailing) {
             if !state.isPro {
                 watermarkPill(scale: scale).padding(10 * scale)
-            }
-        }
-        .overlay {
-            if interactive && reorderMode && photos.count > 1 {
-                reorderLayer(cells: layout.cells, count: photos.count)
             }
         }
     }
@@ -407,34 +395,6 @@ struct CollageView: View {
         .padding(.horizontal, 8 * scale)
         .padding(.vertical, 5 * scale)
         .background(.black.opacity(0.43), in: Capsule())
-    }
-
-    /// Transparent gesture layer active only in reorder mode: long-press a cell
-    /// then drag onto another to swap order (parity with Android's PreviewArea).
-    private func reorderLayer(cells: [CGRect], count: Int) -> some View {
-        func cellAt(_ p: CGPoint) -> Int? {
-            for i in 0..<min(count, cells.count) where cells[i].contains(p) { return i }
-            return nil
-        }
-        return Color.clear
-            .contentShape(Rectangle())
-            .gesture(
-                LongPressGesture(minimumDuration: 0.25)
-                    .sequenced(before: DragGesture(minimumDistance: 0))
-                    .onChanged { value in
-                        if case .second(true, let drag?) = value {
-                            if dragFrom == nil { dragFrom = cellAt(drag.location) }
-                            dragTo = cellAt(drag.location)
-                        }
-                    }
-                    .onEnded { _ in
-                        if let f = dragFrom, let t = dragTo, f != t {
-                            state.moveCollage(from: f, to: t)
-                        }
-                        dragFrom = nil
-                        dragTo = nil
-                    }
-            )
     }
 
     /// One collage cell: fill-crop positioned by [focal] (zoom shrinks the window),
@@ -836,6 +796,34 @@ struct PaywallView: View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(argb: 0xFF7C4DFF))
             Text(LocalizedStringKey(text)).font(.callout)
+        }
+    }
+}
+
+/// Direct per-cell gestures: tap to crop, long-press-drag to reorder. Only active
+/// in the interactive preview (disabled for the export render).
+private struct CellGestures: ViewModifier {
+    let enabled: Bool
+    let index: Int
+    @Binding var dragCell: Int?
+    let onCrop: @MainActor () -> Void
+    let onMove: @MainActor (Int, Int) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .onTapGesture { onCrop() }
+                .onDrag {
+                    dragCell = index
+                    return NSItemProvider(object: String(index) as NSString)
+                }
+                .onDrop(
+                    of: [.text],
+                    delegate: GridDropDelegate(item: index, current: $dragCell, onMove: onMove)
+                )
+        } else {
+            content
         }
     }
 }

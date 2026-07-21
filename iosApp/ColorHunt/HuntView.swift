@@ -7,7 +7,6 @@ import SharedColor
 struct HuntView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
-    @State private var filter: String?
     @State private var wheelExpanded = false
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
@@ -16,7 +15,7 @@ struct HuntView: View {
     private var availableFilters: [String] { state.groupedByBucket.map { $0.key } }
     /// Groups to show, honouring the active filter.
     private var visibleGroups: [(key: String, photos: [HuntPhoto])] {
-        guard let f = filter else { return state.groupedByBucket }
+        guard let f = state.huntFilter else { return state.groupedByBucket }
         return state.groupedByBucket.filter { $0.key == f }
     }
     /// Every collected dominant colour (for the hue wheel).
@@ -36,7 +35,7 @@ struct HuntView: View {
                         filterRow
                     }
 
-                    if filter == nil, collectedColors.count >= 3 {
+                    if state.huntFilter == nil, collectedColors.count >= 3 {
                         colorWheelCard
                     }
 
@@ -54,7 +53,7 @@ struct HuntView: View {
                         }
                     }
 
-                    if filter == nil, !state.unanalysed.isEmpty {
+                    if state.huntFilter == nil, !state.unanalysed.isEmpty {
                         Text("解析中…")
                             .font(.subheadline.bold())
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,7 +67,8 @@ struct HuntView: View {
                 .padding(.bottom, 96)
             }
             .background(Color(argb: 0xFF101014))
-            .navigationTitle("ColorHunt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .bottom) { makeCollageBar }
             .onChange(of: pickerItems) { _, items in
                 Task { await load(items) }
@@ -90,7 +90,7 @@ struct HuntView: View {
                 if !state.photos.isEmpty {
                     Button(role: .destructive) {
                         state.clearAll()
-                        filter = nil
+                        state.huntFilter = nil
                     } label: {
                         Image(systemName: "trash")
                             .padding(10)
@@ -160,9 +160,9 @@ struct HuntView: View {
     private var filterRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                filterChip(nil, "すべて", active: filter == nil)
+                filterChip(nil, "すべて", active: state.huntFilter == nil)
                 ForEach(availableFilters, id: \.self) { key in
-                    filterChip(key, bucketLabel(key), active: filter == key)
+                    filterChip(key, bucketLabel(key), active: state.huntFilter == key)
                 }
             }
             .padding(.vertical, 4)
@@ -184,7 +184,11 @@ struct HuntView: View {
         .foregroundStyle(.white)
         .background(active ? Color(argb: 0xFF7C4DFF).opacity(0.35) : .white.opacity(0.06), in: Capsule())
         .overlay(Capsule().stroke(active ? Color(argb: 0xFF7C4DFF) : .white.opacity(0.15), lineWidth: 1))
-        .onTapGesture { filter = (filter == key ? nil : key) }
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                state.huntFilter = (state.huntFilter == key ? nil : key)
+            }
+        }
     }
 
     /// Collapsed-by-default "your colour wheel" card — a mini swatch strip while

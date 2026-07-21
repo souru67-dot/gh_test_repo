@@ -13,6 +13,7 @@ struct TodayColorView: View {
     @State private var hue: Double = 210
     @State private var picked = false
     @State private var spinning = false
+    @State private var huntPulse = false
 
     // Daily reminder (parity with Android's ThemeReminderScheduler).
     @AppStorage("reminderEnabled") private var reminderEnabled = false
@@ -185,6 +186,8 @@ struct TodayColorView: View {
             HStack(spacing: 14) {
                 Circle().fill(pickedColor).frame(width: 48, height: 48)
                     .overlay(Circle().stroke(.white.opacity(0.3)))
+                    .scaleEffect(huntPulse ? 1.18 : 1)
+                    .shadow(color: pickedColor.opacity(huntPulse ? 0.7 : 0), radius: huntPulse ? 16 : 0)
                 VStack(alignment: .leading) {
                     Text(bucketLabel(key)).font(.title3.bold()).foregroundStyle(pickedColor)
                     Text(hexString(packedColor))
@@ -193,7 +196,7 @@ struct TodayColorView: View {
                 }
             }
             Button {
-                state.selectedTab = .hunt
+                huntThisColor(bucket: key)
             } label: {
                 Label("この色をハントする", systemImage: "photo.on.rectangle")
                     .font(.callout.weight(.medium))
@@ -209,6 +212,19 @@ struct TodayColorView: View {
         .padding(20)
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// Pop the chosen colour, then jump to Hunt — pre-filtered to that colour when
+    /// the user has already collected it.
+    private func huntThisColor(bucket: String) {
+        let hasBucket = state.groupedByBucket.contains { $0.key == bucket }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.45)) { huntPulse = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            huntPulse = false
+            state.huntFilter = hasBucket ? bucket : nil
+            withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .hunt }
+        }
     }
 
     /// Roulette: several turns easing out onto a random hue — varied every press.

@@ -32,6 +32,8 @@ final class AppState: ObservableObject {
 
     @Published var photos: [HuntPhoto] = []
     @Published var selection: Set<UUID> = []
+    /// Active colour filter on the Hunt tab (shared so Today's colour can set it).
+    @Published var huntFilter: String?
     /// Explicit collage order for the selected photos (drag reorder + hue sort).
     @Published var collageOrder: [UUID] = []
 
