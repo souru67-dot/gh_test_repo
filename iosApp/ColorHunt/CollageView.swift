@@ -129,16 +129,24 @@ struct CollageView: View {
                         share()
                     } label: {
                         Label("共有", systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
+                            .font(.callout.weight(.semibold))
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .foregroundStyle(.white)
+                            .background(.white.opacity(0.10), in: Capsule())
+                            .overlay(Capsule().stroke(.white.opacity(0.2), lineWidth: 1))
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(PopButtonStyle())
                     Button {
                         save()
                     } label: {
                         Label("保存", systemImage: "square.and.arrow.down")
-                            .frame(maxWidth: .infinity)
+                            .font(.system(.callout, design: .rounded).bold())
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .foregroundStyle(.white)
+                            .background(Brand.gradient, in: Capsule())
+                            .shadow(color: Brand.purple.opacity(0.5), radius: 12, y: 4)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PopButtonStyle())
                 }
             }
             .padding()

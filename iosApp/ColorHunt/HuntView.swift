@@ -82,9 +82,11 @@ struct HuntView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ColorHunt").font(.title.bold()).foregroundStyle(.white)
+                    Text("ColorHunt")
+                        .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                        .foregroundStyle(.white)
                     Text("テーマ色を、集めよう。")
-                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.9))
                 }
                 Spacer()
                 if !state.photos.isEmpty {
@@ -292,15 +294,18 @@ struct HuntView: View {
         Group {
             if !state.selection.isEmpty {
                 Button {
-                    state.selectedTab = .collage
+                    withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .collage }
                 } label: {
                     Label("コラージュを作成 (\(state.selection.count))", systemImage: "checkmark.circle.fill")
-                        .font(.callout.bold())
-                        .padding(.horizontal, 20).padding(.vertical, 14)
-                        .background(Color(argb: 0xFF7C4DFF), in: Capsule())
+                        .font(.system(.callout, design: .rounded).bold())
+                        .padding(.horizontal, 24).padding(.vertical, 15)
+                        .background(Brand.gradient, in: Capsule())
                         .foregroundStyle(.white)
+                        .shadow(color: Brand.purple.opacity(0.55), radius: 16, y: 6)
                 }
-                .padding(.bottom, 12)
+                .buttonStyle(PopButtonStyle())
+                .padding(.bottom, 14)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
     }

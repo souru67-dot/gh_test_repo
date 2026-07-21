@@ -58,11 +58,13 @@ struct TodayColorView: View {
                         spin()
                     } label: {
                         Label("今日の色を自動で", systemImage: "sparkles")
-                            .font(.callout.bold())
-                            .padding(.horizontal, 22).padding(.vertical, 12)
-                            .background(Color(argb: 0xFF7C4DFF), in: Capsule())
+                            .font(.system(.callout, design: .rounded).bold())
+                            .padding(.horizontal, 28).padding(.vertical, 15)
+                            .background(Brand.gradient, in: Capsule())
                             .foregroundStyle(.white)
+                            .shadow(color: Brand.purple.opacity(0.5), radius: 14, y: 5)
                     }
+                    .buttonStyle(PopButtonStyle())
                     .disabled(spinning)
 
                     if picked {
