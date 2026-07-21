@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import SharedColor
 
 /// 今日の色 — the ring-style colour wheel with a roulette spin, mirroring
@@ -12,6 +13,12 @@ struct TodayColorView: View {
     @State private var hue: Double = 210
     @State private var picked = false
     @State private var spinning = false
+
+    // Daily reminder (parity with Android's ThemeReminderScheduler).
+    @AppStorage("reminderEnabled") private var reminderEnabled = false
+    @AppStorage("reminderHour") private var reminderHour = 8
+    @AppStorage("reminderMinute") private var reminderMinute = 0
+    @State private var showTimePicker = false
 
     private static let spinTurns = 4
 
@@ -64,12 +71,72 @@ struct TodayColorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+
+                    reminderCard
                 }
                 .padding()
             }
             .background(Color(argb: 0xFF101014))
             .navigationTitle("今日の色")
         }
+        .sheet(isPresented: $showTimePicker) {
+            ReminderTimeSheet(hour: $reminderHour, minute: $reminderMinute) {
+                ThemeReminder.schedule(hour: reminderHour, minute: reminderMinute)
+                showTimePicker = false
+            }
+        }
+    }
+
+    // MARK: reminder
+
+    private var reminderCard: some View {
+        VStack(spacing: 0) {
+            Toggle(isOn: reminderBinding) {
+                Label("毎日リマインド", systemImage: "bell.badge")
+                    .font(.subheadline)
+            }
+            .tint(Color(argb: 0xFF7C4DFF))
+            .padding(.vertical, 6)
+
+            if reminderEnabled {
+                Divider().overlay(Color.white.opacity(0.08))
+                Button {
+                    showTimePicker = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock").foregroundStyle(.secondary)
+                        Text("通知の時刻").font(.subheadline)
+                        Spacer()
+                        Text(String(format: "%02d:%02d", reminderHour, reminderMinute))
+                            .font(.title3.bold())
+                            .foregroundStyle(Color(argb: 0xFF9E7CFF))
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var reminderBinding: Binding<Bool> {
+        Binding(
+            get: { reminderEnabled },
+            set: { on in
+                if on {
+                    ThemeReminder.request { granted in
+                        reminderEnabled = granted
+                        if granted { ThemeReminder.schedule(hour: reminderHour, minute: reminderMinute) }
+                    }
+                } else {
+                    reminderEnabled = false
+                    ThemeReminder.cancel()
+                }
+            }
+        )
     }
 
     private var wheel: some View {
@@ -129,9 +196,15 @@ struct TodayColorView: View {
                 state.selectedTab = .hunt
             } label: {
                 Label("この色をハントする", systemImage: "photo.on.rectangle")
-                    .font(.callout)
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 11)
+                    .foregroundStyle(Color(argb: 0xFF9E7CFF))
+                    .overlay(
+                        Capsule().stroke(Color(argb: 0xFF9E7CFF).opacity(0.7), lineWidth: 1.5)
+                    )
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -169,5 +242,78 @@ struct TodayColorView: View {
             picked = true
             spinning = false
         }
+    }
+}
+
+/// Daily theme-colour reminder — the iOS counterpart of Android's
+/// ThemeReminderScheduler (a repeating local notification at a chosen time).
+enum ThemeReminder {
+    private static let id = "daily_theme_reminder"
+
+    static func request(_ completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                DispatchQueue.main.async { completion(granted) }
+            }
+    }
+
+    static func schedule(hour: Int, minute: Int) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+
+        let content = UNMutableNotificationContent()
+        content.title = "今日の色をハントしよう"
+        content.body = "今日のテーマ色を決めて、街で見つけよう 🎨"
+        content.sound = .default
+
+        var comps = DateComponents()
+        comps.hour = hour
+        comps.minute = minute
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
+    static func cancel() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    }
+}
+
+/// Wheel time picker for the daily reminder.
+struct ReminderTimeSheet: View {
+    @Binding var hour: Int
+    @Binding var minute: Int
+    let onDone: () -> Void
+
+    @State private var date: Date
+
+    init(hour: Binding<Int>, minute: Binding<Int>, onDone: @escaping () -> Void) {
+        _hour = hour
+        _minute = minute
+        self.onDone = onDone
+        var c = DateComponents()
+        c.hour = hour.wrappedValue
+        c.minute = minute.wrappedValue
+        _date = State(initialValue: Calendar.current.date(from: c) ?? Date())
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("通知の時刻").font(.headline).padding(.top, 20)
+            DatePicker("", selection: $date, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+            Button {
+                let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+                hour = c.hour ?? 8
+                minute = c.minute ?? 0
+                onDone()
+            } label: {
+                Text("完了").frame(maxWidth: .infinity).padding(.vertical, 4)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .presentationDetents([.medium])
     }
 }

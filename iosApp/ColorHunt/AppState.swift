@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Photos
 import SharedColor
 
 // MARK: - Model
@@ -29,11 +30,22 @@ final class AppState: ObservableObject {
 
     @Published var photos: [HuntPhoto] = []
     @Published var selection: Set<UUID> = []
+    /// Explicit collage order for the selected photos (drag reorder + hue sort).
+    @Published var collageOrder: [UUID] = []
 
     /// Photos the Grid tab picked independently (parity with Android's Grid).
     @Published var gridPhotos: [UIImage] = []
 
+    /// True while an auto-sort library import is running (drives the spinner).
+    @Published var importing = false
+
     var selectedPhotos: [HuntPhoto] { photos.filter { selection.contains($0.id) } }
+
+    /// Selected photos in the user's chosen collage order.
+    var orderedSelectedPhotos: [HuntPhoto] {
+        let byId = Dictionary(photos.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return collageOrder.compactMap { byId[$0] }
+    }
 
     /// Buckets that actually have photos, in the shared display order.
     var groupedByBucket: [(key: String, photos: [HuntPhoto])] {
@@ -67,7 +79,13 @@ final class AppState: ObservableObject {
     }
 
     func toggleSelection(_ id: UUID) {
-        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+        if selection.contains(id) {
+            selection.remove(id)
+            collageOrder.removeAll { $0 == id }
+        } else {
+            selection.insert(id)
+            collageOrder.append(id)
+        }
     }
 
     /// Manual override — the hunter has the final say (parity with Android).
@@ -79,6 +97,91 @@ final class AppState: ObservableObject {
     func clearAll() {
         photos.removeAll()
         selection.removeAll()
+        collageOrder.removeAll()
+    }
+
+    // MARK: Collage ordering (parity with Android's move / sortByHue)
+
+    /// Reorder the collage cells (drag-and-drop).
+    func moveCollage(from: Int, to: Int) {
+        guard collageOrder.indices.contains(from), to >= 0, to <= collageOrder.count, from != to else { return }
+        let item = collageOrder.remove(at: from)
+        collageOrder.insert(item, at: min(to, collageOrder.count))
+    }
+
+    /// Auto-arrange the collage by hue — a quiet rainbow run, like Android's sortByHue.
+    func sortCollageByHue() {
+        let byId = Dictionary(photos.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        collageOrder.sort { a, b in
+            hueOf(byId[a]?.dominantColor) < hueOf(byId[b]?.dominantColor)
+        }
+    }
+
+    private func hueOf(_ packed: Int32?) -> Double {
+        guard let packed else { return 999 } // unanalysed sinks to the end
+        let v = Int(UInt32(bitPattern: packed))
+        let r = Double((v >> 16) & 0xFF) / 255, g = Double((v >> 8) & 0xFF) / 255, b = Double(v & 0xFF) / 255
+        let maxC = max(r, g, b), minC = min(r, g, b), d = maxC - minC
+        if d < 0.0001 { return -1 } // greys first
+        let h: Double
+        switch maxC {
+        case r: h = (g - b) / d + (g < b ? 6 : 0)
+        case g: h = (b - r) / d + 2
+        default: h = (r - g) / d + 4
+        }
+        return h * 60
+    }
+
+    // MARK: Grid ordering
+
+    func moveGridPhoto(from: Int, to: Int) {
+        guard gridPhotos.indices.contains(from), to >= 0, to <= gridPhotos.count, from != to else { return }
+        let item = gridPhotos.remove(at: from)
+        gridPhotos.insert(item, at: min(to, gridPhotos.count))
+    }
+
+    // MARK: Auto-sort from the photo library (parity with Android's importRecent)
+
+    /// Loads the most recent [limit] library photos and auto-sorts them by colour.
+    /// Needs `NSPhotoLibraryUsageDescription` in Info.plist.
+    func importRecentLibraryPhotos(limit: Int = 200) {
+        guard !importing else { return }
+        importing = true
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { [weak self] status in
+            guard status == .authorized || status == .limited else {
+                Task { @MainActor in self?.importing = false }
+                return
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let options = PHFetchOptions()
+                options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                options.fetchLimit = limit
+                let assets = PHAsset.fetchAssets(with: .image, options: options)
+
+                let manager = PHImageManager.default()
+                let req = PHImageRequestOptions()
+                req.deliveryMode = .highQualityFormat
+                req.isSynchronous = true
+                req.isNetworkAccessAllowed = true
+                req.resizeMode = .fast
+
+                var images: [UIImage] = []
+                assets.enumerateObjects { asset, _, _ in
+                    manager.requestImage(
+                        for: asset,
+                        targetSize: CGSize(width: 1200, height: 1200),
+                        contentMode: .aspectFit,
+                        options: req
+                    ) { image, _ in
+                        if let image { images.append(image) }
+                    }
+                }
+                Task { @MainActor in
+                    if !images.isEmpty { self?.add(images: images) }
+                    self?.importing = false
+                }
+            }
+        }
     }
 }
 

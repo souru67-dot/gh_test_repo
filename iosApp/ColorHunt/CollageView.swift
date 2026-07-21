@@ -24,7 +24,7 @@ struct CollageView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if state.selectedPhotos.isEmpty {
+                if state.orderedSelectedPhotos.isEmpty {
                     emptyState
                 } else {
                     editor
@@ -159,7 +159,7 @@ struct CollageView: View {
     /// preview and, at export scale, the shared image. Consumes the flat float
     /// layout from the shared module (no nested Kotlin types to bridge).
     private func canvas(width: CGFloat) -> some View {
-        let photos = state.selectedPhotos
+        let photos = state.orderedSelectedPhotos
         let height = width / aspect
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(photos.count),
