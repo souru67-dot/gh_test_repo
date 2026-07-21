@@ -12,14 +12,32 @@ struct CollageView: View {
     @State private var placementOrdinal: Int32 = 1   // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY
     @State private var spacing: CGFloat = 4          // dp-equivalent on a 360 canvas
     @State private var cornerRadius: CGFloat = 6
+    @State private var borderWidth: CGFloat = 0
+    @State private var borderColor: Int64 = 0xFFFFFFFF
     @State private var aspect: CGFloat = 4.0 / 5.0   // 4:5 default
     @State private var background: Int64 = 0xFF0E0E12
+    @State private var bgFollowsTheme: Bool = true
     @State private var hexOverlay: Bool = false
+    // OVERLAY palette band tuning.
+    @State private var overlayHorizontal: Bool = false
+    @State private var overlayPosFrac: CGFloat = 0.5
+    @State private var overlayWidthFrac: CGFloat = 0.16
     // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
     @State private var focals: [UUID: CellFocal] = [:]
     @State private var editTarget: EditTarget?
+    // Preview interaction mode: crop a cell vs. drag to reorder.
+    @State private var reorderMode = false
+    @State private var dragFrom: Int?
+    @State private var dragTo: Int?
     @State private var shareImage: UIImage?
     @State private var showShare = false
+
+    private static let swatches: [Int64] = [
+        0xFFFFFFFF, 0xFF000000, 0xFFF5F5F5, 0xFF212121,
+        0xFF7C4DFF, 0xFF26C6DA, 0xFFEC407A, 0xFFFFC107,
+    ]
+
+    private var effectiveBackground: Int64 { bgFollowsTheme ? 0xFF0E0E12 : background }
 
     var body: some View {
         NavigationStack {
@@ -72,6 +90,8 @@ struct CollageView: View {
                 canvas(width: 340)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
+                modeToggle
+
                 controls
 
                 HStack(spacing: 12) {
@@ -95,15 +115,25 @@ struct CollageView: View {
         }
     }
 
+    // Split into sub-sections to stay under SwiftUI's 10-view ViewBuilder limit.
     private var controls: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("テンプレート").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+            templateSection
+            layoutSection
+            paletteSection
+            styleSection
+        }
+        .padding(16)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var templateSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel("テンプレート")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(CollageTemplateVM.all) { tpl in
-                        Button {
-                            apply(tpl)
-                        } label: {
+                        Button { apply(tpl) } label: {
                             Text(tpl.label)
                                 .font(.callout)
                                 .padding(.horizontal, 14)
@@ -117,16 +147,24 @@ struct CollageView: View {
                 }
                 .padding(.horizontal, 1)
             }
+        }
+    }
 
-            Text("レイアウト").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+    private var layoutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel("レイアウト")
             Picker("レイアウト", selection: $layoutOrdinal) {
                 Text("グリッド").tag(Int32(0))
                 Text("縦並び").tag(Int32(1))
                 Text("2列").tag(Int32(2))
             }
             .pickerStyle(.segmented)
+        }
+    }
 
-            Text("カラーパレット").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+    private var paletteSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("カラーパレット")
             Picker("パレット", selection: $placementOrdinal) {
                 Text("なし").tag(Int32(0))
                 Text("中央").tag(Int32(1))
@@ -136,7 +174,38 @@ struct CollageView: View {
             }
             .pickerStyle(.segmented)
 
-            Text("SNSサイズ").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+            // OVERLAY (重ねる) fine-tuning: orientation, position, band width.
+            if placementOrdinal == 4 {
+                Picker("帯の向き", selection: $overlayHorizontal) {
+                    Text("縦の帯").tag(false)
+                    Text("横の帯").tag(true)
+                }
+                .pickerStyle(.segmented)
+                sliderRow("帯の位置", value: $overlayPosFrac, range: 0...1)
+                sliderRow("帯の幅", value: $overlayWidthFrac, range: 0.08...0.5)
+            }
+
+            Toggle(isOn: $hexOverlay) {
+                Text("HEXチップを写真に重ねる").font(.callout)
+            }
+            .tint(Color(argb: 0xFF7C4DFF))
+
+            Button { state.sortCollageByHue() } label: {
+                Label("色相で自動整列", systemImage: "sparkles")
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .foregroundStyle(.white)
+                    .background(.white.opacity(0.10), in: Capsule())
+                    .overlay(Capsule().stroke(.white.opacity(0.18), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var styleSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider().overlay(Color.white.opacity(0.08))
+            sectionLabel("SNSサイズ")
             Picker("サイズ", selection: $aspect) {
                 Text("1:1").tag(CGFloat(1))
                 Text("4:5").tag(CGFloat(4.0 / 5.0))
@@ -144,13 +213,73 @@ struct CollageView: View {
             }
             .pickerStyle(.segmented)
 
+            sliderRow("余白", value: $spacing, range: 0...24)
+            sliderRow("角丸", value: $cornerRadius, range: 0...48)
+            sliderRow("枠線の太さ", value: $borderWidth, range: 0...8)
+
+            sectionLabel("枠線の色")
+            swatchRow(selected: borderColor) { borderColor = $0 }
+
             HStack {
-                Text("余白").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
-                Slider(value: $spacing, in: 0...24)
+                sectionLabel("背景色")
+                Spacer()
+                Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
+                Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
+            }
+            if !bgFollowsTheme {
+                swatchRow(selected: background) { background = $0 }
             }
         }
-        .padding(16)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text).font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+    }
+
+    /// Segmented toggle above the preview: crop a cell vs. drag to reorder.
+    private var modeToggle: some View {
+        VStack(spacing: 6) {
+            Picker("モード", selection: $reorderMode) {
+                Text("トリミング").tag(false)
+                Text("並べ替え").tag(true)
+            }
+            .pickerStyle(.segmented)
+            Text(reorderMode ? "セルを長押しして別のセルへドラッグ" : "セルをタップして写真をトリミング")
+                .font(.caption2).foregroundStyle(.white.opacity(0.6))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// A labelled slider with a live integer read-out (Android's StyleSlider look).
+    private func sliderRow(_ label: String, value: Binding<CGFloat>,
+                           range: ClosedRange<CGFloat>) -> some View {
+        VStack(spacing: 2) {
+            HStack {
+                Text(label).font(.callout)
+                Spacer()
+                Text("\(Int((value.wrappedValue * (range.upperBound <= 1 ? 100 : 1)).rounded()))")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+            }
+            Slider(value: value, in: range).tint(Color(argb: 0xFF7C4DFF))
+        }
+    }
+
+    /// A row of preset colour swatches (border / background), Android's SwatchRow.
+    private func swatchRow(selected: Int64, onSelect: @escaping (Int64) -> Void) -> some View {
+        HStack(spacing: 8) {
+            ForEach(Self.swatches, id: \.self) { c in
+                Circle()
+                    .fill(Color(argb: c))
+                    .frame(width: 30, height: 30)
+                    .overlay(
+                        Circle().stroke(
+                            selected == c ? Color(argb: 0xFF7C4DFF) : .white.opacity(0.25),
+                            lineWidth: selected == c ? 3 : 1
+                        )
+                    )
+                    .onTapGesture { onSelect(c) }
+            }
+        }
     }
 
     // MARK: rendering (shared geometry)
@@ -168,24 +297,26 @@ struct CollageView: View {
             spacingFrac: Float(spacing / 360.0),
             width: Float(width),
             height: Float(height),
-            overlayHorizontal: false,
-            overlayPosFrac: 0.5,
-            overlayWidthFrac: 0.16
+            overlayHorizontal: overlayHorizontal,
+            overlayPosFrac: Float(overlayPosFrac),
+            overlayWidthFrac: Float(overlayWidthFrac)
         )
         let layout = decodeLayout(flat)
 
         // Scale the tappable/editable state to whatever width we render at, so the
         // 340pt preview and the 1080px export share one code path (WYSIWYG).
         let interactive = width < 400
+        let scale = width / 360.0
 
         return ZStack(alignment: .topLeading) {
-            Color(argb: background)
+            Color(argb: effectiveBackground)
 
             ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                 if index < layout.cells.count {
                     let r = layout.cells[index]
                     let focal = focals[photo.id] ?? CellFocal()
-                    cellView(photo.image, cell: r, focal: focal, corner: cornerRadius * width / 360.0)
+                    cellView(photo.image, cell: r, focal: focal,
+                             corner: cornerRadius * scale, border: borderWidth * scale)
                         .overlay(alignment: .bottomLeading) {
                             if hexOverlay, let c = photo.dominantColor {
                                 hexChip(c, cellWidth: r.width)
@@ -195,7 +326,7 @@ struct CollageView: View {
                         .offset(x: r.minX, y: r.minY)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            if interactive {
+                            if interactive && !reorderMode {
                                 editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
                             }
                         }
@@ -205,14 +336,57 @@ struct CollageView: View {
             if let rail = layout.palette {
                 paletteRail(rail, photos: photos, translucent: placementOrdinal == 4)
             }
+
+            // Drop-target highlight while dragging in reorder mode.
+            if let to = dragTo, to < layout.cells.count {
+                let r = layout.cells[to]
+                RoundedRectangle(cornerRadius: cornerRadius * scale)
+                    .stroke(Color(argb: 0xFF7C4DFF), lineWidth: 3)
+                    .frame(width: r.width, height: r.height)
+                    .offset(x: r.minX, y: r.minY)
+            }
         }
         .frame(width: width, height: height)
+        .overlay {
+            if interactive && reorderMode && photos.count > 1 {
+                reorderLayer(cells: layout.cells, count: photos.count)
+            }
+        }
+    }
+
+    /// Transparent gesture layer active only in reorder mode: long-press a cell
+    /// then drag onto another to swap order (parity with Android's PreviewArea).
+    private func reorderLayer(cells: [CGRect], count: Int) -> some View {
+        func cellAt(_ p: CGPoint) -> Int? {
+            for i in 0..<min(count, cells.count) where cells[i].contains(p) { return i }
+            return nil
+        }
+        return Color.clear
+            .contentShape(Rectangle())
+            .gesture(
+                LongPressGesture(minimumDuration: 0.25)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .onChanged { value in
+                        if case .second(true, let drag?) = value {
+                            if dragFrom == nil { dragFrom = cellAt(drag.location) }
+                            dragTo = cellAt(drag.location)
+                        }
+                    }
+                    .onEnded { _ in
+                        if let f = dragFrom, let t = dragTo, f != t {
+                            state.moveCollage(from: f, to: t)
+                        }
+                        dragFrom = nil
+                        dragTo = nil
+                    }
+            )
     }
 
     /// One collage cell: fill-crop positioned by [focal] (zoom shrinks the window),
     /// matching Android's CollageRenderer.drawCenterCropped so preview and export —
     /// and the crop editor — all agree pixel-for-pixel.
-    private func cellView(_ image: UIImage, cell: CGRect, focal: CellFocal, corner: CGFloat) -> some View {
+    private func cellView(_ image: UIImage, cell: CGRect, focal: CellFocal,
+                          corner: CGFloat, border: CGFloat) -> some View {
         let m = cropMetrics(imageSize: image.size, boxW: cell.width, boxH: cell.height, focal: focal)
         return Color.clear
             .frame(width: cell.width, height: cell.height)
@@ -223,6 +397,12 @@ struct CollageView: View {
                     .offset(x: m.offsetX, y: m.offsetY)
             }
             .clipShape(RoundedRectangle(cornerRadius: corner))
+            .overlay {
+                if border > 0 {
+                    RoundedRectangle(cornerRadius: corner)
+                        .stroke(Color(argb: borderColor), lineWidth: border)
+                }
+            }
     }
 
     /// A small dot + HEX pill on the cell's bottom-left (Pro "HEX overlay" look).
@@ -319,8 +499,10 @@ struct CollageView: View {
         placementOrdinal = tpl.placement
         spacing = tpl.spacing
         cornerRadius = tpl.corner
+        borderWidth = 0
         aspect = tpl.aspect
         background = tpl.background
+        bgFollowsTheme = false
         hexOverlay = tpl.hexOverlay
     }
 
