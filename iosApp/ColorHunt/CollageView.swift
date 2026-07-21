@@ -7,11 +7,17 @@ import SharedColor
 struct CollageView: View {
     @EnvironmentObject private var state: AppState
 
-    // Mirrors Android CollageStyle (subset v0; ordinals match shared enums).
+    // Mirrors Android CollageStyle (subset; ordinals match shared enums).
     @State private var layoutOrdinal: Int32 = 0      // 0 GRID / 1 VERTICAL / 2 TWO_COLUMN
     @State private var placementOrdinal: Int32 = 1   // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY
     @State private var spacing: CGFloat = 4          // dp-equivalent on a 360 canvas
+    @State private var cornerRadius: CGFloat = 6
     @State private var aspect: CGFloat = 4.0 / 5.0   // 4:5 default
+    @State private var background: Int64 = 0xFF0E0E12
+    @State private var hexOverlay: Bool = false
+    // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
+    @State private var focals: [UUID: CellFocal] = [:]
+    @State private var editTarget: EditTarget?
     @State private var shareImage: UIImage?
     @State private var showShare = false
 
@@ -30,6 +36,20 @@ struct CollageView: View {
         .sheet(isPresented: $showShare) {
             if let shareImage {
                 ActivityView(items: [shareImage])
+            }
+        }
+        .sheet(item: $editTarget) { target in
+            if let photo = state.photos.first(where: { $0.id == target.photoID }) {
+                CropEditorView(
+                    image: photo.image,
+                    cellRatio: target.ratio,
+                    initial: focals[target.photoID] ?? CellFocal()
+                ) { newFocal in
+                    focals[target.photoID] = newFocal
+                    editTarget = nil
+                } onCancel: {
+                    editTarget = nil
+                }
             }
         }
     }
@@ -77,6 +97,27 @@ struct CollageView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Text("テンプレート").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(CollageTemplateVM.all) { tpl in
+                        Button {
+                            apply(tpl)
+                        } label: {
+                            Text(tpl.label)
+                                .font(.callout)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(.white.opacity(0.10), in: Capsule())
+                                .overlay(Capsule().stroke(.white.opacity(0.14), lineWidth: 1))
+                                .foregroundStyle(.white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
+
             Text("レイアウト").font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
             Picker("レイアウト", selection: $layoutOrdinal) {
                 Text("グリッド").tag(Int32(0))
@@ -133,19 +174,31 @@ struct CollageView: View {
         )
         let layout = decodeLayout(flat)
 
+        // Scale the tappable/editable state to whatever width we render at, so the
+        // 340pt preview and the 1080px export share one code path (WYSIWYG).
+        let interactive = width < 400
+
         return ZStack(alignment: .topLeading) {
-            Color(argb: 0xFF0E0E12)
+            Color(argb: background)
 
             ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                 if index < layout.cells.count {
                     let r = layout.cells[index]
-                    Image(uiImage: photo.image)
-                        .resizable()
-                        .scaledToFill()
+                    let focal = focals[photo.id] ?? CellFocal()
+                    cellView(photo.image, cell: r, focal: focal, corner: cornerRadius * width / 360.0)
+                        .overlay(alignment: .bottomLeading) {
+                            if hexOverlay, let c = photo.dominantColor {
+                                hexChip(c, cellWidth: r.width)
+                            }
+                        }
                         .frame(width: r.width, height: r.height)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
                         .offset(x: r.minX, y: r.minY)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if interactive {
+                                editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
+                            }
+                        }
                 }
             }
 
@@ -154,6 +207,39 @@ struct CollageView: View {
             }
         }
         .frame(width: width, height: height)
+    }
+
+    /// One collage cell: fill-crop positioned by [focal] (zoom shrinks the window),
+    /// matching Android's CollageRenderer.drawCenterCropped so preview and export —
+    /// and the crop editor — all agree pixel-for-pixel.
+    private func cellView(_ image: UIImage, cell: CGRect, focal: CellFocal, corner: CGFloat) -> some View {
+        let m = cropMetrics(imageSize: image.size, boxW: cell.width, boxH: cell.height, focal: focal)
+        return Color.clear
+            .frame(width: cell.width, height: cell.height)
+            .overlay {
+                Image(uiImage: image)
+                    .resizable()
+                    .frame(width: m.dispW, height: m.dispH)
+                    .offset(x: m.offsetX, y: m.offsetY)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: corner))
+    }
+
+    /// A small dot + HEX pill on the cell's bottom-left (Pro "HEX overlay" look).
+    private func hexChip(_ packed: Int32, cellWidth: CGFloat) -> some View {
+        let fs = min(max(cellWidth * 0.075, 6), 11)
+        return HStack(spacing: fs * 0.4) {
+            Circle().fill(Color(packed: packed))
+                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 0.5))
+                .frame(width: fs * 0.95, height: fs * 0.95)
+            Text(hexString(packed))
+                .font(.system(size: fs, design: .monospaced))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, fs * 0.5)
+        .padding(.vertical, fs * 0.32)
+        .background(.black.opacity(0.45), in: Capsule())
+        .padding(fs * 0.5)
     }
 
     private func paletteRail(_ rect: CGRect, photos: [HuntPhoto], translucent: Bool) -> some View {
@@ -222,6 +308,224 @@ struct CollageView: View {
     @MainActor private func save() {
         guard let image = render() else { return }
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+    }
+
+    // MARK: templates & crop maths
+
+    /// Applies a one-tap magazine preset — rewrites style + size only; photo order
+    /// and per-cell crop focals stay untouched (parity with CollageTemplates).
+    private func apply(_ tpl: CollageTemplateVM) {
+        layoutOrdinal = tpl.layout
+        placementOrdinal = tpl.placement
+        spacing = tpl.spacing
+        cornerRadius = tpl.corner
+        aspect = tpl.aspect
+        background = tpl.background
+        hexOverlay = tpl.hexOverlay
+    }
+
+    /// The single fill-crop calculation shared by [cellView] and the crop editor.
+    /// Matches Android's drawCenterCropped: fill the box preserving aspect, zoom by
+    /// scale, then offset by the focal point (0.5/0.5 = centred).
+    private func cropMetrics(imageSize: CGSize, boxW: CGFloat, boxH: CGFloat, focal: CellFocal)
+        -> (dispW: CGFloat, dispH: CGFloat, offsetX: CGFloat, offsetY: CGFloat) {
+        let boxRatio = boxW / max(boxH, 1)
+        let imgRatio = imageSize.width / max(imageSize.height, 1)
+        let baseW: CGFloat
+        let baseH: CGFloat
+        if imgRatio > boxRatio {
+            baseH = boxH
+            baseW = boxH * imgRatio
+        } else {
+            baseW = boxW
+            baseH = boxW / imgRatio
+        }
+        let dispW = baseW * focal.scale
+        let dispH = baseH * focal.scale
+        let overX = max(dispW - boxW, 0)
+        let overY = max(dispH - boxH, 0)
+        let ox = (0.5 - focal.x) * overX
+        let oy = (0.5 - focal.y) * overY
+        return (dispW, dispH, ox, oy)
+    }
+}
+
+/// A cell's crop window — normalised focal point (0..1, 0.5 = centre) + zoom.
+/// Mirrors the shared `FocalPoint`, kept as plain Swift so no nested Kotlin type
+/// has to cross the ObjC bridge.
+struct CellFocal: Equatable {
+    var x: CGFloat = 0.5
+    var y: CGFloat = 0.5
+    var scale: CGFloat = 1
+    static let maxScale: CGFloat = 4
+}
+
+/// Identifies which cell the crop editor is editing.
+struct EditTarget: Identifiable {
+    let id = UUID()
+    let index: Int
+    let photoID: UUID
+    let ratio: CGFloat
+}
+
+/// One-tap magazine presets, mirroring the shared `CollageTemplates`.
+struct CollageTemplateVM: Identifiable {
+    let id: String
+    let label: String
+    let aspect: CGFloat
+    let layout: Int32       // 0 GRID / 1 VERTICAL / 2 TWO_COLUMN
+    let placement: Int32    // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY
+    let spacing: CGFloat
+    let corner: CGFloat
+    let background: Int64
+    let hexOverlay: Bool
+
+    static let all: [CollageTemplateVM] = [
+        .init(id: "white", label: "ホワイト", aspect: 4.0 / 5.0, layout: 0, placement: 0,
+              spacing: 14, corner: 0, background: 0xFFFAF8F4, hexOverlay: false),
+        .init(id: "film", label: "フィルム", aspect: 4.0 / 5.0, layout: 1, placement: 0,
+              spacing: 10, corner: 0, background: 0xFF121212, hexOverlay: true),
+        .init(id: "kumisha", label: "組写", aspect: 4.0 / 5.0, layout: 2, placement: 1,
+              spacing: 4, corner: 4, background: 0xFF0E0E12, hexOverlay: false),
+        .init(id: "magazine", label: "マガジン", aspect: 4.0 / 5.0, layout: 0, placement: 3,
+              spacing: 16, corner: 2, background: 0xFFF2EDE3, hexOverlay: false),
+        .init(id: "seamless", label: "シームレス", aspect: 9.0 / 16.0, layout: 2, placement: 4,
+              spacing: 0, corner: 0, background: 0xFF000000, hexOverlay: false),
+    ]
+}
+
+/// Dedicated crop editor: the cell frame at its real aspect ratio; drag to pan and
+/// pinch to zoom, WYSIWYG with the renderer's crop maths. Commits only on 完了.
+struct CropEditorView: View {
+    let image: UIImage
+    let cellRatio: CGFloat
+    let initial: CellFocal
+    let onConfirm: (CellFocal) -> Void
+    let onCancel: () -> Void
+
+    @State private var focal: CellFocal
+    @State private var lastPan: CGSize = .zero
+    @State private var lastMag: CGFloat = 1
+
+    init(image: UIImage, cellRatio: CGFloat, initial: CellFocal,
+         onConfirm: @escaping (CellFocal) -> Void, onCancel: @escaping () -> Void) {
+        self.image = image
+        self.cellRatio = cellRatio
+        self.initial = initial
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+        _focal = State(initialValue: initial)
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("トリミング").font(.headline)
+                Text("ドラッグで移動・ピンチで拡大")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.top, 20)
+
+            GeometryReader { geo in
+                // Fit the cell's real aspect ratio inside the fixed editor area,
+                // portrait or landscape.
+                let boxW = min(geo.size.width, geo.size.height * cellRatio)
+                let boxH = boxW / cellRatio
+                let m = metrics(boxW: boxW, boxH: boxH)
+                ZStack {
+                    Color.black
+                    Image(uiImage: image)
+                        .resizable()
+                        .frame(width: m.dispW, height: m.dispH)
+                        .offset(x: m.offsetX, y: m.offsetY)
+                }
+                .frame(width: boxW, height: boxH)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            let dx = value.translation.width - lastPan.width
+                            let dy = value.translation.height - lastPan.height
+                            lastPan = value.translation
+                            transform(panX: dx, panY: dy, zoom: 1, boxW: boxW, boxH: boxH)
+                        }
+                        .onEnded { _ in lastPan = .zero }
+                )
+                .simultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            let zoom = value / lastMag
+                            lastMag = value
+                            transform(panX: 0, panY: 0, zoom: zoom, boxW: boxW, boxH: boxH)
+                        }
+                        .onEnded { _ in lastMag = 1 }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(height: 380)
+            .padding(.horizontal, 16)
+
+            HStack {
+                Button("リセット") { focal = CellFocal() }
+                    .buttonStyle(.bordered)
+                Spacer()
+                Button("キャンセル") { onCancel() }
+                    .buttonStyle(.bordered)
+                Button("完了") { onConfirm(focal) }
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func metrics(boxW: CGFloat, boxH: CGFloat)
+        -> (dispW: CGFloat, dispH: CGFloat, offsetX: CGFloat, offsetY: CGFloat) {
+        let imgRatio = image.size.width / max(image.size.height, 1)
+        let baseW: CGFloat
+        let baseH: CGFloat
+        if imgRatio > cellRatio {
+            baseH = boxH
+            baseW = boxH * imgRatio
+        } else {
+            baseW = boxW
+            baseH = boxW / imgRatio
+        }
+        let dispW = baseW * focal.scale
+        let dispH = baseH * focal.scale
+        let overX = max(dispW - boxW, 0)
+        let overY = max(dispH - boxH, 0)
+        return (dispW, dispH, (0.5 - focal.x) * overX, (0.5 - focal.y) * overY)
+    }
+
+    /// Same recomputation as Android's detectTransformGestures handler: fold the
+    /// pan delta and zoom factor into the focal point + scale, clamped to bounds.
+    private func transform(panX: CGFloat, panY: CGFloat, zoom: CGFloat, boxW: CGFloat, boxH: CGFloat) {
+        let imgRatio = image.size.width / max(image.size.height, 1)
+        let baseW: CGFloat
+        let baseH: CGFloat
+        if imgRatio > cellRatio {
+            baseH = boxH
+            baseW = boxH * imgRatio
+        } else {
+            baseW = boxW
+            baseH = boxW / imgRatio
+        }
+        let curScale = focal.scale
+        let curOverX = max(baseW * curScale - boxW, 0)
+        let curOverY = max(baseH * curScale - boxH, 0)
+        let newScale = min(max(curScale * zoom, 1), CellFocal.maxScale)
+        let nOverX = max(baseW * newScale - boxW, 0)
+        let nOverY = max(baseH * newScale - boxH, 0)
+        let curOx = (0.5 - focal.x) * curOverX
+        let curOy = (0.5 - focal.y) * curOverY
+        let nOx = min(max(curOx + panX, -nOverX / 2), nOverX / 2)
+        let nOy = min(max(curOy + panY, -nOverY / 2), nOverY / 2)
+        focal.x = nOverX > 0 ? 0.5 - nOx / nOverX : 0.5
+        focal.y = nOverY > 0 ? 0.5 - nOy / nOverY : 0.5
+        focal.scale = newScale
     }
 }
 

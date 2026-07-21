@@ -68,9 +68,10 @@ iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字�
 
 ## 残タスク（次パス）
 
-- [ ] macOS で初回ビルド（ブリッジ生成名の確認・修正）
-- [ ] トリミングエディタ（パン＋ピンチ、共有 `FocalPoint` 使用）
-- [ ] テンプレート5種（共有 `CollageTemplates` を UI に接続）
+- [x] macOS で初回ビルド（ブリッジ生成名の確認・修正）
+- [x] トリミングエディタ（パン＋ピンチ、`CellFocal`＝共有 `FocalPoint` と同じ計算）
+- [x] テンプレート5種（`CollageTemplateVM`＝共有 `CollageTemplates` と同値）
 - [ ] マップ: PHPhotoLibrary 連携で Exif GPS 復元＋色ピン
 - [ ] グリッド: ドラッグ並べ替え
+- [ ] コラージュ: セルのドラッグ並べ替え
 - [ ] StoreKit 2（Pro）、透かし描画、Localizable.strings（en/ja/ko/zh）
