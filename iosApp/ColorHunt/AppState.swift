@@ -176,8 +176,10 @@ final class AppState: ObservableObject {
                         if let image { images.append(image) }
                     }
                 }
+                // Snapshot into a let so the concurrent Task doesn't capture a var.
+                let collected = images
                 Task { @MainActor in
-                    if !images.isEmpty { self?.add(images: images) }
+                    if !collected.isEmpty { self?.add(images: collected) }
                     self?.importing = false
                 }
             }
