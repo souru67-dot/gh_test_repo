@@ -262,8 +262,8 @@ enum ThemeReminder {
         center.removePendingNotificationRequests(withIdentifiers: [id])
 
         let content = UNMutableNotificationContent()
-        content.title = "今日の色をハントしよう"
-        content.body = "今日のテーマ色を決めて、街で見つけよう 🎨"
+        content.title = NSLocalizedString("今日の色をハントしよう", comment: "reminder title")
+        content.body = NSLocalizedString("今日のテーマ色を決めて、街で見つけよう 🎨", comment: "reminder body")
         content.sound = .default
 
         var comps = DateComponents()

@@ -51,6 +51,12 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    - `NSPhotoLibraryUsageDescription`（ハントの「自動で仕分け」で
      ライブラリの直近200枚を読み込むため）
 
+6. **多言語化**: `en.lproj` / `ja.lproj` / `ko.lproj` / `zh-Hans.lproj` の
+   `Localizable.strings` を Xcode プロジェクトに追加し、Project → Info →
+   Localizations に English / Japanese / Korean / Chinese (Simplified) を
+   追加。SwiftUI の `Text("日本語")` は日本語リテラルをキーに自動翻訳し、
+   キーが無い言語では日本語にフォールバックします。
+
 ## 共有 API の Swift からの使い方（プリミティブのみ・ブリッジ安全）
 
 iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字列配列・Float配列**
@@ -78,5 +84,6 @@ iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字�
 - [x] グリッド: iOS Instagram 風プロフィール＋ドラッグ並べ替え
 - [x] コラージュ: セルのドラッグ並べ替え／帯調整／HEXチップ／色相整列／枠線・背景
 - [x] 今日の色: 毎日リマインド通知
-- [ ] マップ: PHPhotoLibrary 連携で Exif GPS 復元＋色ピン
-- [ ] StoreKit 2（Pro）、透かし描画、Localizable.strings（en/ja/ko/zh）
+- [x] マップ: PHPhotoLibrary 連携で GPS 復元＋色ピン
+- [x] StoreKit 2（Pro）＋透かし描画＋ペイウォール
+- [x] Localizable.strings（en/ja/ko/zh-Hans）※要 Xcode でのファイル追加＋言語登録

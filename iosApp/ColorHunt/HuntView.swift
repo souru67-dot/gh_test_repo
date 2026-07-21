@@ -151,7 +151,7 @@ struct HuntView: View {
     private func statPill(_ value: String, _ label: String) -> some View {
         HStack(spacing: 4) {
             Text(value).font(.subheadline.bold()).foregroundStyle(.white)
-            Text(label).font(.caption).foregroundStyle(.white.opacity(0.85))
+            Text(LocalizedStringKey(label)).font(.caption).foregroundStyle(.white.opacity(0.85))
         }
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background(.white.opacity(0.16), in: RoundedCornerStyle.pill)
@@ -178,7 +178,7 @@ struct HuntView: View {
                     .frame(width: 12, height: 12)
                     .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 0.5))
             }
-            Text(label).font(.subheadline.weight(.medium))
+            Text(LocalizedStringKey(label)).font(.subheadline.weight(.medium))
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .foregroundStyle(.white)

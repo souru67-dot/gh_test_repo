@@ -165,7 +165,7 @@ struct CollageView: View {
                 HStack(spacing: 8) {
                     ForEach(CollageTemplateVM.all) { tpl in
                         Button { apply(tpl) } label: {
-                            Text(tpl.label)
+                            Text(LocalizedStringKey(tpl.label))
                                 .font(.callout)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
@@ -264,7 +264,7 @@ struct CollageView: View {
     }
 
     private func sectionLabel(_ text: String) -> some View {
-        Text(text).font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+        Text(LocalizedStringKey(text)).font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
     }
 
     /// Segmented toggle above the preview: crop a cell vs. drag to reorder.
@@ -286,7 +286,7 @@ struct CollageView: View {
                            range: ClosedRange<CGFloat>) -> some View {
         VStack(spacing: 2) {
             HStack {
-                Text(label).font(.callout)
+                Text(LocalizedStringKey(label)).font(.callout)
                 Spacer()
                 Text("\(Int((value.wrappedValue * (range.upperBound <= 1 ? 100 : 1)).rounded()))")
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
@@ -795,9 +795,12 @@ struct PaywallView: View {
             Button {
                 onPurchase()
             } label: {
-                Text(product.map { "購入する（\($0.displayPrice)）" } ?? "購入する")
-                    .font(.callout.bold())
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                HStack(spacing: 4) {
+                    Text("購入する")
+                    if let product { Text(product.displayPrice) }
+                }
+                .font(.callout.bold())
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
             .disabled(product == nil)
@@ -832,7 +835,7 @@ struct PaywallView: View {
     private func benefit(_ text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(argb: 0xFF7C4DFF))
-            Text(text).font(.callout)
+            Text(LocalizedStringKey(text)).font(.callout)
         }
     }
 }

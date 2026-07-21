@@ -444,19 +444,22 @@ func decodeLayout(_ arr: KotlinFloatArray) -> DecodedCollageLayout {
 
 /// Localised bucket names (v0: ja). Move to Localizable.strings for expansion.
 func bucketLabel(_ key: String) -> String {
+    let jp: String
     switch key {
-    case "RED": return "赤"
-    case "ORANGE": return "橙"
-    case "YELLOW": return "黄"
-    case "YELLOW_GREEN": return "黄緑"
-    case "GREEN": return "緑"
-    case "CYAN": return "水色"
-    case "BLUE": return "青"
-    case "PURPLE": return "紫"
-    case "PINK": return "ピンク"
-    case "WHITE": return "白"
-    case "BLACK": return "黒"
-    case "GRAY": return "グレー"
+    case "RED": jp = "赤"
+    case "ORANGE": jp = "橙"
+    case "YELLOW": jp = "黄"
+    case "YELLOW_GREEN": jp = "黄緑"
+    case "GREEN": jp = "緑"
+    case "CYAN": jp = "水色"
+    case "BLUE": jp = "青"
+    case "PURPLE": jp = "紫"
+    case "PINK": jp = "ピンク"
+    case "WHITE": jp = "白"
+    case "BLACK": jp = "黒"
+    case "GRAY": jp = "グレー"
     default: return key
     }
+    // The Japanese name doubles as the Localizable.strings key.
+    return NSLocalizedString(jp, comment: "colour bucket name")
 }

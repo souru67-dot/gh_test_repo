@@ -90,7 +90,7 @@ struct GridPreviewView: View {
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(spacing: 2) {
             Text(value).font(.headline.bold()).foregroundStyle(.white)
-            Text(label).font(.caption).foregroundStyle(.white.opacity(0.75))
+            Text(LocalizedStringKey(label)).font(.caption).foregroundStyle(.white.opacity(0.75))
         }
         .frame(maxWidth: .infinity)
     }
@@ -115,7 +115,7 @@ struct GridPreviewView: View {
     }
 
     private func igButton(_ title: String) -> some View {
-        Text(title)
+        Text(LocalizedStringKey(title))
             .font(.subheadline.bold())
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
