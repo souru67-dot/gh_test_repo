@@ -46,7 +46,10 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
    ```
 
-5. Info.plist: `NSPhotoLibraryAddUsageDescription`（コラージュ保存）を追加。
+5. Info.plist に以下を追加:
+   - `NSPhotoLibraryAddUsageDescription`（コラージュ保存）
+   - `NSPhotoLibraryUsageDescription`（ハントの「自動で仕分け」で
+     ライブラリの直近200枚を読み込むため）
 
 ## 共有 API の Swift からの使い方（プリミティブのみ・ブリッジ安全）
 
@@ -71,7 +74,9 @@ iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字�
 - [x] macOS で初回ビルド（ブリッジ生成名の確認・修正）
 - [x] トリミングエディタ（パン＋ピンチ、`CellFocal`＝共有 `FocalPoint` と同じ計算）
 - [x] テンプレート5種（`CollageTemplateVM`＝共有 `CollageTemplates` と同値）
+- [x] ハント: 自動で仕分け（PHPhotoLibrary で直近200枚）＋色フィルタ＋色相ホイール
+- [x] グリッド: iOS Instagram 風プロフィール＋ドラッグ並べ替え
+- [x] コラージュ: セルのドラッグ並べ替え／帯調整／HEXチップ／色相整列／枠線・背景
+- [x] 今日の色: 毎日リマインド通知
 - [ ] マップ: PHPhotoLibrary 連携で Exif GPS 復元＋色ピン
-- [ ] グリッド: ドラッグ並べ替え
-- [ ] コラージュ: セルのドラッグ並べ替え
 - [ ] StoreKit 2（Pro）、透かし描画、Localizable.strings（en/ja/ko/zh）
