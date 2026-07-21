@@ -141,16 +141,31 @@ struct TodayColorView: View {
     /// Roulette: several turns easing out onto a random hue — varied every press.
     /// The ring stays put (a full rainbow); the marker races and the centre cycles
     /// through hues, then settles — matching Android's ColorWheel spin.
+    ///
+    /// Driven per-frame rather than via `withAnimation`: SwiftUI would interpolate
+    /// the marker's offset along a straight chord and blend the centre colour
+    /// directly (no spin, no rainbow sweep). Updating `hue` each frame instead
+    /// makes the derived marker angle and colour recompute continuously, exactly
+    /// like Android's Animatable driving a Canvas redraw.
     private func spin() {
         guard !spinning else { return }
         spinning = true
+        let start = hue
         let target = Double.random(in: 0..<360)
-        // Continue forward from wherever the marker sits, land on target after N turns.
-        let base = hue - hue.truncatingRemainder(dividingBy: 360)
+        let base = start - start.truncatingRemainder(dividingBy: 360)
         let landing = base + Double(Self.spinTurns) * 360 + target
-        withAnimation(.easeOut(duration: 1.8)) {
+        let duration = 1.8
+
+        Task { @MainActor in
+            let startTime = Date()
+            while true {
+                let t = min(Date().timeIntervalSince(startTime) / duration, 1.0)
+                let eased = 1 - pow(1 - t, 3) // easeOut cubic, like FastOutSlowIn's tail
+                hue = start + (landing - start) * eased
+                if t >= 1.0 { break }
+                try? await Task.sleep(nanoseconds: 16_000_000) // ~60 fps
+            }
             hue = landing
-        } completion: {
             picked = true
             spinning = false
         }

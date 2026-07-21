@@ -90,33 +90,26 @@ final class AppState: ObservableObject {
 enum DominantColor {
 
     static func extract(from image: UIImage) -> Int32? {
-        guard let cg = downsample(image, to: 48) else { return nil }
-        guard let data = cg.dataProvider?.data as Data? else { return nil }
-
-        let bytesPerRow = cg.bytesPerRow
-        let width = cg.width
-        let height = cg.height
-        guard cg.bitsPerPixel == 32 else { return nil }
+        let dim = 48
+        let bytesPerRow = dim * 4
+        guard let buffer = rgbaBuffer(from: image, dim: dim, bytesPerRow: bytesPerRow) else { return nil }
 
         // Quantise to 4 bits/channel; accumulate population and true colour sums.
         var population = [Int: (count: Int, r: Int, g: Int, b: Int)]()
-        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            guard let base = raw.baseAddress else { return }
-            for y in 0..<height {
-                let row = base + y * bytesPerRow
-                for x in 0..<width {
-                    let p = row + x * 4
-                    // CGImage from UIImage is RGBA or BGRA depending on source;
-                    // read via alphaInfo-agnostic RGBA assumption after redraw
-                    // (downsample() draws into an RGBA8888 context).
-                    let r = Int(p.load(fromByteOffset: 0, as: UInt8.self))
-                    let g = Int(p.load(fromByteOffset: 1, as: UInt8.self))
-                    let b = Int(p.load(fromByteOffset: 2, as: UInt8.self))
-                    let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
-                    var e = population[key] ?? (0, 0, 0, 0)
-                    e = (e.count + 1, e.r + r, e.g + g, e.b + b)
-                    population[key] = e
-                }
+        for y in 0..<dim {
+            let row = y * bytesPerRow
+            for x in 0..<dim {
+                let p = row + x * 4
+                // Buffer is RGBA8 (premultipliedLast); skip only fully transparent
+                // padding, keep every real pixel so the histogram is never empty.
+                if buffer[p + 3] < 8 { continue }
+                let r = Int(buffer[p])
+                let g = Int(buffer[p + 1])
+                let b = Int(buffer[p + 2])
+                let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+                var e = population[key] ?? (0, 0, 0, 0)
+                e = (e.count + 1, e.r + r, e.g + g, e.b + b)
+                population[key] = e
             }
         }
         guard !population.isEmpty else { return nil }
@@ -147,15 +140,37 @@ enum DominantColor {
         return Int32(truncatingIfNeeded: packed)
     }
 
-    private static func downsample(_ image: UIImage, to dim: Int) -> CGImage? {
+    /// Draws [image] (orientation-corrected by UIKit) into an RGBA8 buffer we own,
+    /// so extraction never depends on the source's colour space, alpha config or
+    /// bit depth — those mismatches were leaving some photos stuck "analysing".
+    private static func rgbaBuffer(from image: UIImage, dim: Int, bytesPerRow: Int) -> [UInt8]? {
+        // 1. Orientation-correct + downscale via UIKit (handles EXIF orientation).
         let size = CGSize(width: dim, height: dim)
-        let format = UIGraphicsImageRendererFormat()
+        let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        let img = renderer.image { _ in
+        format.opaque = true
+        let small = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             image.draw(in: CGRect(origin: .zero, size: size))
         }
-        return img.cgImage
+        guard let cgImage = small.cgImage else { return nil }
+
+        // 2. Repaint into a context we control, so any source format → plain RGBA8.
+        var buffer = [UInt8](repeating: 0, count: bytesPerRow * dim)
+        let ok = buffer.withUnsafeMutableBytes { raw -> Bool in
+            guard let ctx = CGContext(
+                data: raw.baseAddress,
+                width: dim,
+                height: dim,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            ctx.interpolationQuality = .low
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: dim, height: dim))
+            return true
+        }
+        return ok ? buffer : nil
     }
 }
 
