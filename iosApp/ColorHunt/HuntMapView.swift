@@ -5,26 +5,26 @@ import Photos
 /// マップ — Apple MapKit (the iOS counterpart of Android's osmdroid map). Recovers
 /// GPS from the photo library (PhotosPicker strips it) and drops a colour pin per
 /// geotagged photo, tinted by its dominant colour. Tap a pin for the photo + HEX.
+///
+/// Uses the region-based Map API so it runs on iOS 16 (the newer
+/// `Map(position:)` / `Annotation` builder is iOS 17+).
 struct HuntMapView: View {
     @EnvironmentObject private var state: AppState
 
-    @State private var position: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 35.681, longitude: 139.767),
-            span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.4)
-        )
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 35.681, longitude: 139.767),
+        span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.4)
     )
     @State private var selected: MapPin?
 
     var body: some View {
         NavigationStack {
-            Map(position: $position) {
-                ForEach(state.mapPhotos) { pin in
-                    Annotation("", coordinate: pin.coordinate) {
-                        colorDot(pin)
-                    }
+            Map(coordinateRegion: $region, annotationItems: state.mapPhotos) { pin in
+                MapAnnotation(coordinate: pin.coordinate) {
+                    colorDot(pin)
                 }
             }
+            .ignoresSafeArea(edges: .bottom)
             .overlay(alignment: .bottom) { bottomBar }
             .navigationTitle("カラーマップ")
             .toolbar {
@@ -36,13 +36,14 @@ struct HuntMapView: View {
                 .disabled(state.mapLoading)
             }
             .onAppear {
-                // Auto-load once the library is already authorised.
                 if state.mapPhotos.isEmpty, !state.mapLoading, libraryAuthorized {
                     state.loadMapPhotos()
                 }
             }
-            .onChange(of: state.mapPhotos.count) { _, n in
-                if n > 0 { withAnimation { position = .automatic } }
+            .onChange(of: state.mapPhotos.count) { _ in
+                if let fitted = fittedRegion(state.mapPhotos) {
+                    withAnimation { region = fitted }
+                }
             }
             .sheet(item: $selected) { pin in
                 pinDetail(pin)
@@ -62,6 +63,24 @@ struct HuntMapView: View {
             .overlay(Circle().stroke(.white, lineWidth: 2))
             .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
             .onTapGesture { selected = pin }
+    }
+
+    /// A region that frames all pins with a little padding.
+    private func fittedRegion(_ pins: [MapPin]) -> MKCoordinateRegion? {
+        guard !pins.isEmpty else { return nil }
+        let lats = pins.map { $0.coordinate.latitude }
+        let lons = pins.map { $0.coordinate.longitude }
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return nil }
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((maxLat - minLat) * 1.4, 0.02),
+            longitudeDelta: max((maxLon - minLon) * 1.4, 0.02)
+        )
+        return MKCoordinateRegion(center: center, span: span)
     }
 
     @ViewBuilder

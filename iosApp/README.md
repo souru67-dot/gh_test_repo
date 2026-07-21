@@ -4,7 +4,7 @@ iOS 版本体です。Android と **同じコア**（Kotlin Multiplatform `:shar
 フレームワーク名 `SharedColor`）を使用：色分類（`ColorClassifier`）に加え、
 **コラージュのレイアウト計算（`CollageGeometry`/`CollageBridge`）も共有**
 しているため、両OSのコラージュはピクセル互換です。UI は SwiftUI、地図は
-**Apple MapKit**、対象は iOS 17+。
+**Apple MapKit**、対象は **iOS 16+**（iPhone 8 以降）。
 
 > iOS のビルド/実行には **macOS + Xcode 15+** が必要で、この CI 環境（Linux）
 > では Swift のコンパイル検証ができません。共有 Kotlin コードは Android CI が
@@ -32,7 +32,8 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    `./gradlew :shared:compileKotlinIosSimulatorArm64` が通ること（K/N を初回DL）。
 
 2. Xcode で新規 **iOS App** プロジェクト（Interface: SwiftUI、名前: `ColorHunt`、
-   iOS 17.0+）を作成し、`iosApp/ColorHunt/*.swift` を参照追加。
+   iOS 16.0+）を作成し、`iosApp/ColorHunt/*.swift` を参照追加。
+   ※ プロジェクトの **Minimum Deployments を iOS 16.0** に設定してください。
 
 3. 共有フレームワークを埋め込む **Run Script** ビルドフェーズを
    「Compile Sources」より前に追加:

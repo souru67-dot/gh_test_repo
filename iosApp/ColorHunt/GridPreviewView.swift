@@ -26,7 +26,7 @@ struct GridPreviewView: View {
             .navigationTitle("グリッド")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.black, for: .navigationBar)
-            .onChange(of: pickerItems) { _, items in
+            .onChange(of: pickerItems) { items in
                 Task { await load(items) }
             }
         }
@@ -104,9 +104,7 @@ struct GridPreviewView: View {
             }
             .onDrop(
                 of: [.text],
-                delegate: GridDropDelegate(item: index, current: $dragging) { from, to in
-                    state.moveGridPhoto(from: from, to: to)
-                }
+                delegate: ReorderDropDelegate(item: index, items: $state.gridPhotos, current: $dragging)
             )
             .contextMenu {
                 Button(role: .destructive) {
@@ -147,16 +145,21 @@ struct GridPreviewView: View {
     }
 }
 
-/// Live reorder-on-hover for the feed grid. DropDelegate callbacks run on the main
-/// thread, so `assumeIsolated` safely reaches the @MainActor move closure.
-struct GridDropDelegate: DropDelegate {
+/// Live reorder-on-hover for any array, driven through a Binding so it works on
+/// iOS 16 (no `MainActor.assumeIsolated`, which is iOS 17+). Reused by the Grid
+/// tiles and the collage cells.
+struct ReorderDropDelegate<Item>: DropDelegate {
     let item: Int
+    let items: Binding<[Item]>
     let current: Binding<Int?>
-    let onMove: @MainActor (Int, Int) -> Void
 
     func dropEntered(info: DropInfo) {
-        guard let from = current.wrappedValue, from != item else { return }
-        MainActor.assumeIsolated { onMove(from, item) }
+        guard let from = current.wrappedValue, from != item,
+              items.wrappedValue.indices.contains(from) else { return }
+        var arr = items.wrappedValue
+        let moved = arr.remove(at: from)
+        arr.insert(moved, at: min(item, arr.count))
+        items.wrappedValue = arr
         current.wrappedValue = item
     }
 

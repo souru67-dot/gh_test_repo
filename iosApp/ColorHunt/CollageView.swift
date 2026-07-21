@@ -366,10 +366,10 @@ struct CollageView: View {
                             enabled: interactive,
                             index: index,
                             dragCell: $dragCell,
+                            order: $state.collageOrder,
                             onCrop: {
                                 editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
-                            },
-                            onMove: { from, to in state.moveCollage(from: from, to: to) }
+                            }
                         ))
                 }
             }
@@ -814,8 +814,8 @@ private struct CellGestures: ViewModifier {
     let enabled: Bool
     let index: Int
     @Binding var dragCell: Int?
+    let order: Binding<[UUID]>
     let onCrop: @MainActor () -> Void
-    let onMove: @MainActor (Int, Int) -> Void
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -828,7 +828,7 @@ private struct CellGestures: ViewModifier {
                 }
                 .onDrop(
                     of: [.text],
-                    delegate: GridDropDelegate(item: index, current: $dragCell, onMove: onMove)
+                    delegate: ReorderDropDelegate(item: index, items: order, current: $dragCell)
                 )
         } else {
             content

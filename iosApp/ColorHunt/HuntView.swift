@@ -70,7 +70,7 @@ struct HuntView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .bottom) { makeCollageBar }
-            .onChange(of: pickerItems) { _, items in
+            .onChange(of: pickerItems) { items in
                 Task { await load(items) }
             }
         }
