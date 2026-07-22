@@ -100,13 +100,33 @@ struct CollageView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Text("写真が未選択です").font(.headline)
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Brand.gradient)
+                    .frame(width: 84, height: 84)
+                    .opacity(0.25)
+                    .blur(radius: 8)
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(Brand.gradient)
+            }
+            Text("写真が未選択です")
+                .font(.system(.title3, design: .rounded).bold())
             Text("「ハント」タブで写真を選んでください。")
                 .font(.subheadline).foregroundStyle(.secondary)
-            Button("ハントへ") { state.selectedTab = .hunt }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 8)
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .hunt }
+            } label: {
+                Label("ハントへ", systemImage: "camera.viewfinder")
+                    .font(.system(.callout, design: .rounded).bold())
+                    .padding(.horizontal, 26).padding(.vertical, 13)
+                    .foregroundStyle(.white)
+                    .background(Brand.gradient, in: Capsule())
+                    .shadow(color: Brand.purple.opacity(0.5), radius: 12, y: 4)
+            }
+            .buttonStyle(PopButtonStyle())
+            .padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -168,30 +188,93 @@ struct CollageView: View {
 
     private var templateSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionLabel("テンプレート")
+            sectionLabel("テンプレート", icon: "wand.and.stars")
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     ForEach(CollageTemplateVM.all) { tpl in
-                        Button { apply(tpl) } label: {
-                            Text(LocalizedStringKey(tpl.label))
-                                .font(.callout)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(.white.opacity(0.10), in: Capsule())
-                                .overlay(Capsule().stroke(.white.opacity(0.14), lineWidth: 1))
-                                .foregroundStyle(.white)
+                        Button { applyAnimated(tpl) } label: {
+                            templateCard(tpl)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PopButtonStyle())
                     }
                 }
                 .padding(.horizontal, 1)
+                .padding(.vertical, 2)
             }
+        }
+    }
+
+    /// A mini visual mock of the template — its background colour with a tiny
+    /// layout glyph — so the row reads at a glance instead of as text chips.
+    private func templateCard(_ tpl: CollageTemplateVM) -> some View {
+        let bg = Color(argb: tpl.background)
+        // Legible glyph ink for light vs dark template backgrounds.
+        let v = UInt32(bitPattern: Int32(truncatingIfNeeded: tpl.background))
+        let lum = 0.299 * Double((v >> 16) & 0xFF) + 0.587 * Double((v >> 8) & 0xFF) + 0.114 * Double(v & 0xFF)
+        let ink = lum > 135 ? Color.black.opacity(0.5) : Color.white.opacity(0.7)
+
+        return VStack(spacing: 6) {
+            templateGlyph(tpl, ink: ink)
+                .frame(width: 58, height: 72)
+                .background(bg, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(.white.opacity(0.18), lineWidth: 1)
+                )
+            Text(LocalizedStringKey(tpl.label))
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.white.opacity(0.85))
+        }
+    }
+
+    /// The tiny cell arrangement inside a template card, mirroring its layout
+    /// and palette placement.
+    private func templateGlyph(_ tpl: CollageTemplateVM, ink: Color) -> some View {
+        let gap: CGFloat = tpl.spacing > 8 ? 4 : (tpl.spacing > 0 ? 2 : 0)
+        return HStack(spacing: gap) {
+            if tpl.placement == 3 { // LEFT rail
+                Brand.gradient.frame(width: 7).clipShape(RoundedRectangle(cornerRadius: 1.5))
+            }
+            if tpl.layout == 1 { // VERTICAL
+                VStack(spacing: gap) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 2).fill(ink)
+                    }
+                }
+            } else { // GRID / TWO_COLUMN
+                VStack(spacing: gap) {
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                }
+                if tpl.placement == 1 { // CENTER palette stripe
+                    Brand.gradient.frame(width: 6).clipShape(RoundedRectangle(cornerRadius: 1.5))
+                }
+                VStack(spacing: gap) {
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                }
+            }
+        }
+        .padding(gap == 0 ? 0 : 7)
+        .overlay {
+            if tpl.placement == 4 { // OVERLAY band floats over the photos
+                Brand.gradient.opacity(0.75).frame(width: 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 1.5))
+            }
+        }
+    }
+
+    /// Template application with a light haptic + soft morph of the preview.
+    private func applyAnimated(_ tpl: CollageTemplateVM) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            apply(tpl)
         }
     }
 
     private var layoutSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionLabel("レイアウト")
+            sectionLabel("レイアウト", icon: "rectangle.3.group")
             Picker("レイアウト", selection: $layoutOrdinal) {
                 Text("グリッド").tag(Int32(0))
                 Text("縦並び").tag(Int32(1))
@@ -203,7 +286,7 @@ struct CollageView: View {
 
     private var paletteSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("カラーパレット")
+            sectionLabel("カラーパレット", icon: "paintpalette")
             Picker("パレット", selection: $placementOrdinal) {
                 Text("なし").tag(Int32(0))
                 Text("中央").tag(Int32(1))
@@ -244,7 +327,7 @@ struct CollageView: View {
     private var styleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Divider().overlay(Color.white.opacity(0.08))
-            sectionLabel("SNSサイズ")
+            sectionLabel("SNSサイズ", icon: "aspectratio")
             Picker("サイズ", selection: $aspect) {
                 Text("1:1").tag(CGFloat(1))
                 Text("4:5").tag(CGFloat(4.0 / 5.0))
@@ -272,8 +355,14 @@ struct CollageView: View {
         }
     }
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(LocalizedStringKey(text)).font(.caption.bold()).foregroundStyle(Color(argb: 0xFF9E7CFF))
+    private func sectionLabel(_ text: String, icon: String? = nil) -> some View {
+        HStack(spacing: 5) {
+            if let icon {
+                Image(systemName: icon).font(.caption2)
+            }
+            Text(LocalizedStringKey(text)).font(.caption.bold())
+        }
+        .foregroundStyle(Brand.accent)
     }
 
     /// One-line hint under the preview explaining the direct gestures.
@@ -357,6 +446,7 @@ struct CollageView: View {
                         .overlay(alignment: .bottomLeading) {
                             if hexOverlay, let c = photo.dominantColor {
                                 hexChip(c, cellWidth: r.width)
+                                    .allowsHitTesting(false)
                             }
                         }
                         .frame(width: r.width, height: r.height)
@@ -376,13 +466,18 @@ struct CollageView: View {
             }
 
             if let rail = layout.palette {
+                // Visual only — must never eat the cells' taps/drops (the OVERLAY
+                // band floats right on top of the photos).
                 paletteRail(rail, photos: photos, translucent: placementOrdinal == 4)
+                    .allowsHitTesting(false)
             }
         }
         .frame(width: width, height: height)
         .overlay(alignment: .bottomTrailing) {
             if !state.isPro {
-                watermarkPill(scale: scale).padding(10 * scale)
+                watermarkPill(scale: scale)
+                    .padding(10 * scale)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -419,6 +514,10 @@ struct CollageView: View {
                     .resizable()
                     .frame(width: m.dispW, height: m.dispH)
                     .offset(x: m.offsetX, y: m.offsetY)
+                    // clipShape clips drawing but NOT hit-testing: without this,
+                    // the oversized fill image of the topmost cell silently eats
+                    // taps/drops meant for every cell underneath it.
+                    .allowsHitTesting(false)
             }
             .clipShape(RoundedRectangle(cornerRadius: corner))
             .overlay {
@@ -624,13 +723,40 @@ struct CropEditorView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 4) {
-                Text("トリミング").font(.headline)
-                Text("ドラッグで移動・ピンチで拡大")
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(spacing: 18) {
+            // Photo-editor style header: cancel / title / gradient confirm.
+            HStack {
+                Button {
+                    onCancel()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(10)
+                        .background(.white.opacity(0.10), in: Circle())
+                }
+                Spacer()
+                VStack(spacing: 2) {
+                    Text("トリミング")
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                    Text("ドラッグで移動・ピンチで拡大")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    onConfirm(focal)
+                } label: {
+                    Text("完了")
+                        .font(.system(.callout, design: .rounded).bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18).padding(.vertical, 9)
+                        .background(Brand.gradient, in: Capsule())
+                        .shadow(color: Brand.purple.opacity(0.45), radius: 8, y: 3)
+                }
+                .buttonStyle(PopButtonStyle())
             }
-            .padding(.top, 20)
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
 
             GeometryReader { geo in
                 // Fit the cell's real aspect ratio inside the fixed editor area,
@@ -644,9 +770,26 @@ struct CropEditorView: View {
                         .resizable()
                         .frame(width: m.dispW, height: m.dispH)
                         .offset(x: m.offsetX, y: m.offsetY)
+
+                    thirdsGrid(boxW: boxW, boxH: boxH)
+                        .allowsHitTesting(false)
                 }
                 .frame(width: boxW, height: boxH)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(.white.opacity(0.55), lineWidth: 1.5)
+                }
+                .overlay(alignment: .topTrailing) {
+                    // Live zoom badge.
+                    Text(String(format: "×%.1f", focal.scale))
+                        .font(.system(.caption2, design: .monospaced).bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(.black.opacity(0.55), in: Capsule())
+                        .padding(8)
+                        .allowsHitTesting(false)
+                }
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture()
@@ -672,19 +815,38 @@ struct CropEditorView: View {
             .frame(height: 380)
             .padding(.horizontal, 16)
 
-            HStack {
-                Button("リセット") { focal = CellFocal() }
-                    .buttonStyle(.bordered)
-                Spacer()
-                Button("キャンセル") { onCancel() }
-                    .buttonStyle(.bordered)
-                Button("完了") { onConfirm(focal) }
-                    .buttonStyle(.borderedProminent)
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    focal = CellFocal()
+                }
+            } label: {
+                Label("リセット", systemImage: "arrow.counterclockwise")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(.white.opacity(0.10), in: Capsule())
             }
-            .padding(.horizontal, 16)
+            .buttonStyle(PopButtonStyle())
             .padding(.bottom, 20)
         }
+        .background(Brand.base)
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// Rule-of-thirds guide over the crop window — the universal photo-editor cue.
+    private func thirdsGrid(boxW: CGFloat, boxH: CGFloat) -> some View {
+        Path { p in
+            for f in [1.0 / 3.0, 2.0 / 3.0] {
+                p.move(to: CGPoint(x: boxW * f, y: 0))
+                p.addLine(to: CGPoint(x: boxW * f, y: boxH))
+                p.move(to: CGPoint(x: 0, y: boxH * f))
+                p.addLine(to: CGPoint(x: boxW, y: boxH * f))
+            }
+        }
+        .stroke(.white.opacity(0.28), lineWidth: 0.8)
+        .frame(width: boxW, height: boxH)
     }
 
     private func metrics(boxW: CGFloat, boxH: CGFloat)
