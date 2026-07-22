@@ -160,7 +160,7 @@ struct TodayColorView: View {
                 // Marker riding the ring at the current hue.
                 Circle()
                     .fill(pickedColor)
-                    .stroke(.white, lineWidth: 3)
+                    .overlay(Circle().stroke(.white, lineWidth: 3))
                     .frame(width: ringWidth * 0.9, height: ringWidth * 0.9)
                     .offset(
                         x: cos(hue * .pi / 180) * (size / 2 - ringWidth / 2),
