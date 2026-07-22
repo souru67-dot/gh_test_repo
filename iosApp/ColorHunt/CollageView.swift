@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import StoreKit
 import Photos
 import SharedColor
@@ -28,8 +27,9 @@ struct CollageView: View {
     // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
     @State private var focals: [UUID: CellFocal] = [:]
     @State private var editTarget: EditTarget?
-    // Cell being drag-reordered in the preview (long-press to pick up).
+    // Long-press drag reorder state: picked-up cell and current drop target.
     @State private var dragCell: Int?
+    @State private var dragTarget: Int?
     @State private var shareImage: UIImage?
     @State private var showShare = false
     @State private var showPaywall = false
@@ -142,8 +142,11 @@ struct CollageView: View {
     private var editor: some View {
         ScrollView {
             VStack(spacing: 16) {
-                canvas(width: 340)
+                // Cap the preview height so tall ratios (9:16) shrink in width and
+                // stay in line with the other sizes instead of filling the screen.
+                canvas(width: min(340, 440 * aspect))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .frame(maxWidth: .infinity)
 
                 previewHint
 
@@ -468,15 +471,11 @@ struct CollageView: View {
                         .offset(x: r.minX, y: r.minY)
                         .opacity(dragCell == index ? 0.35 : 1)
                         .contentShape(Rectangle())
-                        .modifier(CellGestures(
-                            enabled: interactive,
-                            index: index,
-                            dragCell: $dragCell,
-                            order: $state.collageOrder,
-                            onCrop: {
+                        .onTapGesture {
+                            if interactive {
                                 editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
                             }
-                        ))
+                        }
                 }
             }
 
@@ -484,6 +483,16 @@ struct CollageView: View {
                 // Visual only — must never eat the cells' taps/drops (the OVERLAY
                 // band floats right on top of the photos).
                 paletteRail(rail, photos: photos, translucent: placementOrdinal == 4)
+                    .allowsHitTesting(false)
+            }
+
+            // Drop-target ring while a long-press drag is in flight.
+            if let to = dragTarget, to < layout.cells.count, dragCell != nil {
+                let r = layout.cells[to]
+                RoundedRectangle(cornerRadius: cornerRadius * scale)
+                    .stroke(Brand.accent, lineWidth: 3)
+                    .frame(width: r.width, height: r.height)
+                    .offset(x: r.minX, y: r.minY)
                     .allowsHitTesting(false)
             }
         }
@@ -495,6 +504,47 @@ struct CollageView: View {
                     .allowsHitTesting(false)
             }
         }
+        // Long-press then drag to reorder — a plain container gesture (the system
+        // onDrag/onDrop session was unreliable inside this ScrollView). Cell taps
+        // still win because a tap never survives the 0.3s hold.
+        .simultaneousGesture(reorderGesture(
+            cells: layout.cells,
+            count: min(photos.count, layout.cells.count),
+            enabled: interactive && photos.count > 1
+        ))
+    }
+
+    private func reorderGesture(cells: [CGRect], count: Int, enabled: Bool) -> some Gesture {
+        func cellAt(_ p: CGPoint) -> Int? {
+            for i in 0..<count where cells[i].contains(p) { return i }
+            return nil
+        }
+        return LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                guard enabled else { return }
+                if case .second(true, let drag?) = value {
+                    if dragCell == nil {
+                        if let picked = cellAt(drag.startLocation) {
+                            dragCell = picked
+                            dragTarget = picked
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                    }
+                    dragTarget = cellAt(drag.location)
+                }
+            }
+            .onEnded { _ in
+                defer {
+                    dragCell = nil
+                    dragTarget = nil
+                }
+                guard enabled, let from = dragCell, let to = dragTarget, from != to else { return }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    state.moveCollage(from: from, to: to)
+                }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
     }
 
     /// Free-tier brand watermark — a rainbow-dot pill bottom-right, echoing
@@ -744,12 +794,27 @@ struct CropEditorView: View {
 
     init(image: UIImage, cellRatio: CGFloat, initial: CellFocal,
          onConfirm: @escaping (CellFocal) -> Void, onCancel: @escaping () -> Void) {
-        self.image = image
+        // Edit on a downscaled copy: dragging a 12MP original re-renders the full
+        // image every frame and stutters; ~1400px is indistinguishable in the
+        // editor and the focal maths is resolution-independent.
+        self.image = Self.editorScaled(image)
         self.cellRatio = cellRatio
         self.initial = initial
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         _focal = State(initialValue: initial)
+    }
+
+    private static func editorScaled(_ image: UIImage, maxSide: CGFloat = 1400) -> UIImage {
+        let longest = max(image.size.width, image.size.height)
+        guard longest > maxSide, longest > 0 else { return image }
+        let s = maxSide / longest
+        let size = CGSize(width: image.size.width * s, height: image.size.height * s)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
     }
 
     var body: some View {
@@ -842,7 +907,7 @@ struct CropEditorView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(height: 380)
+            .frame(maxHeight: .infinity)
             .padding(.horizontal, 16)
 
             Button {
@@ -861,7 +926,8 @@ struct CropEditorView: View {
             .padding(.bottom, 20)
         }
         .background(Brand.base)
-        .presentationDetents([.medium, .large])
+        // Full-height only: at .medium the fixed editor area clipped off-screen.
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
@@ -997,34 +1063,6 @@ struct PaywallView: View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(argb: 0xFF7C4DFF))
             Text(LocalizedStringKey(text)).font(.callout)
-        }
-    }
-}
-
-/// Direct per-cell gestures: tap to crop, long-press-drag to reorder. Only active
-/// in the interactive preview (disabled for the export render).
-private struct CellGestures: ViewModifier {
-    let enabled: Bool
-    let index: Int
-    @Binding var dragCell: Int?
-    let order: Binding<[UUID]>
-    let onCrop: @MainActor () -> Void
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if enabled {
-            content
-                .onTapGesture { onCrop() }
-                .onDrag {
-                    dragCell = index
-                    return NSItemProvider(object: String(index) as NSString)
-                }
-                .onDrop(
-                    of: [.text],
-                    delegate: ReorderDropDelegate(item: index, items: order, current: $dragCell)
-                )
-        } else {
-            content
         }
     }
 }

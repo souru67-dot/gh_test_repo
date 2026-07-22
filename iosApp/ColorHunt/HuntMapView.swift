@@ -134,13 +134,24 @@ struct HuntMapView: View {
         return s == .authorized || s == .limited
     }
 
+    /// Photo-bubble pin: the photo itself in a circle, ringed by its dominant
+    /// colour with a small colour tail dot — instantly scannable and inviting.
     private func colorDot(_ pin: MapPin) -> some View {
-        Circle()
-            .fill(Color(packed: pin.color))
-            .frame(width: 22, height: 22)
-            .overlay(Circle().stroke(.white, lineWidth: 2))
-            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-            .onTapGesture { selected = pin }
+        VStack(spacing: 1) {
+            Image(uiImage: pin.thumbnail)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 38, height: 38)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(packed: pin.color), lineWidth: 3))
+                .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 1))
+            Circle()
+                .fill(Color(packed: pin.color))
+                .frame(width: 7, height: 7)
+                .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
+        }
+        .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+        .onTapGesture { selected = pin }
     }
 
     /// A region that frames all pins with a little padding.

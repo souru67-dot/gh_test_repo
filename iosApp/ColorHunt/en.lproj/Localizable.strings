@@ -128,3 +128,8 @@
 "組写コラージュをワンタップで" = "One-tap duo collages";
 "今日の色をハントしてシェア" = "Hunt today's colour and share it";
 "はじめる" = "Get Started";
+
+/* v1.2 — colour collection */
+"カラーコレクション" = "Colour Collection";
+"全%lld色コンプリートを目指そう" = "Collect all %lld colours";
+"全色コンプリート！🎉" = "Collection complete! 🎉";

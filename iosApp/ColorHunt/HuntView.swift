@@ -7,7 +7,6 @@ import SharedColor
 struct HuntView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
-    @State private var wheelExpanded = false
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
@@ -18,8 +17,6 @@ struct HuntView: View {
         guard let f = state.huntFilter else { return state.groupedByBucket }
         return state.groupedByBucket.filter { $0.key == f }
     }
-    /// Every collected dominant colour (for the hue wheel).
-    private var collectedColors: [Int32] { state.photos.compactMap { $0.dominantColor } }
 
     var body: some View {
         NavigationStack {
@@ -35,8 +32,8 @@ struct HuntView: View {
                         filterRow
                     }
 
-                    if state.huntFilter == nil, collectedColors.count >= 3 {
-                        colorWheelCard
+                    if state.huntFilter == nil, !state.photos.isEmpty {
+                        colorCollectionCard
                     }
 
                     if !state.photos.isEmpty {
@@ -193,44 +190,67 @@ struct HuntView: View {
         }
     }
 
-    /// Collapsed-by-default "your colour wheel" card — a mini swatch strip while
-    /// closed, the full hue ring when expanded (parity with Android's HueRingCard).
-    private var colorWheelCard: some View {
-        VStack(spacing: 0) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { wheelExpanded.toggle() }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("あなたのカラーホイール").font(.subheadline.bold()).foregroundStyle(.white)
-                        Text("\(availableFilters.count)色を集めました")
-                            .font(.caption).foregroundStyle(.white.opacity(0.7))
-                    }
-                    Spacer()
-                    if !wheelExpanded {
-                        HStack(spacing: -6) {
-                            ForEach(Array(collectedColors.prefix(5).enumerated()), id: \.offset) { _, c in
-                                Circle().fill(Color(packed: c))
-                                    .frame(width: 20, height: 20)
-                                    .overlay(Circle().stroke(Color(argb: 0xFF101014), lineWidth: 1.5))
-                            }
-                        }
-                    }
-                    Image(systemName: wheelExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+    /// カラーコレクション — the 12-bucket collection tracker that replaced the old
+    /// hue wheel. Collected colours fill in as vivid swatches (tap one to filter);
+    /// missing ones stay as dashed slots. Filling the board is the game loop that
+    /// keeps hunters opening the app.
+    private var colorCollectionCard: some View {
+        let allKeys = ColorBridge.shared.bucketKeys()
+        let collected = Set(availableFilters)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("カラーコレクション")
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(collected.count)")
+                        .font(.system(.title3, design: .rounded).weight(.heavy))
+                        .foregroundStyle(Brand.gradient)
+                    Text("/ \(allKeys.count)")
+                        .font(.system(.footnote, design: .rounded).bold())
+                        .foregroundStyle(.white.opacity(0.6))
                 }
             }
-            .buttonStyle(.plain)
 
-            if wheelExpanded {
-                HueRing(colors: collectedColors)
-                    .frame(width: 190, height: 190)
-                    .padding(.top, 14)
+            HStack(spacing: 6) {
+                ForEach(allKeys, id: \.self) { key in
+                    collectionDot(key, collected: collected.contains(key))
+                }
             }
+
+            Text(collected.count >= allKeys.count
+                 ? "全色コンプリート！🎉"
+                 : "全\(allKeys.count)色コンプリートを目指そう")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.55))
         }
         .padding(16)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func collectionDot(_ key: String, collected: Bool) -> some View {
+        Group {
+            if collected {
+                Circle()
+                    .fill(Color(packed: Int32(truncatingIfNeeded: ColorBridge.shared.swatchOf(key: key))))
+                    .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 1))
+                    .transition(.scale.combined(with: .opacity))
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            state.huntFilter = key
+                        }
+                    }
+            } else {
+                Circle()
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                    .foregroundStyle(.white.opacity(0.25))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .animation(.spring(response: 0.4, dampingFraction: 0.6), value: collected)
     }
 
     private func bucketHeader(_ key: String, count: Int) -> some View {
@@ -328,51 +348,3 @@ enum RoundedCornerStyle {
     static let pill = Capsule()
 }
 
-/// A colour ring: the collected swatches placed around a rainbow rim by their
-/// hue angle — the iOS echo of Android's HueRing. A snapshot of the palette.
-struct HueRing: View {
-    let colors: [Int32]
-
-    var body: some View {
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
-            let radius = size / 2
-            let ringWidth = size * 0.10
-            let orbit = radius - ringWidth - size * 0.09
-            ZStack {
-                Circle()
-                    .strokeBorder(
-                        AngularGradient(
-                            colors: (0...12).map { Color(hue: Double($0) / 12, saturation: 0.9, brightness: 1) },
-                            center: .center
-                        ),
-                        lineWidth: ringWidth
-                    )
-                ForEach(Array(colors.enumerated()), id: \.offset) { _, c in
-                    let angle = hueAngle(c) * .pi / 180
-                    Circle()
-                        .fill(Color(packed: c))
-                        .frame(width: size * 0.13, height: size * 0.13)
-                        .overlay(Circle().stroke(.white.opacity(0.7), lineWidth: 1))
-                        .offset(x: cos(angle) * orbit, y: sin(angle) * orbit)
-                }
-            }
-            .frame(width: size, height: size)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    private func hueAngle(_ packed: Int32) -> Double {
-        let v = Int(UInt32(bitPattern: packed))
-        let r = Double((v >> 16) & 0xFF) / 255, g = Double((v >> 8) & 0xFF) / 255, b = Double(v & 0xFF) / 255
-        let maxC = max(r, g, b), minC = min(r, g, b), d = maxC - minC
-        if d < 0.0001 { return 0 }
-        let h: Double
-        switch maxC {
-        case r: h = (g - b) / d + (g < b ? 6 : 0)
-        case g: h = (b - r) / d + 2
-        default: h = (r - g) / d + 4
-        }
-        return h * 60
-    }
-}
