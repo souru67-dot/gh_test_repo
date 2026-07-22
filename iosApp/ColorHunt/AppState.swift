@@ -76,8 +76,28 @@ final class AppState: ObservableObject {
 
     // MARK: Intake & analysis
 
+    /// Content hashes of every photo already in the hunt — re-picking or re-running
+    /// auto-sort must not stack duplicates.
+    private var photoHashes = Set<Int>()
+
     func add(images: [UIImage]) {
-        let fresh = images.map { HuntPhoto(image: $0, dominantColor: nil, bucketKey: nil) }
+        // Hash off-main (tiny 16×16 renders), then append only unseen images.
+        Task.detached(priority: .userInitiated) { [weak self] in
+            var pairs: [(UIImage, Int)] = []
+            for image in images {
+                if let h = DominantColor.quickHash(image) { pairs.append((image, h)) }
+            }
+            let result = pairs
+            await self?.appendUnique(result)
+        }
+    }
+
+    private func appendUnique(_ pairs: [(UIImage, Int)]) {
+        var fresh: [HuntPhoto] = []
+        for (image, hash) in pairs where !photoHashes.contains(hash) {
+            photoHashes.insert(hash)
+            fresh.append(HuntPhoto(image: image, dominantColor: nil, bucketKey: nil))
+        }
         photos.append(contentsOf: fresh)
         for photo in fresh {
             Task.detached(priority: .userInitiated) { [weak self] in
@@ -116,6 +136,7 @@ final class AppState: ObservableObject {
         photos.removeAll()
         selection.removeAll()
         collageOrder.removeAll()
+        photoHashes.removeAll()
     }
 
     // MARK: Collage ordering (parity with Android's move / sortByHue)
@@ -312,6 +333,16 @@ struct MapPin: Identifiable {
 /// histogram, then score population × (0.35 + saturation) × value-weight so the
 /// subject's colour beats dark backgrounds and blown highlights.
 enum DominantColor {
+
+    /// Cheap content fingerprint (16×16 RGBA bytes hashed) used to skip duplicate
+    /// photos when the picker or auto-sort runs more than once.
+    static func quickHash(_ image: UIImage) -> Int? {
+        let dim = 16
+        guard let buffer = rgbaBuffer(from: image, dim: dim, bytesPerRow: dim * 4) else { return nil }
+        var hasher = Hasher()
+        buffer.withUnsafeBytes { hasher.combine(bytes: $0) }
+        return hasher.finalize()
+    }
 
     static func extract(from image: UIImage) -> Int32? {
         let dim = 48

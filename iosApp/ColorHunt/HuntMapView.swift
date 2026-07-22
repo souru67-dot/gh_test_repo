@@ -1,13 +1,13 @@
 import SwiftUI
 import MapKit
 import Photos
+import SharedColor
 
-/// マップ — Apple MapKit (the iOS counterpart of Android's osmdroid map). Recovers
-/// GPS from the photo library (PhotosPicker strips it) and drops a colour pin per
-/// geotagged photo, tinted by its dominant colour. Tap a pin for the photo + HEX.
+/// マップ — the colour map. Recovers GPS from the photo library (PhotosPicker
+/// strips it) and drops a colour pin per geotagged photo. Pins filter by colour
+/// bucket, and the current view exports as an image (pins + brand pill drawn in).
 ///
-/// Uses the region-based Map API so it runs on iOS 16 (the newer
-/// `Map(position:)` / `Annotation` builder is iOS 17+).
+/// Uses the region-based Map API so it runs on iOS 16.
 struct HuntMapView: View {
     @EnvironmentObject private var state: AppState
 
@@ -16,25 +16,35 @@ struct HuntMapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.4)
     )
     @State private var selected: MapPin?
+    @State private var filter: String?
+    @State private var savingSnapshot = false
+    @State private var saveDone = false
+
+    /// Buckets present among the loaded pins, in shared display order.
+    private var pinBuckets: [String] {
+        let present = Set(state.mapPhotos.map { ColorBridge.shared.classifyKey(colorInt: $0.color) })
+        return ColorBridge.shared.bucketKeys().filter { present.contains($0) }
+    }
+
+    private var filteredPins: [MapPin] {
+        guard let f = filter else { return state.mapPhotos }
+        return state.mapPhotos.filter { ColorBridge.shared.classifyKey(colorInt: $0.color) == f }
+    }
 
     var body: some View {
         NavigationStack {
-            Map(coordinateRegion: $region, annotationItems: state.mapPhotos) { pin in
+            Map(coordinateRegion: $region, annotationItems: filteredPins) { pin in
                 MapAnnotation(coordinate: pin.coordinate) {
                     colorDot(pin)
                 }
             }
             .ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .top) { topOverlay }
             .overlay(alignment: .bottom) { bottomBar }
-            .navigationTitle("カラーマップ")
-            .toolbar {
-                Button {
-                    state.loadMapPhotos()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .disabled(state.mapLoading)
+            .overlay(alignment: .top) {
+                if saveDone { SaveToast().padding(.top, 60) }
             }
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 if state.mapPhotos.isEmpty, !state.mapLoading, libraryAuthorized {
                     state.loadMapPhotos()
@@ -50,6 +60,74 @@ struct HuntMapView: View {
             }
         }
     }
+
+    // MARK: top overlay — floating title + colour filter chips
+
+    private var topOverlay: some View {
+        VStack(spacing: 8) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "map.fill").font(.footnote)
+                    Text("カラーマップ")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                }
+                .padding(.horizontal, 14).padding(.vertical, 9)
+                .background(.ultraThinMaterial, in: Capsule())
+
+                Spacer()
+
+                Button {
+                    state.loadMapPhotos()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(10)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .disabled(state.mapLoading)
+            }
+
+            if pinBuckets.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        mapFilterChip(nil, "すべて")
+                        ForEach(pinBuckets, id: \.self) { key in
+                            mapFilterChip(key, bucketLabel(key))
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 6)
+    }
+
+    private func mapFilterChip(_ key: String?, _ label: String) -> some View {
+        let active = filter == key
+        return HStack(spacing: 6) {
+            if let key {
+                Circle()
+                    .fill(Color(packed: Int32(truncatingIfNeeded: ColorBridge.shared.swatchOf(key: key))))
+                    .frame(width: 11, height: 11)
+                    .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 0.5))
+            }
+            Text(LocalizedStringKey(label)).font(.caption.weight(.semibold))
+        }
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(active ? Brand.accent : .clear, lineWidth: 1.5))
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                filter = (filter == key ? nil : key)
+            }
+            if let fitted = fittedRegion(filteredPins) {
+                withAnimation { region = fitted }
+            }
+        }
+    }
+
+    // MARK: pins
 
     private var libraryAuthorized: Bool {
         let s = PHPhotoLibrary.authorizationStatus(for: .readWrite)
@@ -83,6 +161,8 @@ struct HuntMapView: View {
         return MKCoordinateRegion(center: center, span: span)
     }
 
+    // MARK: bottom bar
+
     @ViewBuilder
     private var bottomBar: some View {
         if state.mapLoading {
@@ -91,29 +171,57 @@ struct HuntMapView: View {
                 Text("写真ライブラリを読み込み中…").font(.caption)
             }
             .padding(12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .padding()
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .padding(.bottom, 14)
         } else if state.mapPhotos.isEmpty {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Text("位置情報つきの写真をマップに表示します。")
                     .font(.caption).multilineTextAlignment(.center)
                 Button {
                     state.loadMapPhotos()
                 } label: {
                     Label("写真から読み込む", systemImage: "photo.on.rectangle")
-                        .font(.callout.bold())
+                        .font(.system(.callout, design: .rounded).bold())
+                        .padding(.horizontal, 20).padding(.vertical, 11)
+                        .foregroundStyle(.white)
+                        .background(Brand.gradient, in: Capsule())
+                        .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PopButtonStyle())
             }
-            .padding(14)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .padding()
+            .padding(16)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .padding(.bottom, 14)
         } else {
-            Text("\(state.mapPhotos.count)枚の色をマップに表示中")
-                .font(.caption)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .padding(.bottom, 12)
+            HStack(spacing: 10) {
+                Text("\(filteredPins.count)枚")
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .background(.ultraThinMaterial, in: Capsule())
+
+                Spacer()
+
+                Button {
+                    saveSnapshot()
+                } label: {
+                    Group {
+                        if savingSnapshot {
+                            ProgressView().tint(.white)
+                        } else {
+                            Label("写真に保存", systemImage: "square.and.arrow.down")
+                                .font(.system(.callout, design: .rounded).bold())
+                        }
+                    }
+                    .padding(.horizontal, 18).padding(.vertical, 11)
+                    .foregroundStyle(.white)
+                    .background(Brand.gradient, in: Capsule())
+                    .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
+                }
+                .buttonStyle(PopButtonStyle())
+                .disabled(savingSnapshot)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 14)
         }
     }
 
@@ -135,5 +243,83 @@ struct HuntMapView: View {
             Spacer()
         }
         .presentationDetents([.medium])
+    }
+
+    // MARK: snapshot export
+
+    /// Renders the current region via MKMapSnapshotter, draws the (filtered)
+    /// colour pins and the brand pill onto it, and saves to the photo library —
+    /// a shareable "my colour map" image.
+    private func saveSnapshot() {
+        guard !savingSnapshot else { return }
+        savingSnapshot = true
+        let pins = filteredPins
+        let options = MKMapSnapshotter.Options()
+        options.region = region
+        options.size = CGSize(width: 1080, height: 1350)
+
+        MKMapSnapshotter(options: options).start { snapshot, _ in
+            guard let snapshot else {
+                DispatchQueue.main.async { savingSnapshot = false }
+                return
+            }
+            let image = UIGraphicsImageRenderer(size: snapshot.image.size).image { _ in
+                snapshot.image.draw(at: .zero)
+                let bounds = CGRect(origin: .zero, size: snapshot.image.size)
+
+                for pin in pins {
+                    let p = snapshot.point(for: pin.coordinate)
+                    guard bounds.insetBy(dx: -20, dy: -20).contains(p) else { continue }
+                    let r: CGFloat = 13
+                    let rect = CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)
+                    let path = UIBezierPath(ovalIn: rect)
+                    uiColor(pin.color).setFill()
+                    path.fill()
+                    UIColor.white.setStroke()
+                    path.lineWidth = 3
+                    path.stroke()
+                }
+
+                // Brand pill bottom-right — the share-funnel signature.
+                let label = "ColorHunt" as NSString
+                let font = UIFont.systemFont(ofSize: 30, weight: .semibold)
+                let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+                let textSize = label.size(withAttributes: attrs)
+                let padH: CGFloat = 22
+                let pill = CGRect(
+                    x: bounds.width - textSize.width - padH * 2 - 26,
+                    y: bounds.height - textSize.height - 24 - 26,
+                    width: textSize.width + padH * 2,
+                    height: textSize.height + 24
+                )
+                UIColor.black.withAlphaComponent(0.45).setFill()
+                UIBezierPath(roundedRect: pill, cornerRadius: pill.height / 2).fill()
+                label.draw(at: CGPoint(x: pill.minX + padH, y: pill.minY + 12), withAttributes: attrs)
+            }
+
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }) { success, _ in
+                DispatchQueue.main.async {
+                    savingSnapshot = false
+                    guard success else { return }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { saveDone = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                        withAnimation(.easeOut(duration: 0.3)) { saveDone = false }
+                    }
+                }
+            }
+        }
+    }
+
+    private func uiColor(_ packed: Int32) -> UIColor {
+        let v = UInt32(bitPattern: packed)
+        return UIColor(
+            red: CGFloat((v >> 16) & 0xFF) / 255,
+            green: CGFloat((v >> 8) & 0xFF) / 255,
+            blue: CGFloat(v & 0xFF) / 255,
+            alpha: 1
+        )
     }
 }

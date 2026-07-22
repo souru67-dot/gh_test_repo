@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import StoreKit
+import Photos
 import SharedColor
 
 /// コラージュ — renders the selected photos with the SAME geometry maths as
@@ -32,6 +33,8 @@ struct CollageView: View {
     @State private var shareImage: UIImage?
     @State private var showShare = false
     @State private var showPaywall = false
+    @State private var saving = false
+    @State private var saveDone = false
 
     private static let swatches: [Int64] = [
         0xFFFFFFFF, 0xFF000000, 0xFFF5F5F5, 0xFF212121,
@@ -51,6 +54,11 @@ struct CollageView: View {
             }
             .background(Color(argb: 0xFF101014))
             .navigationTitle("コラージュ")
+            .overlay(alignment: .top) {
+                if saveDone {
+                    SaveToast()
+                }
+            }
         }
         .sheet(isPresented: $showShare) {
             if let shareImage {
@@ -160,14 +168,21 @@ struct CollageView: View {
                     Button {
                         save()
                     } label: {
-                        Label("保存", systemImage: "square.and.arrow.down")
-                            .font(.system(.callout, design: .rounded).bold())
-                            .frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .foregroundStyle(.white)
-                            .background(Brand.gradient, in: Capsule())
-                            .shadow(color: Brand.purple.opacity(0.5), radius: 12, y: 4)
+                        Group {
+                            if saving {
+                                ProgressView().tint(.white)
+                            } else {
+                                Label("保存", systemImage: "square.and.arrow.down")
+                                    .font(.system(.callout, design: .rounded).bold())
+                            }
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 13)
+                        .foregroundStyle(.white)
+                        .background(Brand.gradient, in: Capsule())
+                        .shadow(color: Brand.purple.opacity(0.5), radius: 12, y: 4)
                     }
                     .buttonStyle(PopButtonStyle())
+                    .disabled(saving)
                 }
             }
             .padding()
@@ -608,9 +623,24 @@ struct CollageView: View {
         showShare = shareImage != nil
     }
 
+    /// Save with real feedback: spinner while writing, success haptic + toast when
+    /// the photo actually lands in the library (silent fire-and-forget felt broken).
     @MainActor private func save() {
-        guard let image = render() else { return }
-        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        guard !saving, let image = render() else { return }
+        saving = true
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
+        }) { success, _ in
+            DispatchQueue.main.async {
+                saving = false
+                guard success else { return }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { saveDone = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                    withAnimation(.easeOut(duration: 0.3)) { saveDone = false }
+                }
+            }
+        }
     }
 
     // MARK: templates & crop maths
