@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import StoreKit
 import SharedColor
 
 /// コラージュ — renders the selected photos with the SAME geometry maths as
