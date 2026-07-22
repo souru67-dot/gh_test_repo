@@ -50,12 +50,15 @@ struct ColorHuntApp: App {
 struct RootTabView: View {
     @EnvironmentObject private var state: AppState
     @AppStorage("onboarded_v1") private var onboarded = false
+    @State private var showCamera = false
 
     var body: some View {
         ZStack {
+            // Four tabs leave the centre of the bar empty for the raised camera
+            // button. Grid (the most secondary feature) opens from the Hunt hero.
             TabView(selection: $state.selectedTab) {
                 HuntView()
-                    .tabItem { Label("ハント", systemImage: "camera.viewfinder") }
+                    .tabItem { Label("ハント", systemImage: "photo.on.rectangle.angled") }
                     .tag(AppTab.hunt)
                 CollageView()
                     .tabItem { Label("コラージュ", systemImage: "square.grid.2x2") }
@@ -63,13 +66,11 @@ struct RootTabView: View {
                 TodayColorView()
                     .tabItem { Label("今日の色", systemImage: "sparkles") }
                     .tag(AppTab.today)
-                GridPreviewView()
-                    .tabItem { Label("グリッド", systemImage: "square.grid.3x3") }
-                    .tag(AppTab.grid)
                 HuntMapView()
                     .tabItem { Label("マップ", systemImage: "map") }
                     .tag(AppTab.map)
             }
+            .overlay(alignment: .bottom) { cameraButton }
 
             if !onboarded {
                 OnboardingView {
@@ -79,6 +80,31 @@ struct RootTabView: View {
                 .zIndex(1)
             }
         }
+        .fullScreenCover(isPresented: $showCamera) {
+            HuntCameraView().environmentObject(state)
+        }
+    }
+
+    /// The star of the tab bar: a raised gradient camera button sitting in the
+    /// empty centre gap of the four-tab bar.
+    private var cameraButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showCamera = true
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Brand.gradient)
+                    .frame(width: 62, height: 62)
+                    .overlay(Circle().stroke(Brand.base, lineWidth: 5))
+                    .shadow(color: Brand.purple.opacity(0.6), radius: 12, y: 4)
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .buttonStyle(PopButtonStyle())
+        .offset(y: 6)
     }
 }
 

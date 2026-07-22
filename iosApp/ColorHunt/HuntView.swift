@@ -7,6 +7,7 @@ import SharedColor
 struct HuntView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var showGrid = false
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
@@ -71,6 +72,20 @@ struct HuntView: View {
                 Task { await load(items) }
             }
         }
+        .fullScreenCover(isPresented: $showGrid) {
+            GridPreviewView()
+                .environmentObject(state)
+                .overlay(alignment: .topTrailing) {
+                    Button { showGrid = false } label: {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(.black.opacity(0.4), in: Circle())
+                    }
+                    .padding(.top, 8).padding(.trailing, 12)
+                }
+        }
     }
 
     // MARK: pieces
@@ -86,15 +101,25 @@ struct HuntView: View {
                         .font(.subheadline).foregroundStyle(.white.opacity(0.9))
                 }
                 Spacer()
-                if !state.photos.isEmpty {
-                    Button(role: .destructive) {
-                        state.clearAll()
-                        state.huntFilter = nil
+                HStack(spacing: 8) {
+                    Button {
+                        showGrid = true
                     } label: {
-                        Image(systemName: "trash")
+                        Image(systemName: "square.grid.3x3")
                             .padding(10)
                             .background(.white.opacity(0.18), in: Circle())
                             .foregroundStyle(.white)
+                    }
+                    if !state.photos.isEmpty {
+                        Button(role: .destructive) {
+                            state.clearAll()
+                            state.huntFilter = nil
+                        } label: {
+                            Image(systemName: "trash")
+                                .padding(10)
+                                .background(.white.opacity(0.18), in: Circle())
+                                .foregroundStyle(.white)
+                        }
                     }
                 }
             }

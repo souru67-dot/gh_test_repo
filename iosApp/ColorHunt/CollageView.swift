@@ -77,6 +77,10 @@ struct CollageView: View {
                 } onCancel: {
                     editTarget = nil
                 }
+                // sheet(item:) reuses its content view on iOS 16, which froze the
+                // editor on the first-ever photo; keying by photo forces a fresh
+                // editor (image + focal state) per cell.
+                .id(target.photoID)
             }
         }
         .sheet(isPresented: $showPaywall) {

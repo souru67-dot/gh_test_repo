@@ -34,6 +34,8 @@ final class AppState: ObservableObject {
     @Published var selection: Set<UUID> = []
     /// Active colour filter on the Hunt tab (shared so Today's colour can set it).
     @Published var huntFilter: String?
+    /// Today's picked theme colour — the Hunt Camera targets it.
+    @Published var todayColor: Int32?
     /// Explicit collage order for the selected photos (drag reorder + hue sort).
     @Published var collageOrder: [UUID] = []
 
@@ -141,11 +143,11 @@ final class AppState: ObservableObject {
 
     // MARK: Collage ordering (parity with Android's move / sortByHue)
 
-    /// Reorder the collage cells (drag-and-drop).
+    /// Swap two collage cells (drag one onto another). A swap — not
+    /// remove+insert — so every other cell stays exactly where it was.
     func moveCollage(from: Int, to: Int) {
-        guard collageOrder.indices.contains(from), to >= 0, to <= collageOrder.count, from != to else { return }
-        let item = collageOrder.remove(at: from)
-        collageOrder.insert(item, at: min(to, collageOrder.count))
+        guard collageOrder.indices.contains(from), collageOrder.indices.contains(to), from != to else { return }
+        collageOrder.swapAt(from, to)
     }
 
     /// Auto-arrange the collage by hue — a quiet rainbow run, like Android's sortByHue.

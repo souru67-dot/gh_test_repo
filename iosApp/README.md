@@ -51,6 +51,13 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    - `NSPhotoLibraryAddUsageDescription`（コラージュ保存）
    - `NSPhotoLibraryUsageDescription`（ハントの「自動で仕分け」で
      ライブラリの直近200枚を読み込むため）
+   - `NSCameraUsageDescription`（ハントカメラ）例:「街の色をリアルタイムで
+     ハントするためにカメラを使用します」
+
+> **新規ファイル**: `HuntCameraView.swift` を追加した場合は、Xcode の
+> プロジェクトナビゲータにドラッグして **ColorHunt ターゲットにチェック**を
+> 入れてください（未追加だと `HuntCameraView` が未定義になります）。
+> カメラはシミュレータでは動きません（実機 iPhone で確認）。
 
 6. **多言語化**: `en.lproj` / `ja.lproj` / `ko.lproj` / `zh-Hans.lproj` の
    `Localizable.strings` を Xcode プロジェクトに追加し、Project → Info →

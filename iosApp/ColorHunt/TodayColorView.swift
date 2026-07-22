@@ -177,6 +177,7 @@ struct TodayColorView: View {
                     if deg < 0 { deg += 360 }
                     hue = deg
                     picked = true
+                    state.todayColor = packedColor   // Hunt Camera targets this
                 }
             )
         }
@@ -259,6 +260,7 @@ struct TodayColorView: View {
             hue = landing
             picked = true
             spinning = false
+            state.todayColor = packedColor   // Hunt Camera targets this
         }
     }
 }

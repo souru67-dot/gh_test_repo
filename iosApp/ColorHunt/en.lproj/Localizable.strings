@@ -133,3 +133,12 @@
 "カラーコレクション" = "Colour Collection";
 "全%lld色コンプリートを目指そう" = "Collect all %lld colours";
 "全色コンプリート！🎉" = "Collection complete! 🎉";
+
+/* v1.3 — hunt camera */
+"今日の色を探す" = "Find today's colour";
+"色をスキャン" = "Scan a colour";
+"見つけた！" = "Found it!";
+"カメラで色をハント" = "Hunt colours with the camera";
+"設定 › ColorHunt でカメラを許可すると、\n街の色をリアルタイムでハントできます。" = "Allow camera access in Settings › ColorHunt\nto hunt colours around you in real time.";
+"設定を開く" = "Open Settings";
+"ハント" = "hunts";
