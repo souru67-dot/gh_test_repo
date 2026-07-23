@@ -44,11 +44,20 @@
 
 ```
 写真を選ぶ (PhotosPicker)
-  → AppState.add(images:)          # ①重複ハッシュチェック(16×16px)
+  → AppState.add(images:)          # ①重複ハッシュチェック(16×16px, 安定FNV-1a)
   → DominantColor.extract()        # ②48×48に縮小→ヒストグラム→代表色
   → ColorBridge.classifyKey()      # ③Kotlinの共有分類器で "RED" 等のキーに
   → @Published photos が変わる      # ④SwiftUIが自動で再描画
+  → didSet → scheduleSave()        # ⑤0.9秒デバウンスで Documents/HuntStore に
+                                   #   JPEG(≤2400px) + manifest.json を自動保存
+起動時: loadStore() が manifest を読み、画像をバックグラウンドで復元
+（選択・並び順・今日の色・グリッドも同じ manifest で往復）
 ```
+
+**Pro の境界**（`CollageTemplateVM.isPro`）: 無料=拡散の主役（4カット・フレーム
+モード・基本6テンプレ・1080px+透かし）。Pro=デイログ/パステル/Y2K/チェキ/
+マガジン＋透かし削除＋2160px。Proテンプレは適用（試用）自由で、保存/共有の
+瞬間に `proTemplateLock` がペイウォールを出す try-then-buy 設計。
 
 **ここが SwiftUI の核心**: `@Published` の値が変わると、それを見ている View が
 勝手に再描画されます。「画面を更新するコード」は 1 行も書いていません。

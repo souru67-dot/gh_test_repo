@@ -134,6 +134,11 @@
 "全%lld色コンプリートを目指そう" = "Collect all %lld colours";
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
+/* v1.6 — Pro boundary + persistence */
+"Pro限定テンプレート（デイログ・パステル・Y2K・チェキ・マガジン）" = "Pro-only templates (Day Log, Pastel, Y2K, Instax, Magazine)";
+"2160pxの高画質書き出し" = "2160px high-resolution export";
+"デバッグ切替" = "Debug toggle";
+
 /* v1.5 — collage categories, day-log, date stamp, camera frame mode */
 "デイログ" = "Day Log";
 "パステル" = "Pastel";

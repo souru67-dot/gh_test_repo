@@ -316,7 +316,9 @@ struct HuntCameraView: View {
 
     @State private var matched = false
     @State private var flashOverlay = false
-    @State private var huntedCount = 0
+    /// Lifetime hunt counter — persists so the number keeps growing across
+    /// sessions (collection psychology, like the colour collection card).
+    @AppStorage("huntedTotal") private var huntedCount = 0
     @State private var lastShot: UIImage?
 
     // Capture settings.

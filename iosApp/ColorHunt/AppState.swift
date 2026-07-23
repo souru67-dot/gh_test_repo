@@ -9,12 +9,19 @@ import SharedColor
 
 /// A hunted photo on iOS — mirrors Android's `HuntPhoto`.
 struct HuntPhoto: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let image: UIImage
     /// Packed 0xFFRRGGBB dominant colour, nil while analysing / on failure.
     var dominantColor: Int32?
     /// Stable bucket key from the shared classifier (e.g. "RED"), nil = unanalysed.
     var bucketKey: String?
+
+    init(id: UUID = UUID(), image: UIImage, dominantColor: Int32?, bucketKey: String?) {
+        self.id = id
+        self.image = image
+        self.dominantColor = dominantColor
+        self.bucketKey = bucketKey
+    }
 
     static func == (lhs: HuntPhoto, rhs: HuntPhoto) -> Bool { lhs.id == rhs.id }
 }
@@ -32,20 +39,22 @@ enum AppTab: Hashable {
 final class AppState: ObservableObject {
     @Published var selectedTab: AppTab = .hunt
 
-    @Published var photos: [HuntPhoto] = []
-    @Published var selection: Set<UUID> = []
+    // The hunt itself persists across launches (the collection IS the product):
+    // every mutation below schedules a debounced save to Documents/HuntStore.
+    @Published var photos: [HuntPhoto] = [] { didSet { scheduleSave() } }
+    @Published var selection: Set<UUID> = [] { didSet { scheduleSave() } }
     /// Active colour filter on the Hunt tab (shared so Today's colour can set it).
     @Published var huntFilter: String?
     /// Today's picked theme colour — the Hunt Camera targets it.
-    @Published var todayColor: Int32?
+    @Published var todayColor: Int32? { didSet { scheduleSave() } }
     /// Explicit collage order for the selected photos (drag reorder + hue sort).
-    @Published var collageOrder: [UUID] = []
+    @Published var collageOrder: [UUID] = [] { didSet { scheduleSave() } }
     /// Template queued by the camera's frame mode; CollageView applies it once
     /// when it becomes visible and clears it.
     @Published var pendingCollageTemplateID: String?
 
     /// Photos the Grid tab picked independently (parity with Android's Grid).
-    @Published var gridPhotos: [UIImage] = []
+    @Published var gridPhotos: [UIImage] = [] { didSet { scheduleGridSave(); scheduleSave() } }
 
     /// True while an auto-sort library import is running (drives the spinner).
     @Published var importing = false
@@ -62,6 +71,8 @@ final class AppState: ObservableObject {
     init() {
         // Restore entitlements and keep listening for purchases/renewals.
         Task { await startPro() }
+        // Bring the hunt back from disk (images decode off-main).
+        Task { await loadStore() }
     }
 
     var selectedPhotos: [HuntPhoto] { photos.filter { selection.contains($0.id) } }
@@ -103,10 +114,13 @@ final class AppState: ObservableObject {
         var fresh: [HuntPhoto] = []
         for (image, hash) in pairs where !photoHashes.contains(hash) {
             photoHashes.insert(hash)
-            fresh.append(HuntPhoto(image: image, dominantColor: nil, bucketKey: nil))
+            let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
+            hashByID[photo.id] = hash
+            fresh.append(photo)
         }
         photos.append(contentsOf: fresh)
         for photo in fresh {
+            persistPhotoFile(photo)
             Task.detached(priority: .userInitiated) { [weak self] in
                 let color = DominantColor.extract(from: photo.image)
                 await self?.finishAnalysis(id: photo.id, color: color)
@@ -120,8 +134,12 @@ final class AppState: ObservableObject {
     func startCollage(with images: [UIImage], templateID: String) {
         var fresh: [HuntPhoto] = []
         for image in images {
-            if let h = DominantColor.quickHash(image) { photoHashes.insert(h) }
-            fresh.append(HuntPhoto(image: image, dominantColor: nil, bucketKey: nil))
+            let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
+            if let h = DominantColor.quickHash(image) {
+                photoHashes.insert(h)
+                hashByID[photo.id] = h
+            }
+            fresh.append(photo)
         }
         photos.append(contentsOf: fresh)
         let ids = fresh.map { $0.id }
@@ -130,6 +148,7 @@ final class AppState: ObservableObject {
         pendingCollageTemplateID = templateID
         selectedTab = .collage
         for photo in fresh {
+            persistPhotoFile(photo)
             Task.detached(priority: .userInitiated) { [weak self] in
                 let color = DominantColor.extract(from: photo.image)
                 await self?.finishAnalysis(id: photo.id, color: color)
@@ -163,10 +182,150 @@ final class AppState: ObservableObject {
     }
 
     func clearAll() {
+        let ids = photos.map { $0.id }
         photos.removeAll()
         selection.removeAll()
         collageOrder.removeAll()
         photoHashes.removeAll()
+        hashByID.removeAll()
+        Task.detached(priority: .utility) {
+            for id in ids {
+                try? FileManager.default.removeItem(at: huntPhotoURL(id))
+            }
+        }
+    }
+
+    // MARK: Persistence (Documents/HuntStore: JPEGs + manifest.json)
+
+    /// id → stable content hash, kept so the manifest can restore the dedupe
+    /// set without re-decoding every image at launch.
+    private var hashByID: [UUID: Int] = [:]
+    /// Suppresses save scheduling while loadStore() writes restored state back.
+    private var restoring = false
+    private var saveTask: Task<Void, Never>?
+    private var gridSaveTask: Task<Void, Never>?
+
+    /// Everything except the pixels; images live as JPEGs next to it.
+    private struct StoredPhoto: Codable {
+        let id: UUID
+        let hash: Int?
+        let color: Int32?
+        let bucket: String?
+    }
+    private struct Manifest: Codable {
+        var photos: [StoredPhoto]
+        var selection: [UUID]
+        var order: [UUID]
+        var todayColor: Int32?
+        var gridCount: Int
+    }
+
+    /// Debounced so bursts (200-photo import, per-photo analysis) coalesce
+    /// into one small JSON write.
+    private func scheduleSave() {
+        guard !restoring else { return }
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            guard !Task.isCancelled else { return }
+            self?.saveManifest()
+        }
+    }
+
+    private func saveManifest() {
+        let manifest = Manifest(
+            photos: photos.map {
+                StoredPhoto(id: $0.id, hash: hashByID[$0.id],
+                            color: $0.dominantColor, bucket: $0.bucketKey)
+            },
+            selection: Array(selection),
+            order: collageOrder,
+            todayColor: todayColor,
+            gridCount: gridPhotos.count
+        )
+        guard let data = try? JSONEncoder().encode(manifest) else { return }
+        Task.detached(priority: .utility) {
+            let dir = huntStoreDir()
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try? data.write(to: dir.appendingPathComponent("manifest.json"), options: .atomic)
+        }
+    }
+
+    /// Writes one hunt photo's JPEG (downscaled to ~2400px — plenty for the
+    /// 2160px Pro export) off the main thread.
+    private func persistPhotoFile(_ photo: HuntPhoto) {
+        let image = photo.image
+        let url = huntPhotoURL(photo.id)
+        Task.detached(priority: .utility) {
+            try? FileManager.default.createDirectory(at: huntStoreDir(), withIntermediateDirectories: true)
+            writeJPEG(image, to: url)
+        }
+    }
+
+    /// Grid images are few and unkeyed, so the whole set is rewritten
+    /// (debounced) as grid-0.jpg… and stale tail files are removed.
+    private func scheduleGridSave() {
+        guard !restoring else { return }
+        gridSaveTask?.cancel()
+        let snapshot = gridPhotos
+        gridSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            Task.detached(priority: .utility) {
+                let dir = huntStoreDir()
+                try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                for (i, image) in snapshot.enumerated() {
+                    writeJPEG(image, to: huntGridURL(i), maxSide: 1600)
+                }
+                var i = snapshot.count
+                while FileManager.default.fileExists(atPath: huntGridURL(i).path) {
+                    try? FileManager.default.removeItem(at: huntGridURL(i))
+                    i += 1
+                }
+            }
+        }
+    }
+
+    private func loadStore() async {
+        let dir = huntStoreDir()
+        guard let data = try? Data(contentsOf: dir.appendingPathComponent("manifest.json")),
+              let manifest = try? JSONDecoder().decode(Manifest.self, from: data) else { return }
+
+        let stored = manifest.photos
+        let gridCount = manifest.gridCount
+        let loadedPairs: [(StoredPhoto, UIImage)] = await Task.detached(priority: .userInitiated) {
+            stored.compactMap { sp in
+                UIImage(contentsOfFile: huntPhotoURL(sp.id).path).map { (sp, $0) }
+            }
+        }.value
+        let grid: [UIImage] = await Task.detached(priority: .userInitiated) {
+            (0..<gridCount).compactMap { UIImage(contentsOfFile: huntGridURL($0).path) }
+        }.value
+
+        restoring = true
+        photos = loadedPairs.map { sp, image in
+            HuntPhoto(id: sp.id, image: image, dominantColor: sp.color, bucketKey: sp.bucket)
+        }
+        for (sp, _) in loadedPairs {
+            if let h = sp.hash {
+                photoHashes.insert(h)
+                hashByID[sp.id] = h
+            }
+        }
+        let valid = Set(photos.map { $0.id })
+        selection = Set(manifest.selection).intersection(valid)
+        collageOrder = manifest.order.filter { valid.contains($0) }
+        todayColor = manifest.todayColor
+        gridPhotos = grid
+        restoring = false
+
+        // Finish any analysis that was mid-flight when the app quit.
+        for photo in photos where photo.bucketKey == nil {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                let color = DominantColor.extract(from: photo.image)
+                await self?.finishAnalysis(id: photo.id, color: color)
+            }
+        }
     }
 
     // MARK: Collage ordering (parity with Android's move / sortByHue)
@@ -340,13 +499,47 @@ extension AppState {
         }
     }
 
-    /// Debug-only manual unlock, so the Pro path is testable without App Store Connect.
-    func debugUnlockPro() { setPro(true) }
+    /// Debug-only manual toggle, so BOTH tiers are testable without App Store
+    /// Connect: flip to Pro to check unlocks, flip back to check the paywall.
+    func debugUnlockPro() { setPro(!isPro) }
 
     private func setPro(_ value: Bool) {
         isPro = value
         UserDefaults.standard.set(value, forKey: "isPro")
     }
+}
+
+// MARK: - Store file helpers (file-scope: callable from any isolation)
+
+private func huntStoreDir() -> URL {
+    FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("HuntStore", isDirectory: true)
+}
+
+private func huntPhotoURL(_ id: UUID) -> URL {
+    huntStoreDir().appendingPathComponent("\(id.uuidString).jpg")
+}
+
+private func huntGridURL(_ index: Int) -> URL {
+    huntStoreDir().appendingPathComponent("grid-\(index).jpg")
+}
+
+/// Downscales (if needed) and writes a JPEG. UIGraphicsImageRenderer is
+/// thread-safe, so this can run on background queues.
+private func writeJPEG(_ image: UIImage, to url: URL, maxSide: CGFloat = 2400) {
+    var out = image
+    let longest = max(image.size.width, image.size.height)
+    if longest > maxSide, longest > 0 {
+        let s = maxSide / longest
+        let size = CGSize(width: image.size.width * s, height: image.size.height * s)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        out = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+    guard let data = out.jpegData(compressionQuality: 0.85) else { return }
+    try? data.write(to: url, options: .atomic)
 }
 
 /// A geotagged photo on the colour map.
@@ -365,13 +558,17 @@ struct MapPin: Identifiable {
 enum DominantColor {
 
     /// Cheap content fingerprint (16×16 RGBA bytes hashed) used to skip duplicate
-    /// photos when the picker or auto-sort runs more than once.
+    /// photos when the picker or auto-sort runs more than once. FNV-1a, NOT
+    /// Swift's Hasher: Hasher is seeded per-process, and these hashes are
+    /// persisted in the HuntStore manifest to survive relaunches.
     static func quickHash(_ image: UIImage) -> Int? {
         let dim = 16
         guard let buffer = rgbaBuffer(from: image, dim: dim, bytesPerRow: dim * 4) else { return nil }
-        var hasher = Hasher()
-        buffer.withUnsafeBytes { hasher.combine(bytes: $0) }
-        return hasher.finalize()
+        var h: UInt64 = 0xcbf29ce484222325
+        for byte in buffer {
+            h = (h ^ UInt64(byte)) &* 0x100000001b3
+        }
+        return Int(bitPattern: UInt(truncatingIfNeeded: h))
     }
 
     static func extract(from image: UIImage) -> Int32? {

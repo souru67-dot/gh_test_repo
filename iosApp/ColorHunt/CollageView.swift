@@ -166,6 +166,23 @@ struct CollageView: View {
                 // stay in line with the other sizes instead of filling the screen.
                 canvas(width: min(340, 440 * aspect))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(alignment: .topLeading) {
+                        // Try-then-buy: Pro presets preview freely; this badge
+                        // says why save/share will ask for Pro.
+                        if proTemplateLock {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                Text(verbatim: "PRO")
+                                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(Color(argb: 0xFF7C4DFF).opacity(0.92), in: Capsule())
+                            .padding(8)
+                            .allowsHitTesting(false)
+                        }
+                    }
                     .frame(maxWidth: .infinity)
 
                 previewHint
@@ -295,6 +312,17 @@ struct CollageView: View {
                             lineWidth: selected ? 2.5 : 1
                         )
                 )
+                .overlay(alignment: .topTrailing) {
+                    // Crown = Pro preset (badge disappears once Pro is owned).
+                    if tpl.isPro && !state.isPro {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Color(argb: 0xFFFFC107))
+                            .padding(4)
+                            .background(.black.opacity(0.55), in: Circle())
+                            .padding(3)
+                    }
+                }
             Text(LocalizedStringKey(tpl.label))
                 .font(.caption2.weight(selected ? .bold : .medium))
                 .foregroundStyle(selected ? Brand.accent : .white.opacity(0.85))
@@ -753,14 +781,28 @@ struct CollageView: View {
 
     // MARK: export
 
+    /// True when a Pro preset is applied without Pro — preview stays free,
+    /// save/share raise the paywall (the conversion moment).
+    private var proTemplateLock: Bool {
+        guard !state.isPro, let id = appliedTemplateID,
+              let tpl = CollageTemplateVM.all.first(where: { $0.id == id }) else { return false }
+        return tpl.isPro
+    }
+
     @MainActor
     private func render() -> UIImage? {
-        let renderer = ImageRenderer(content: canvas(width: 1080).environmentObject(state))
+        // Pro exports at 2160px (crisper on retina feeds); free at 1080px.
+        let width: CGFloat = state.isPro ? 2160 : 1080
+        let renderer = ImageRenderer(content: canvas(width: width).environmentObject(state))
         renderer.scale = 1
         return renderer.uiImage
     }
 
     @MainActor private func share() {
+        if proTemplateLock {
+            showPaywall = true
+            return
+        }
         // Share assist parity: hashtag caption on the pasteboard, paste-and-go.
         UIPasteboard.general.string = "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt"
         shareImage = render()
@@ -770,6 +812,10 @@ struct CollageView: View {
     /// Save with real feedback: spinner while writing, success haptic + toast when
     /// the photo actually lands in the library (silent fire-and-forget felt broken).
     @MainActor private func save() {
+        if proTemplateLock {
+            showPaywall = true
+            return
+        }
         guard !saving, let image = render() else { return }
         saving = true
         PHPhotoLibrary.shared().performChanges({
@@ -881,45 +927,52 @@ struct CollageTemplateVM: Identifiable {
     let background: Int64
     let hexOverlay: Bool
     let dateStamp: Bool
+    let isPro: Bool
 
     // Ordered by current SNS pull. Trend research: the Korean photobooth strip
     // (人生4カット) and instant-camera nostalgia lead 2026 collages; setlog-style
     // casual day-logging ("映え疲れ" backlash) inspires デイログ; photo dumps,
     // soft pastels and bold Y2K colour round out the trend shelf.
+    //
+    // Pro boundary (value line): the viral hooks stay free — 4カット, the whole
+    // camera frame mode and a solid basic shelf — so watermarked exports keep
+    // advertising the app. The 5 highest-"映え" presets (デイログ/パステル/Y2K/
+    // チェキ/マガジン) are Pro: free users can APPLY them and fall in love in
+    // the preview, and the paywall appears at save/share (try-then-buy).
     static let all: [CollageTemplateVM] = [
         .init(id: "fourcut", label: "4カット", category: .trend, aspect: 0.36, layout: 1,
               placement: 0, spacing: 12, corner: 0, background: 0xFFFFFFFF,
-              hexOverlay: false, dateStamp: true),
+              hexOverlay: false, dateStamp: true, isPro: false),
         .init(id: "daylog", label: "デイログ", category: .trend, aspect: 4.0 / 5.0, layout: 0,
               placement: 0, spacing: 12, corner: 10, background: 0xFFF6F0E4,
-              hexOverlay: false, dateStamp: true),
+              hexOverlay: false, dateStamp: true, isPro: true),
         .init(id: "pastel", label: "パステル", category: .trend, aspect: 1.0, layout: 0,
               placement: 0, spacing: 12, corner: 16, background: 0xFFFFE9F2,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: true),
         .init(id: "dump", label: "フォトダンプ", category: .trend, aspect: 1.0, layout: 0,
               placement: 0, spacing: 10, corner: 18, background: 0xFF17171C,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "y2k", label: "Y2K", category: .trend, aspect: 4.0 / 5.0, layout: 2,
               placement: 0, spacing: 12, corner: 20, background: 0xFFFF2D92,
-              hexOverlay: true, dateStamp: false),
+              hexOverlay: true, dateStamp: false, isPro: true),
         .init(id: "cheki", label: "チェキ", category: .retro, aspect: 1.0, layout: 0,
               placement: 0, spacing: 22, corner: 2, background: 0xFFFDFBF5,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: true),
         .init(id: "film", label: "フィルム", category: .retro, aspect: 4.0 / 5.0, layout: 1,
               placement: 0, spacing: 10, corner: 0, background: 0xFF121212,
-              hexOverlay: true, dateStamp: true),
+              hexOverlay: true, dateStamp: true, isPro: false),
         .init(id: "magazine", label: "マガジン", category: .retro, aspect: 4.0 / 5.0, layout: 0,
               placement: 3, spacing: 16, corner: 2, background: 0xFFF2EDE3,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: true),
         .init(id: "white", label: "ホワイト", category: .minimal, aspect: 4.0 / 5.0, layout: 0,
               placement: 0, spacing: 14, corner: 0, background: 0xFFFAF8F4,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "kumisha", label: "組写", category: .minimal, aspect: 4.0 / 5.0, layout: 2,
               placement: 1, spacing: 4, corner: 4, background: 0xFF0E0E12,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "seamless", label: "シームレス", category: .minimal, aspect: 9.0 / 16.0, layout: 2,
               placement: 4, spacing: 0, corner: 0, background: 0xFF000000,
-              hexOverlay: false, dateStamp: false),
+              hexOverlay: false, dateStamp: false, isPro: false),
     ]
 
     /// The frame-mode shelf in the Hunt Camera — layouts that read clearly as
@@ -1164,7 +1217,8 @@ struct PaywallView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 benefit("透かしなしで書き出し")
-                benefit("すべてのテンプレート・パレット配置")
+                benefit("Pro限定テンプレート（デイログ・パステル・Y2K・チェキ・マガジン）")
+                benefit("2160pxの高画質書き出し")
                 benefit("今後のPro機能もすべて")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1193,7 +1247,9 @@ struct PaywallView: View {
             }
 
             #if DEBUG
-            Button("デバッグ解除") { onDebugUnlock() }
+            // Toggles Pro on AND off, so the free-tier paywall flow is
+            // testable too. Never ships: DEBUG builds only.
+            Button("デバッグ切替") { onDebugUnlock() }
                 .font(.caption).foregroundStyle(.secondary)
             #endif
 
