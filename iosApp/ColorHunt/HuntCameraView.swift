@@ -339,6 +339,8 @@ struct HuntCameraView: View {
     @State private var frameTemplate: CollageTemplateVM?
     @State private var frameShots: [UIImage] = []
     @State private var showFramePicker = false
+    /// Drives the breathing gradient ring on the next guide cell.
+    @State private var guidePulse = false
     private let frameCellCount = 4
 
     private var target: Int32? { state.todayColor }
@@ -378,7 +380,11 @@ struct HuntCameraView: View {
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
 
-                reticleLayer
+                // The crosshair steps aside while a guide is up — frame mode is
+                // about composing cells, and the live colour stays in the pill.
+                if frameTemplate == nil {
+                    reticleLayer
+                }
                 if let tpl = frameTemplate {
                     frameGuide(tpl)
                 }
@@ -624,6 +630,8 @@ struct HuntCameraView: View {
                 frameTemplate = tpl
                 frameShots = []
             }
+            // Reset so the guide's onAppear restarts the pulse next time.
+            if tpl == nil { guidePulse = false }
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: frameIcon(tpl))
@@ -664,6 +672,7 @@ struct HuntCameraView: View {
                 state.startCollage(with: shots, templateID: tpl.id)
                 frameShots = []
                 frameTemplate = nil
+                guidePulse = false
                 dismiss()
             } label: {
                 Label("コラージュを作る", systemImage: "wand.and.stars")
@@ -679,13 +688,15 @@ struct HuntCameraView: View {
     }
 
     /// The on-screen shooting guide: the template's real cell geometry (same
-    /// shared maths as the collage), captured cells filled with their shots and
-    /// the next cell highlighted.
+    /// shared maths as the collage) over a translucent wash of the template's
+    /// own background — the collage visibly takes shape as you shoot. Every
+    /// template aspect is fitted into the same centre zone so 4カット's tall
+    /// strip and フォトダンプ's square read as one consistent system.
     private func frameGuide(_ tpl: CollageTemplateVM) -> some View {
         GeometryReader { geo in
             let s = geo.size
-            let maxW = s.width * 0.60
-            let maxH = s.height * 0.50
+            let maxW = s.width * 0.78
+            let maxH = s.height * 0.46
             let w = min(maxW, maxH * tpl.aspect)
             let h = w / tpl.aspect
             let flat = CollageBridge.shared.computeFlat(
@@ -701,32 +712,68 @@ struct HuntCameraView: View {
             )
             let layout = decodeLayout(flat)
             ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(argb: tpl.background).opacity(0.30))
                 ForEach(Array(layout.cells.enumerated()), id: \.offset) { i, r in
-                    ZStack {
-                        if i < frameShots.count {
-                            Image(uiImage: frameShots[i])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: r.width, height: r.height)
-                                .clipped()
-                                .opacity(0.92)
-                        }
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(
-                                i == frameShots.count
-                                    ? AnyShapeStyle(Brand.gradient)
-                                    : AnyShapeStyle(Color.white.opacity(i < frameShots.count ? 0.9 : 0.45)),
-                                lineWidth: i == frameShots.count ? 2.5 : 1.2
-                            )
-                    }
-                    .frame(width: r.width, height: r.height)
-                    .offset(x: r.minX, y: r.minY)
+                    frameGuideCell(index: i, rect: r)
                 }
             }
             .frame(width: w, height: h)
-            .position(x: s.width / 2, y: s.height * 0.42)
+            .shadow(color: .black.opacity(0.30), radius: 14, y: 4)
+            .position(x: s.width / 2, y: s.height * 0.41)
         }
         .allowsHitTesting(false)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                guidePulse = true
+            }
+        }
+    }
+
+    /// One guide cell: shot photos sit in place with a white frame; the NEXT
+    /// cell breathes with a gradient ring + camera glyph; upcoming cells are
+    /// numbered dashed slots, so the shooting order reads at a glance.
+    @ViewBuilder
+    private func frameGuideCell(index i: Int, rect r: CGRect) -> some View {
+        ZStack {
+            if i < frameShots.count {
+                Image(uiImage: frameShots[i])
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: r.width, height: r.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(.white.opacity(0.9), lineWidth: 1.5)
+            } else if i == frameShots.count {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.white.opacity(0.10))
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(
+                        AngularGradient(
+                            colors: [Brand.purple, Brand.pink, Brand.amber, Brand.purple],
+                            center: .center
+                        ),
+                        lineWidth: 2.5
+                    )
+                    .opacity(guidePulse ? 1 : 0.5)
+                VStack(spacing: 3) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: min(r.height * 0.22, 15), weight: .semibold))
+                    Text(verbatim: "\(i + 1)")
+                        .font(.system(size: min(r.height * 0.16, 11), weight: .heavy, design: .rounded))
+                }
+                .foregroundStyle(.white.opacity(0.95))
+            } else {
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+                    .foregroundStyle(.white.opacity(0.5))
+                Text(verbatim: "\(i + 1)")
+                    .font(.system(size: min(r.height * 0.16, 11), weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .frame(width: r.width, height: r.height)
+        .offset(x: r.minX, y: r.minY)
     }
 
     /// Bottom-left thumbnail — tap to leave the camera and land on the Hunt
@@ -946,29 +993,40 @@ struct HuntCameraView: View {
         .allowsHitTesting(false)
     }
 
-    /// Dim bars marking the capture area for the selected aspect ratio. The
-    /// preview fills the screen (aspect-fill of the 3:4 sensor), so bar sizes
-    /// are derived from the sensor's on-screen extent.
+    /// WYSIWYG capture window: the opening in this mask and the saved photo
+    /// are exactly the same region (see windowCrop), whatever the aspect —
+    /// so 1:1 really looks square on screen. Full-width, centred.
+    static func captureWindow(in screen: CGSize, ratio: CGFloat) -> CGSize {
+        var w = screen.width
+        var h = w / ratio
+        let maxH = screen.height * 0.92
+        if h > maxH {
+            h = maxH
+            w = h * ratio
+        }
+        return CGSize(width: w, height: h)
+    }
+
     private var aspectMaskView: some View {
         GeometryReader { geo in
             let s = geo.size
-            let r = aspect.ratio
-            let sensorW = s.height * 3 / 4          // sensor width on screen (aspect-fill)
-            let regionH = min(sensorW / r, s.height)
-            let regionW = min(s.height * r, sensorW)
-            let vBar = max((s.height - regionH) / 2, 0)
-            let hBar = max((s.width - regionW) / 2, 0)
+            let win = Self.captureWindow(in: s, ratio: aspect.ratio)
+            let vBar = max((s.height - win.height) / 2, 0)
+            let hBar = max((s.width - win.width) / 2, 0)
             ZStack {
                 VStack(spacing: 0) {
-                    Color.black.opacity(0.55).frame(height: vBar)
+                    Color.black.opacity(0.5).frame(height: vBar)
                     Spacer(minLength: 0)
-                    Color.black.opacity(0.55).frame(height: vBar)
+                    Color.black.opacity(0.5).frame(height: vBar)
                 }
                 HStack(spacing: 0) {
-                    Color.black.opacity(0.55).frame(width: hBar)
+                    Color.black.opacity(0.5).frame(width: hBar)
                     Spacer(minLength: 0)
-                    Color.black.opacity(0.55).frame(width: hBar)
+                    Color.black.opacity(0.5).frame(width: hBar)
                 }
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(.white.opacity(0.4), lineWidth: 1)
+                    .frame(width: win.width, height: win.height)
             }
         }
         .ignoresSafeArea()
@@ -1044,7 +1102,8 @@ struct HuntCameraView: View {
                     UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 }
             } else {
-                let final = Self.cropped(image, to: aspect.ratio)
+                let final = Self.windowCrop(image, screen: UIScreen.main.bounds.size,
+                                            ratio: aspect.ratio)
                 state.add(images: [final])
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { lastShot = final }
                 huntedCount += 1
@@ -1057,27 +1116,25 @@ struct HuntCameraView: View {
         }
     }
 
-    /// Centre-crops the captured photo to the selected aspect (w/h). The photo
+    /// Crops the captured photo to exactly the on-screen capture window. The
+    /// preview aspect-fills the screen, so the window maps to a centred sensor
+    /// region at the fill scale — what you framed is what you get. The photo
     /// arrives orientation-tagged, so it is normalised first.
-    private static func cropped(_ image: UIImage, to ratio: CGFloat) -> UIImage {
-        let current = image.size.width / max(image.size.height, 1)
-        guard abs(current - ratio) > 0.01 else { return image }
+    private static func windowCrop(_ image: UIImage, screen: CGSize, ratio: CGFloat) -> UIImage {
+        guard screen.width > 0, screen.height > 0 else { return image }
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
         let normalised = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
             image.draw(at: .zero)
         }
         guard let cg = normalised.cgImage else { return image }
-        let w = CGFloat(cg.width)
-        let h = CGFloat(cg.height)
-        var cropW = w
-        var cropH = h
-        if ratio > current {
-            cropH = w / ratio
-        } else {
-            cropW = h * ratio
-        }
-        let rect = CGRect(x: (w - cropW) / 2, y: (h - cropH) / 2,
+        let iw = CGFloat(cg.width)
+        let ih = CGFloat(cg.height)
+        let scale = max(screen.width / iw, screen.height / ih)   // aspect-fill
+        let win = captureWindow(in: screen, ratio: ratio)
+        let cropW = min(win.width / scale, iw)
+        let cropH = min(win.height / scale, ih)
+        let rect = CGRect(x: (iw - cropW) / 2, y: (ih - cropH) / 2,
                           width: cropW, height: cropH).integral
         guard let croppedCG = cg.cropping(to: rect) else { return normalised }
         return UIImage(cgImage: croppedCG)
