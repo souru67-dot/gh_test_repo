@@ -52,17 +52,39 @@ struct RootTabView: View {
     @AppStorage("onboarded_v1") private var onboarded = false
     @State private var showCamera = false
 
+    /// Tab selection with the centre slot intercepted: picking the camera
+    /// placeholder opens the full-screen camera and keeps the current tab.
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { state.selectedTab },
+            set: { tab in
+                if tab == .camera {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    showCamera = true
+                } else {
+                    state.selectedTab = tab
+                }
+            }
+        )
+    }
+
     var body: some View {
         ZStack {
-            // Four tabs leave the centre of the bar empty for the raised camera
-            // button. Grid (the most secondary feature) opens from the Hunt hero.
-            TabView(selection: $state.selectedTab) {
+            // Five slots — 2 tabs / camera / 2 tabs — so the bar splits evenly
+            // around the raised centre button instead of the four tabs crowding
+            // it. The middle slot is an empty placeholder the button sits over;
+            // tapping anywhere in that slot also opens the camera.
+            // Grid (the most secondary feature) opens from the Hunt hero.
+            TabView(selection: tabSelection) {
                 HuntView()
                     .tabItem { Label("ハント", systemImage: "photo.on.rectangle.angled") }
                     .tag(AppTab.hunt)
                 CollageView()
                     .tabItem { Label("コラージュ", systemImage: "square.grid.2x2") }
                     .tag(AppTab.collage)
+                Color.clear
+                    .tabItem { Text(verbatim: "") }
+                    .tag(AppTab.camera)
                 TodayColorView()
                     .tabItem { Label("今日の色", systemImage: "sparkles") }
                     .tag(AppTab.today)

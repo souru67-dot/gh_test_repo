@@ -474,12 +474,6 @@ struct CollageView: View {
                         .frame(width: r.width, height: r.height)
                         .offset(x: r.minX, y: r.minY)
                         .opacity(dragCell == index ? 0.35 : 1)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if interactive {
-                                editTarget = EditTarget(index: index, photoID: photo.id, ratio: r.width / r.height)
-                            }
-                        }
                 }
             }
 
@@ -508,6 +502,16 @@ struct CollageView: View {
                     .allowsHitTesting(false)
             }
         }
+        // Tap-to-crop is hit-tested here at container level, like the reorder
+        // gesture below. A per-cell onTapGesture broke on-device: `.offset`
+        // moves only the drawing, so every cell's tap area stayed stacked at
+        // the canvas origin and the topmost (last) cell swallowed the tap —
+        // "only the top-left corner reacts, and it always edits the last photo".
+        .simultaneousGesture(tapToCrop(
+            cells: layout.cells,
+            photos: photos,
+            enabled: interactive
+        ))
         // Long-press then drag to reorder — a plain container gesture (the system
         // onDrag/onDrop session was unreliable inside this ScrollView). Cell taps
         // still win because a tap never survives the 0.3s hold.
@@ -516,6 +520,22 @@ struct CollageView: View {
             count: min(photos.count, layout.cells.count),
             enabled: interactive && photos.count > 1
         ))
+    }
+
+    /// Opens the crop editor for whichever cell contains the tap point.
+    private func tapToCrop(cells: [CGRect], photos: [HuntPhoto], enabled: Bool) -> some Gesture {
+        SpatialTapGesture()
+            .onEnded { value in
+                guard enabled else { return }
+                let count = min(photos.count, cells.count)
+                guard let i = (0..<count).first(where: { cells[$0].contains(value.location) })
+                else { return }
+                editTarget = EditTarget(
+                    index: i,
+                    photoID: photos[i].id,
+                    ratio: cells[i].width / cells[i].height
+                )
+            }
     }
 
     private func reorderGesture(cells: [CGRect], count: Int, enabled: Bool) -> some Gesture {
@@ -769,15 +789,26 @@ struct CollageTemplateVM: Identifiable {
     let background: Int64
     let hexOverlay: Bool
 
+    // Ordered by current SNS pull: the Korean photobooth strip (人生4カット) and
+    // instant-camera nostalgia lead 2026 collage trends, followed by the casual
+    // "photo dump" grid and bold Y2K colour. Classics keep their spots.
     static let all: [CollageTemplateVM] = [
+        .init(id: "fourcut", label: "4カット", aspect: 0.36, layout: 1, placement: 0,
+              spacing: 12, corner: 0, background: 0xFFFFFFFF, hexOverlay: false),
         .init(id: "white", label: "ホワイト", aspect: 4.0 / 5.0, layout: 0, placement: 0,
               spacing: 14, corner: 0, background: 0xFFFAF8F4, hexOverlay: false),
+        .init(id: "cheki", label: "チェキ", aspect: 1.0, layout: 0, placement: 0,
+              spacing: 22, corner: 2, background: 0xFFFDFBF5, hexOverlay: false),
+        .init(id: "dump", label: "フォトダンプ", aspect: 1.0, layout: 0, placement: 0,
+              spacing: 10, corner: 18, background: 0xFF17171C, hexOverlay: false),
         .init(id: "film", label: "フィルム", aspect: 4.0 / 5.0, layout: 1, placement: 0,
               spacing: 10, corner: 0, background: 0xFF121212, hexOverlay: true),
         .init(id: "kumisha", label: "組写", aspect: 4.0 / 5.0, layout: 2, placement: 1,
               spacing: 4, corner: 4, background: 0xFF0E0E12, hexOverlay: false),
         .init(id: "magazine", label: "マガジン", aspect: 4.0 / 5.0, layout: 0, placement: 3,
               spacing: 16, corner: 2, background: 0xFFF2EDE3, hexOverlay: false),
+        .init(id: "y2k", label: "Y2K", aspect: 4.0 / 5.0, layout: 2, placement: 0,
+              spacing: 12, corner: 20, background: 0xFFFF2D92, hexOverlay: true),
         .init(id: "seamless", label: "シームレス", aspect: 9.0 / 16.0, layout: 2, placement: 4,
               spacing: 0, corner: 0, background: 0xFF000000, hexOverlay: false),
     ]

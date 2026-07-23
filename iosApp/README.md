@@ -16,13 +16,14 @@ iOS 版本体です。Android と **同じコア**（Kotlin Multiplatform `:shar
 
 ```
 iosApp/ColorHunt/
-├── ColorHuntApp.swift      # @main / 5タブ（ハント・コラージュ・今日の色・グリッド・マップ）
+├── ColorHuntApp.swift      # @main / 4タブ＋中央の浮きカメラボタン（左右2:2バランス）
 ├── AppState.swift          # 写真ストア＋ドミナントカラー抽出（Android同等の重み付け）
-├── HuntView.swift          # 写真選択→自動仕分け・選択・長押しで色変更
-├── CollageView.swift       # 共有ジオメトリでレイアウト／パレット5配置／保存・共有＋キャプションコピー
+├── HuntView.swift          # 写真選択→自動仕分け・カラーコレクション・グリッドへの導線
+├── CollageView.swift       # 共有ジオメトリでレイアウト／テンプレ9種／保存・共有＋キャプションコピー
 ├── TodayColorView.swift    # リング型ホイール＋ルーレットスピン
+├── HuntCameraView.swift    # ハントカメラ（レンズ切替/セルフィー/フラッシュ/タイマー/露出/比率）
 ├── GridPreviewView.swift   # 4:5フィードプレビュー（独自選択）
-└── HuntMapView.swift       # MapKit（GPS連携は次パス）
+└── HuntMapView.swift       # MapKit＋写真バブルピン＋マップ書き出し
 shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッジ
 ```
 

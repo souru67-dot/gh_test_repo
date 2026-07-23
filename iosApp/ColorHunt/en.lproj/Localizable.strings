@@ -134,6 +134,13 @@
 "全%lld色コンプリートを目指そう" = "Collect all %lld colours";
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
+/* v1.4 — trending collage templates */
+"4カット" = "4-Cut";
+"チェキ" = "Instax";
+"フォトダンプ" = "Photo Dump";
+"Y2K" = "Y2K";
+"タップでトリミング・長押しで並べ替え" = "Tap to crop · long-press to reorder";
+
 /* v1.3 — hunt camera */
 "今日の色を探す" = "Find today's colour";
 "色をスキャン" = "Scan a colour";

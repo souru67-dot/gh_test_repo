@@ -20,7 +20,9 @@ struct HuntPhoto: Identifiable, Equatable {
 }
 
 enum AppTab: Hashable {
-    case hunt, collage, today, grid, map
+    // `camera` is the tab bar's centre placeholder slot — selecting it opens the
+    // full-screen Hunt Camera instead of switching content (see RootTabView).
+    case hunt, collage, camera, today, grid, map
 }
 
 // MARK: - App state
