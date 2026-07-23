@@ -15,11 +15,23 @@ enum Brand {
     )
 }
 
+/// Portrait-only, like every photo-SNS camera app: the whole UI (camera
+/// chrome, tab bar, collage editor) is designed vertical, and rotating the
+/// capture screen scattered its controls. Runtime lock so no project-setting
+/// step can be forgotten.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        .portrait
+    }
+}
+
 // ColorHunt iOS — feature parity with the Android app, sharing the KMP colour
 // and collage-geometry core (framework `SharedColor`). Build from Xcode on
 // macOS; see iosApp/README.md for the one-time framework wiring.
 @main
 struct ColorHuntApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var state = AppState()
 
     init() {
