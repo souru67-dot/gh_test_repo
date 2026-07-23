@@ -31,8 +31,14 @@
 | 3 | `HuntView.swift` | 写真取込→色分け表示。フィルタ・コレクションカード | `ForEach` / `LazyVGrid` / `PhotosPicker` |
 | 4 | `CollageView.swift` | 最大ファイル。プレビュー・編集・書き出し・課金UI | ジェスチャ合成 / `ImageRenderer` / `sheet` |
 | 5 | `TodayColorView.swift` | ルーレット・通知 | 毎フレーム描画 / `UserNotifications` |
-| 6 | `GridPreviewView.swift` | フィードプレビュー | Drag & Drop (`DropDelegate`) |
-| 7 | `HuntMapView.swift` | カラーマップ | `MapKit` / `MKMapSnapshotter` |
+| 6 | `HuntCameraView.swift` | ハントカメラ。レンズ切替・タイマー・露出・**フレームモード**（テンプレを当てながら1コマずつ撮影→コラージュ直行） | `AVFoundation` / `UIViewRepresentable` / `Task` |
+| 7 | `GridPreviewView.swift` | フィードプレビュー | Drag & Drop (`DropDelegate`) |
+| 8 | `HuntMapView.swift` | カラーマップ | `MapKit` / `MKMapSnapshotter` |
+
+> カメラ→コラージュの受け渡しは `AppState.startCollage(with:templateID:)` が
+> 1本道: 撮影4枚を追加→その4枚だけを選択→`pendingCollageTemplateID` に
+> テンプレを積んで コラージュタブへ。CollageView 側が `onAppear/onChange` で
+> 一度だけ適用して消します（テンプレ11種は `CollageTemplateVM.all`）。
 
 ## 3. データの流れ（1本道）
 

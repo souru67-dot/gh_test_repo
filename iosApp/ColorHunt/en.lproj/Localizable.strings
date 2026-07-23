@@ -134,6 +134,16 @@
 "全%lld色コンプリートを目指そう" = "Collect all %lld colours";
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
+/* v1.5 — collage categories, day-log, date stamp, camera frame mode */
+"デイログ" = "Day Log";
+"パステル" = "Pastel";
+"日付スタンプ" = "Date stamp";
+"トレンド" = "Trending";
+"レトロ" = "Retro";
+"ミニマル" = "Minimal";
+"フリー" = "Free";
+"コラージュを作る" = "Make collage";
+
 /* v1.4 — trending collage templates */
 "4カット" = "4-Cut";
 "チェキ" = "Instax";

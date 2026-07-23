@@ -20,6 +20,11 @@ struct CollageView: View {
     @State private var background: Int64 = 0xFF0E0E12
     @State private var bgFollowsTheme: Bool = true
     @State private var hexOverlay: Bool = false
+    /// Retro film-camera date stamp on the collage corner (setlog/dazz vibe).
+    @State private var dateStamp: Bool = false
+    // Template browsing: active category filter + the last applied preset.
+    @State private var templateCategory: TemplateCategory?
+    @State private var appliedTemplateID: String?
     // OVERLAY palette band tuning.
     @State private var overlayHorizontal: Bool = false
     @State private var overlayPosFrac: CGFloat = 0.5
@@ -41,6 +46,13 @@ struct CollageView: View {
         0xFF7C4DFF, 0xFF26C6DA, 0xFFEC407A, 0xFFFFC107,
     ]
 
+    /// Retro quartz-date look for the corner stamp.
+    private static let stampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yy.MM.dd"
+        return f
+    }()
+
     private var effectiveBackground: Int64 { bgFollowsTheme ? 0xFF0E0E12 : background }
 
     var body: some View {
@@ -58,6 +70,10 @@ struct CollageView: View {
                 if saveDone {
                     SaveToast()
                 }
+            }
+            .onAppear { applyPendingTemplate() }
+            .onChange(of: state.pendingCollageTemplateID) { _ in
+                applyPendingTemplate()
             }
         }
         .sheet(isPresented: $showShare) {
@@ -211,11 +227,22 @@ struct CollageView: View {
     private var templateSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionLabel("テンプレート", icon: "wand.and.stars")
+            // With 11 presets a single flat row stopped scanning well — filter
+            // chips group them by vibe, and the active preset gets a ring.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    categoryChip(nil, label: "すべて")
+                    ForEach(TemplateCategory.allCases, id: \.self) { c in
+                        categoryChip(c, label: c.rawValue)
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(CollageTemplateVM.all) { tpl in
+                    ForEach(filteredTemplates) { tpl in
                         Button { applyAnimated(tpl) } label: {
-                            templateCard(tpl)
+                            templateCard(tpl, selected: appliedTemplateID == tpl.id)
                         }
                         .buttonStyle(PopButtonStyle())
                     }
@@ -226,9 +253,31 @@ struct CollageView: View {
         }
     }
 
+    private var filteredTemplates: [CollageTemplateVM] {
+        guard let c = templateCategory else { return CollageTemplateVM.all }
+        return CollageTemplateVM.all.filter { $0.category == c }
+    }
+
+    private func categoryChip(_ category: TemplateCategory?, label: String) -> some View {
+        let active = templateCategory == category
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) { templateCategory = category }
+        } label: {
+            Text(LocalizedStringKey(label))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(active ? Color.black : .white.opacity(0.85))
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(
+                    active ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.white.opacity(0.10)),
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     /// A mini visual mock of the template — its background colour with a tiny
     /// layout glyph — so the row reads at a glance instead of as text chips.
-    private func templateCard(_ tpl: CollageTemplateVM) -> some View {
+    private func templateCard(_ tpl: CollageTemplateVM, selected: Bool) -> some View {
         let bg = Color(argb: tpl.background)
         // Legible glyph ink for light vs dark template backgrounds.
         let v = UInt32(bitPattern: Int32(truncatingIfNeeded: tpl.background))
@@ -241,11 +290,14 @@ struct CollageView: View {
                 .background(bg, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(.white.opacity(0.18), lineWidth: 1)
+                        .stroke(
+                            selected ? Brand.accent : .white.opacity(0.18),
+                            lineWidth: selected ? 2.5 : 1
+                        )
                 )
             Text(LocalizedStringKey(tpl.label))
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.white.opacity(0.85))
+                .font(.caption2.weight(selected ? .bold : .medium))
+                .foregroundStyle(selected ? Brand.accent : .white.opacity(0.85))
         }
     }
 
@@ -331,6 +383,11 @@ struct CollageView: View {
 
             Toggle(isOn: $hexOverlay) {
                 Text("HEXチップを写真に重ねる").font(.callout)
+            }
+            .tint(Color(argb: 0xFF7C4DFF))
+
+            Toggle(isOn: $dateStamp) {
+                Text("日付スタンプ").font(.callout)
             }
             .tint(Color(argb: 0xFF7C4DFF))
 
@@ -495,6 +552,19 @@ struct CollageView: View {
             }
         }
         .frame(width: width, height: height)
+        .overlay(alignment: .bottomLeading) {
+            // Retro film-camera date stamp (the setlog/dazz nostalgia cue) —
+            // bottom-left so it never collides with the watermark pill.
+            if dateStamp {
+                Text(Self.stampFormatter.string(from: Date()))
+                    .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color(red: 1.0, green: 0.65, blue: 0.26))
+                    .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.15).opacity(0.85),
+                            radius: 2.5 * scale)
+                    .padding(12 * scale)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             if !state.isPro {
                 watermarkPill(scale: scale)
@@ -731,6 +801,19 @@ struct CollageView: View {
         background = tpl.background
         bgFollowsTheme = false
         hexOverlay = tpl.hexOverlay
+        dateStamp = tpl.dateStamp
+        appliedTemplateID = tpl.id
+    }
+
+    /// The camera's frame mode queues a template while handing over its shots;
+    /// apply it once here (whenever the collage becomes visible) and clear.
+    private func applyPendingTemplate() {
+        guard let id = state.pendingCollageTemplateID,
+              let tpl = CollageTemplateVM.all.first(where: { $0.id == id }) else { return }
+        state.pendingCollageTemplateID = nil
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            apply(tpl)
+        }
     }
 
     /// The single fill-crop calculation shared by [cellView] and the crop editor.
@@ -777,10 +860,19 @@ struct EditTarget: Identifiable {
     let ratio: CGFloat
 }
 
+/// Template browse groups — with 11 presets a flat row stopped scanning well,
+/// so cards are filterable by vibe.
+enum TemplateCategory: String, CaseIterable {
+    case trend = "トレンド"
+    case retro = "レトロ"
+    case minimal = "ミニマル"
+}
+
 /// One-tap magazine presets, mirroring the shared `CollageTemplates`.
 struct CollageTemplateVM: Identifiable {
     let id: String
     let label: String
+    let category: TemplateCategory
     let aspect: CGFloat
     let layout: Int32       // 0 GRID / 1 VERTICAL / 2 TWO_COLUMN
     let placement: Int32    // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY
@@ -788,30 +880,54 @@ struct CollageTemplateVM: Identifiable {
     let corner: CGFloat
     let background: Int64
     let hexOverlay: Bool
+    let dateStamp: Bool
 
-    // Ordered by current SNS pull: the Korean photobooth strip (人生4カット) and
-    // instant-camera nostalgia lead 2026 collage trends, followed by the casual
-    // "photo dump" grid and bold Y2K colour. Classics keep their spots.
+    // Ordered by current SNS pull. Trend research: the Korean photobooth strip
+    // (人生4カット) and instant-camera nostalgia lead 2026 collages; setlog-style
+    // casual day-logging ("映え疲れ" backlash) inspires デイログ; photo dumps,
+    // soft pastels and bold Y2K colour round out the trend shelf.
     static let all: [CollageTemplateVM] = [
-        .init(id: "fourcut", label: "4カット", aspect: 0.36, layout: 1, placement: 0,
-              spacing: 12, corner: 0, background: 0xFFFFFFFF, hexOverlay: false),
-        .init(id: "white", label: "ホワイト", aspect: 4.0 / 5.0, layout: 0, placement: 0,
-              spacing: 14, corner: 0, background: 0xFFFAF8F4, hexOverlay: false),
-        .init(id: "cheki", label: "チェキ", aspect: 1.0, layout: 0, placement: 0,
-              spacing: 22, corner: 2, background: 0xFFFDFBF5, hexOverlay: false),
-        .init(id: "dump", label: "フォトダンプ", aspect: 1.0, layout: 0, placement: 0,
-              spacing: 10, corner: 18, background: 0xFF17171C, hexOverlay: false),
-        .init(id: "film", label: "フィルム", aspect: 4.0 / 5.0, layout: 1, placement: 0,
-              spacing: 10, corner: 0, background: 0xFF121212, hexOverlay: true),
-        .init(id: "kumisha", label: "組写", aspect: 4.0 / 5.0, layout: 2, placement: 1,
-              spacing: 4, corner: 4, background: 0xFF0E0E12, hexOverlay: false),
-        .init(id: "magazine", label: "マガジン", aspect: 4.0 / 5.0, layout: 0, placement: 3,
-              spacing: 16, corner: 2, background: 0xFFF2EDE3, hexOverlay: false),
-        .init(id: "y2k", label: "Y2K", aspect: 4.0 / 5.0, layout: 2, placement: 0,
-              spacing: 12, corner: 20, background: 0xFFFF2D92, hexOverlay: true),
-        .init(id: "seamless", label: "シームレス", aspect: 9.0 / 16.0, layout: 2, placement: 4,
-              spacing: 0, corner: 0, background: 0xFF000000, hexOverlay: false),
+        .init(id: "fourcut", label: "4カット", category: .trend, aspect: 0.36, layout: 1,
+              placement: 0, spacing: 12, corner: 0, background: 0xFFFFFFFF,
+              hexOverlay: false, dateStamp: true),
+        .init(id: "daylog", label: "デイログ", category: .trend, aspect: 4.0 / 5.0, layout: 0,
+              placement: 0, spacing: 12, corner: 10, background: 0xFFF6F0E4,
+              hexOverlay: false, dateStamp: true),
+        .init(id: "pastel", label: "パステル", category: .trend, aspect: 1.0, layout: 0,
+              placement: 0, spacing: 12, corner: 16, background: 0xFFFFE9F2,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "dump", label: "フォトダンプ", category: .trend, aspect: 1.0, layout: 0,
+              placement: 0, spacing: 10, corner: 18, background: 0xFF17171C,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "y2k", label: "Y2K", category: .trend, aspect: 4.0 / 5.0, layout: 2,
+              placement: 0, spacing: 12, corner: 20, background: 0xFFFF2D92,
+              hexOverlay: true, dateStamp: false),
+        .init(id: "cheki", label: "チェキ", category: .retro, aspect: 1.0, layout: 0,
+              placement: 0, spacing: 22, corner: 2, background: 0xFFFDFBF5,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "film", label: "フィルム", category: .retro, aspect: 4.0 / 5.0, layout: 1,
+              placement: 0, spacing: 10, corner: 0, background: 0xFF121212,
+              hexOverlay: true, dateStamp: true),
+        .init(id: "magazine", label: "マガジン", category: .retro, aspect: 4.0 / 5.0, layout: 0,
+              placement: 3, spacing: 16, corner: 2, background: 0xFFF2EDE3,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "white", label: "ホワイト", category: .minimal, aspect: 4.0 / 5.0, layout: 0,
+              placement: 0, spacing: 14, corner: 0, background: 0xFFFAF8F4,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "kumisha", label: "組写", category: .minimal, aspect: 4.0 / 5.0, layout: 2,
+              placement: 1, spacing: 4, corner: 4, background: 0xFF0E0E12,
+              hexOverlay: false, dateStamp: false),
+        .init(id: "seamless", label: "シームレス", category: .minimal, aspect: 9.0 / 16.0, layout: 2,
+              placement: 4, spacing: 0, corner: 0, background: 0xFF000000,
+              hexOverlay: false, dateStamp: false),
     ]
+
+    /// The frame-mode shelf in the Hunt Camera — layouts that read clearly as
+    /// on-screen shooting guides.
+    static let cameraPicks: [CollageTemplateVM] =
+        ["fourcut", "white", "dump", "kumisha", "seamless"].compactMap { id in
+            all.first { $0.id == id }
+        }
 }
 
 /// Dedicated crop editor: the cell frame at its real aspect ratio; drag to pan and

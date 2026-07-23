@@ -40,6 +40,9 @@ final class AppState: ObservableObject {
     @Published var todayColor: Int32?
     /// Explicit collage order for the selected photos (drag reorder + hue sort).
     @Published var collageOrder: [UUID] = []
+    /// Template queued by the camera's frame mode; CollageView applies it once
+    /// when it becomes visible and clears it.
+    @Published var pendingCollageTemplateID: String?
 
     /// Photos the Grid tab picked independently (parity with Android's Grid).
     @Published var gridPhotos: [UIImage] = []
@@ -103,6 +106,29 @@ final class AppState: ObservableObject {
             fresh.append(HuntPhoto(image: image, dominantColor: nil, bucketKey: nil))
         }
         photos.append(contentsOf: fresh)
+        for photo in fresh {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                let color = DominantColor.extract(from: photo.image)
+                await self?.finishAnalysis(id: photo.id, color: color)
+            }
+        }
+    }
+
+    /// Frame-mode hand-off from the Hunt Camera: add the template shots, select
+    /// exactly them in shooting order, queue the template and land on コラージュ.
+    /// Fresh captures are unique, so this appends directly (no dedupe race).
+    func startCollage(with images: [UIImage], templateID: String) {
+        var fresh: [HuntPhoto] = []
+        for image in images {
+            if let h = DominantColor.quickHash(image) { photoHashes.insert(h) }
+            fresh.append(HuntPhoto(image: image, dominantColor: nil, bucketKey: nil))
+        }
+        photos.append(contentsOf: fresh)
+        let ids = fresh.map { $0.id }
+        selection = Set(ids)
+        collageOrder = ids
+        pendingCollageTemplateID = templateID
+        selectedTab = .collage
         for photo in fresh {
             Task.detached(priority: .userInitiated) { [weak self] in
                 let color = DominantColor.extract(from: photo.image)

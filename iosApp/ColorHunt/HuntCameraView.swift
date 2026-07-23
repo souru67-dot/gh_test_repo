@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import SharedColor
 
 // MARK: - Camera engine
 
@@ -331,6 +332,13 @@ struct HuntCameraView: View {
     @State private var focusPoint: CGPoint?
     @State private var focusStamp = 0
 
+    // Frame mode (dazz-style): shoot cell by cell into a collage template's
+    // on-screen guide, then jump straight into the collage with it applied.
+    @State private var frameTemplate: CollageTemplateVM?
+    @State private var frameShots: [UIImage] = []
+    @State private var showFramePicker = false
+    private let frameCellCount = 4
+
     private var target: Int32? { state.todayColor }
 
     /// 0…1 closeness of the live colour to the target (1 = identical).
@@ -358,7 +366,9 @@ struct HuntCameraView: View {
                 }
                 .ignoresSafeArea()
 
-                aspectMaskView
+                if frameTemplate == nil {
+                    aspectMaskView
+                }
 
                 // Gentle vignette — just enough to seat the UI on bright scenes.
                 RadialGradient(colors: [.clear, .black.opacity(0.32)],
@@ -367,6 +377,9 @@ struct HuntCameraView: View {
                     .allowsHitTesting(false)
 
                 reticleLayer
+                if let tpl = frameTemplate {
+                    frameGuide(tpl)
+                }
                 railLayer
             } else {
                 permissionState
@@ -407,11 +420,28 @@ struct HuntCameraView: View {
     private var content: some View {
         VStack(spacing: 0) {
             topBar
+            if cam.authorized && frameTemplate != nil {
+                frameProgressPill
+                    .padding(.top, 10)
+            }
             Spacer()
             if cam.authorized {
                 bottomCluster
             }
         }
+    }
+
+    /// "2/4" shot progress while a template guide is up.
+    private var frameProgressPill: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.grid.2x2")
+                .font(.caption2.weight(.bold))
+            Text(verbatim: "\(min(frameShots.count, frameCellCount))/\(frameCellCount)")
+                .font(.system(.caption, design: .rounded).bold())
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(.black.opacity(0.35), in: Capsule())
     }
 
     private var topBar: some View {
@@ -505,8 +535,22 @@ struct HuntCameraView: View {
                 exposureSlider
             }
 
-            if cam.position == .back && cam.lensOptions.count > 1 {
-                lensChips
+            if showFramePicker {
+                framePicker
+            }
+
+            if let tpl = frameTemplate, frameShots.count >= frameCellCount {
+                frameCompleteRow(tpl)
+            } else {
+                HStack(spacing: 8) {
+                    frameToggle
+                    if frameTemplate != nil && !frameShots.isEmpty {
+                        frameUndoButton
+                    }
+                    if cam.position == .back && cam.lensOptions.count > 1 {
+                        lensChips
+                    }
+                }
             }
 
             HStack {
@@ -519,6 +563,168 @@ struct HuntCameraView: View {
             .padding(.horizontal, 24)
         }
         .padding(.bottom, 26)
+    }
+
+    // MARK: frame mode (dazz-style template shooting)
+
+    /// Opens/closes the template shelf; lights up while a template is active.
+    private var frameToggle: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                showFramePicker.toggle()
+            }
+        } label: {
+            Image(systemName: "rectangle.grid.2x2")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(frameTemplate != nil ? Brand.accent : .white)
+                .frame(width: 42, height: 28)
+                .background(.black.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(PopButtonStyle())
+    }
+
+    private var frameUndoButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                if !frameShots.isEmpty { frameShots.removeLast() }
+            }
+        } label: {
+            Image(systemName: "arrow.uturn.backward")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 28)
+                .background(.black.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(PopButtonStyle())
+    }
+
+    /// The dazz-style shelf: フリー (no guide) + a few clear-reading templates.
+    private var framePicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                frameCard(nil)
+                ForEach(CollageTemplateVM.cameraPicks) { tpl in
+                    frameCard(tpl)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func frameCard(_ tpl: CollageTemplateVM?) -> some View {
+        let selected = frameTemplate?.id == tpl?.id
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                frameTemplate = tpl
+                frameShots = []
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: frameIcon(tpl))
+                    .font(.system(size: 17, weight: .semibold))
+                Text(tpl.map { LocalizedStringKey($0.label) } ?? LocalizedStringKey("フリー"))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .foregroundStyle(selected ? Color.black : .white)
+            .frame(width: 66, height: 52)
+            .background(
+                selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.black.opacity(0.35)),
+                in: RoundedRectangle(cornerRadius: 12)
+            )
+        }
+        .buttonStyle(PopButtonStyle())
+    }
+
+    private func frameIcon(_ tpl: CollageTemplateVM?) -> String {
+        switch tpl?.id {
+        case nil: return "viewfinder"
+        case "fourcut": return "rectangle.grid.1x2"
+        case "kumisha": return "rectangle.split.2x1"
+        case "seamless": return "rectangle.portrait"
+        default: return "square.grid.2x2"
+        }
+    }
+
+    /// All cells shot → one tap drops the set into the collage with the
+    /// template already applied.
+    private func frameCompleteRow(_ tpl: CollageTemplateVM) -> some View {
+        HStack(spacing: 8) {
+            frameUndoButton
+            Button {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                let shots = frameShots
+                state.startCollage(with: shots, templateID: tpl.id)
+                frameShots = []
+                frameTemplate = nil
+                dismiss()
+            } label: {
+                Label("コラージュを作る", systemImage: "wand.and.stars")
+                    .font(.system(.callout, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22).padding(.vertical, 11)
+                    .background(Brand.gradient, in: Capsule())
+                    .shadow(color: Brand.purple.opacity(0.55), radius: 12, y: 4)
+            }
+            .buttonStyle(PopButtonStyle())
+        }
+        .transition(.scale.combined(with: .opacity))
+    }
+
+    /// The on-screen shooting guide: the template's real cell geometry (same
+    /// shared maths as the collage), captured cells filled with their shots and
+    /// the next cell highlighted.
+    private func frameGuide(_ tpl: CollageTemplateVM) -> some View {
+        GeometryReader { geo in
+            let s = geo.size
+            let maxW = s.width * 0.60
+            let maxH = s.height * 0.50
+            let w = min(maxW, maxH * tpl.aspect)
+            let h = w / tpl.aspect
+            let flat = CollageBridge.shared.computeFlat(
+                cellCount: Int32(frameCellCount),
+                layoutOrdinal: tpl.layout,
+                placementOrdinal: 0,
+                spacingFrac: Float(tpl.spacing / 360.0),
+                width: Float(w),
+                height: Float(h),
+                overlayHorizontal: false,
+                overlayPosFrac: 0.5,
+                overlayWidthFrac: 0.16
+            )
+            let layout = decodeLayout(flat)
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(layout.cells.enumerated()), id: \.offset) { i, r in
+                    ZStack {
+                        if i < frameShots.count {
+                            Image(uiImage: frameShots[i])
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: r.width, height: r.height)
+                                .clipped()
+                                .opacity(0.92)
+                        }
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(
+                                i == frameShots.count
+                                    ? AnyShapeStyle(Brand.gradient)
+                                    : AnyShapeStyle(Color.white.opacity(i < frameShots.count ? 0.9 : 0.45)),
+                                lineWidth: i == frameShots.count ? 2.5 : 1.2
+                            )
+                    }
+                    .frame(width: r.width, height: r.height)
+                    .offset(x: r.minX, y: r.minY)
+                }
+            }
+            .frame(width: w, height: h)
+            .position(x: s.width / 2, y: s.height * 0.42)
+        }
+        .allowsHitTesting(false)
     }
 
     /// Bottom-left thumbnail — tap to leave the camera and land on the Hunt
@@ -572,7 +778,7 @@ struct HuntCameraView: View {
             .scaleEffect(matched ? 1.06 : 1)
         }
         .buttonStyle(PopButtonStyle())
-        .disabled(!cam.authorized)
+        .disabled(!cam.authorized || (frameTemplate != nil && frameShots.count >= frameCellCount))
     }
 
     private var counter: some View {
@@ -624,8 +830,11 @@ struct HuntCameraView: View {
                        active: timerSeconds > 0) {
                 timerSeconds = timerSeconds == 0 ? 3 : (timerSeconds == 3 ? 10 : 0)
             }
-            railButton(icon: "aspectratio", label: aspect.label, active: aspect != .classic) {
-                aspect = aspect.next
+            // Aspect is owned by the template while a frame guide is up.
+            if frameTemplate == nil {
+                railButton(icon: "aspectratio", label: aspect.label, active: aspect != .classic) {
+                    aspect = aspect.next
+                }
             }
             railButton(icon: "plusminus.circle",
                        label: ev != 0 ? String(format: "%+.1f", ev) : nil,
@@ -820,11 +1029,25 @@ struct HuntCameraView: View {
 
     private func shoot() {
         cam.capture(flash: flashMode.av) { image in
-            let final = Self.cropped(image, to: aspect.ratio)
-            state.add(images: [final])
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { lastShot = final }
-            huntedCount += 1
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            if frameTemplate != nil {
+                // Frame mode keeps the full sensor image — the collage's own
+                // crop maths fills each cell, and the crop editor can refine.
+                guard frameShots.count < frameCellCount else { return }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    frameShots.append(image)
+                }
+                if frameShots.count >= frameCellCount {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                } else {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                }
+            } else {
+                let final = Self.cropped(image, to: aspect.ratio)
+                state.add(images: [final])
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { lastShot = final }
+                huntedCount += 1
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            }
             withAnimation(.easeOut(duration: 0.08)) { flashOverlay = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 withAnimation(.easeIn(duration: 0.25)) { flashOverlay = false }
