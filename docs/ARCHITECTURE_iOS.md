@@ -31,7 +31,7 @@
 | 3 | `HuntView.swift` | 写真取込→色分け表示。フィルタ・コレクションカード | `ForEach` / `LazyVGrid` / `PhotosPicker` |
 | 4 | `CollageView.swift` | 最大ファイル。プレビュー・編集・書き出し・課金UI | ジェスチャ合成 / `ImageRenderer` / `sheet` |
 | 5 | `TodayColorView.swift` | ルーレット・通知 | 毎フレーム描画 / `UserNotifications` |
-| 6 | `HuntCameraView.swift` | ハントカメラ。レンズ切替・タイマー・露出・**フレームモード**（テンプレを当てながら1コマずつ撮影→コラージュ直行） | `AVFoundation` / `UIViewRepresentable` / `Task` |
+| 6 | `HuntCameraView.swift` | ハントカメラ。レンズ切替・タイマー・露出・**フレームモード**（テンプレのキャンバスを画面に大きく表示し、アクティブなコマだけを透明の「穴」にしてライブ映像を通す。穴に見えた範囲＝そのコマの保存写真という完全WYSIWYG。even-odd塗りで穴を開け、`guideGeometry`が画面座標の単一ソースとして表示と切り抜きの両方を駆動） | `AVFoundation` / `Path`(even-odd) / `Task` |
 | 7 | `GridPreviewView.swift` | フィードプレビュー | Drag & Drop (`DropDelegate`) |
 | 8 | `HuntMapView.swift` | カラーマップ | `MapKit` / `MKMapSnapshotter` |
 

@@ -53,21 +53,6 @@ struct CollageView: View {
         return f
     }()
 
-    /// デイログ sticker date (localized weekday reads naturally per region).
-    private static let daylogFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "M/d EEE"
-        return f
-    }()
-
-    /// マガジン issue line, kept English for the editorial look.
-    private static let magazineFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "MMMM yyyy"
-        return f
-    }()
-
     private var effectiveBackground: Int64 { bgFollowsTheme ? 0xFF0E0E12 : background }
 
     var body: some View {
@@ -597,14 +582,17 @@ struct CollageView: View {
         .frame(width: width, height: height)
         // Pro presets carry a signature deco layer no manual control can
         // reproduce — the reason the preset is worth paying for even though
-        // colours/corners/spacing are free sliders.
+        // colours/corners/spacing are free sliders. Shared with the camera's
+        // live frame guide so Pro owners shoot inside the same look.
         .overlay {
-            signatureDeco(width: width, height: height, scale: scale)
+            ProSignatureDeco(templateID: appliedTemplateID, width: width, height: height,
+                             scale: scale, matWidth: spacing * scale)
                 .allowsHitTesting(false)
         }
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottomTrailing) {
             // Retro film-camera date stamp (the setlog/dazz nostalgia cue) —
-            // bottom-left so it never collides with the watermark pill.
+            // bottom-right, where every quartz camera printed it. The
+            // watermark lives bottom-left so the two never collide.
             if dateStamp {
                 Text(Self.stampFormatter.string(from: Date()))
                     .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
@@ -615,7 +603,7 @@ struct CollageView: View {
                     .allowsHitTesting(false)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .bottomLeading) {
             if !state.isPro {
                 watermarkPill(scale: scale)
                     .padding(10 * scale)
@@ -691,131 +679,9 @@ struct CollageView: View {
             }
     }
 
-    // MARK: Pro signature decos
-    // Each Pro preset renders an exclusive decorative layer (journal chip,
-    // stickers, chrome frame, instax mat, masthead). These exist ONLY here in
-    // the renderer — no slider/swatch combination can produce them, so a
-    // hand-built free replica of a Pro preset stays visibly "not the preset".
-
-    @ViewBuilder
-    private func signatureDeco(width: CGFloat, height: CGFloat, scale: CGFloat) -> some View {
-        switch appliedTemplateID {
-        case "daylog": daylogDeco(scale: scale)
-        case "pastel": pastelDeco(width: width, height: height, scale: scale)
-        case "y2k": y2kDeco(width: width, height: height, scale: scale)
-        case "cheki": chekiDeco(scale: scale)
-        case "magazine": magazineDeco(scale: scale)
-        default: EmptyView()
-        }
-    }
-
-    /// デイログ: a tilted journal sticker with today's date — the setlog cue.
-    private func daylogDeco(scale: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 2 * scale) {
-            Text(verbatim: "DAY LOG")
-                .font(.system(size: 8 * scale, weight: .heavy, design: .rounded))
-                .tracking(2 * scale)
-                .foregroundStyle(Color(red: 0.45, green: 0.38, blue: 0.28))
-            Text(Self.daylogFormatter.string(from: Date()))
-                .font(.system(size: 11 * scale, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color(red: 0.29, green: 0.25, blue: 0.20))
-        }
-        .padding(.horizontal, 10 * scale).padding(.vertical, 7 * scale)
-        .background(Color.white.opacity(0.93), in: RoundedRectangle(cornerRadius: 7 * scale))
-        .shadow(color: .black.opacity(0.13), radius: 3 * scale, y: 1.5 * scale)
-        .rotationEffect(.degrees(-3))
-        .padding(10 * scale)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    /// パステル: soft sticker sprinkles (heart, sparkle, dots) on the margins.
-    private func pastelDeco(width: CGFloat, height: CGFloat, scale: CGFloat) -> some View {
-        ZStack {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 15 * scale))
-                .foregroundStyle(Color(red: 1.0, green: 0.60, blue: 0.74))
-                .rotationEffect(.degrees(12))
-                .position(x: width - 22 * scale, y: 19 * scale)
-            Image(systemName: "sparkle")
-                .font(.system(size: 10 * scale))
-                .foregroundStyle(.white.opacity(0.95))
-                .position(x: 18 * scale, y: height - 52 * scale)
-            Circle()
-                .fill(Color.white.opacity(0.9))
-                .frame(width: 6 * scale, height: 6 * scale)
-                .position(x: 28 * scale, y: 15 * scale)
-            Circle()
-                .fill(Color(red: 1.0, green: 0.73, blue: 0.83))
-                .frame(width: 9 * scale, height: 9 * scale)
-                .position(x: width - 44 * scale, y: height - 20 * scale)
-        }
-    }
-
-    /// Y2K: chrome gradient frame + starburst sparks + a tiny wordmark.
-    private func y2kDeco(width: CGFloat, height: CGFloat, scale: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8 * scale)
-                .strokeBorder(
-                    AngularGradient(
-                        colors: [.cyan, .white, Color(argb: 0xFFFF2D92), .white, .cyan],
-                        center: .center
-                    ),
-                    lineWidth: 3 * scale
-                )
-                .padding(4 * scale)
-            Text(verbatim: "✦")
-                .font(.system(size: 14 * scale))
-                .foregroundStyle(.white)
-                .position(x: 26 * scale, y: 30 * scale)
-            Text(verbatim: "✦")
-                .font(.system(size: 10 * scale))
-                .foregroundStyle(.cyan)
-                .position(x: width - 30 * scale, y: height - 42 * scale)
-            Text(verbatim: "Y2K")
-                .font(.system(size: 9 * scale, weight: .black, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.92))
-                .position(x: width - 26 * scale, y: 17 * scale)
-        }
-    }
-
-    /// チェキ: the instax look — a white inner mat + a quiet handwritten date.
-    private func chekiDeco(scale: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 2 * scale)
-                .strokeBorder(Color.white.opacity(0.92), lineWidth: 5 * scale)
-                .padding(6 * scale)
-            Text(Self.stampFormatter.string(from: Date()))
-                .font(.system(size: 9 * scale, weight: .medium, design: .serif))
-                .italic()
-                .foregroundStyle(Color(red: 0.46, green: 0.43, blue: 0.38))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .padding(15 * scale)
-        }
-    }
-
-    /// マガジン: a serif masthead + issue line, cover-style over the top-right.
-    private func magazineDeco(scale: CGFloat) -> some View {
-        VStack(alignment: .trailing, spacing: 2 * scale) {
-            Text(verbatim: "COLOR HUNT")
-                .font(.system(size: 14 * scale, weight: .black, design: .serif))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.4), radius: 2 * scale, y: 1 * scale)
-            Rectangle()
-                .fill(Color.white.opacity(0.9))
-                .frame(width: 64 * scale, height: 1.2 * scale)
-            Text(Self.magazineFormatter.string(from: Date()))
-                .font(.system(size: 7 * scale, weight: .semibold, design: .serif))
-                .tracking(1.5 * scale)
-                .textCase(.uppercase)
-                .foregroundStyle(.white.opacity(0.92))
-                .shadow(color: .black.opacity(0.4), radius: 1.5 * scale, y: 1 * scale)
-        }
-        .padding(12 * scale)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-    }
-
-    /// Free-tier brand watermark — a rainbow-dot pill bottom-right, echoing
-    /// Android's drawWatermark. Rendered into the export too (WYSIWYG); Pro hides it.
+    /// Free-tier brand watermark — a rainbow-dot pill (bottom-left; the date
+    /// stamp owns bottom-right), echoing Android's drawWatermark. Rendered
+    /// into the export too (WYSIWYG); Pro hides it.
     private func watermarkPill(scale: CGFloat) -> some View {
         HStack(spacing: 5 * scale) {
             Circle()
@@ -1121,11 +987,201 @@ struct CollageTemplateVM: Identifiable {
     ]
 
     /// The frame-mode shelf in the Hunt Camera — layouts that read clearly as
-    /// on-screen shooting guides.
+    /// on-screen shooting guides. Pro owners additionally get the Pro presets
+    /// (see HuntCameraView.frameShelf).
     static let cameraPicks: [CollageTemplateVM] =
         ["fourcut", "white", "dump", "kumisha", "seamless"].compactMap { id in
             all.first { $0.id == id }
         }
+}
+
+// MARK: - Pro signature decos
+
+/// The Pro presets' exclusive decorative layer — a journal sticker, sticker
+/// sprinkles, a chrome frame, an instax mat, a magazine masthead. These exist
+/// ONLY in this renderer: no slider/swatch combination can produce them, so a
+/// hand-built free replica of a Pro preset stays visibly "not the preset".
+/// Shared by the collage canvas and the camera's live frame guide (Pro owners
+/// shoot inside the same finished look).
+struct ProSignatureDeco: View {
+    let templateID: String?
+    let width: CGFloat
+    let height: CGFloat
+    /// Canvas scale (width / 360 design units).
+    let scale: CGFloat
+    /// チェキ's mat thickness source: the collage passes its live spacing,
+    /// the camera passes the template's own spacing.
+    let matWidth: CGFloat
+
+    var body: some View {
+        switch templateID ?? "" {
+        case "daylog": daylog
+        case "pastel": pastel
+        case "y2k": y2k
+        case "cheki": cheki
+        case "magazine": magazine
+        default: EmptyView()
+        }
+    }
+
+    /// デイログ: a tilted journal sticker with today's date — the setlog cue.
+    private var daylog: some View {
+        VStack(alignment: .leading, spacing: 2 * scale) {
+            Text(verbatim: "DAY LOG")
+                .font(.system(size: 9 * scale, weight: .heavy, design: .rounded))
+                .tracking(2.2 * scale)
+                .foregroundStyle(Color(red: 0.45, green: 0.38, blue: 0.28))
+            Text(Self.daylogFormatter.string(from: Date()))
+                .font(.system(size: 12.5 * scale, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color(red: 0.29, green: 0.25, blue: 0.20))
+        }
+        .padding(.horizontal, 11 * scale).padding(.vertical, 8 * scale)
+        .background(Color.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 8 * scale))
+        .shadow(color: .black.opacity(0.14), radius: 3 * scale, y: 1.5 * scale)
+        .rotationEffect(.degrees(-3))
+        .padding(11 * scale)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// パステル: generous sticker sprinkles — two hearts, a sparkle, dots —
+    /// sized to read instantly (the first pass was too timid).
+    private var pastel: some View {
+        ZStack {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 24 * scale))
+                .foregroundStyle(Color(red: 1.0, green: 0.58, blue: 0.73))
+                .rotationEffect(.degrees(14))
+                .shadow(color: .black.opacity(0.10), radius: 2 * scale, y: 1 * scale)
+                .position(x: width - 28 * scale, y: 24 * scale)
+            Image(systemName: "heart.fill")
+                .font(.system(size: 12 * scale))
+                .foregroundStyle(.white.opacity(0.95))
+                .rotationEffect(.degrees(-16))
+                .position(x: width - 52 * scale, y: 40 * scale)
+            Image(systemName: "sparkle")
+                .font(.system(size: 17 * scale))
+                .foregroundStyle(.white)
+                .shadow(color: Color(red: 1.0, green: 0.58, blue: 0.73).opacity(0.6),
+                        radius: 3 * scale)
+                .position(x: 22 * scale, y: height - 58 * scale)
+            Circle()
+                .fill(Color.white.opacity(0.92))
+                .frame(width: 9 * scale, height: 9 * scale)
+                .position(x: 30 * scale, y: 18 * scale)
+            Circle()
+                .fill(Color(red: 1.0, green: 0.73, blue: 0.83))
+                .frame(width: 13 * scale, height: 13 * scale)
+                .position(x: width - 46 * scale, y: height - 24 * scale)
+        }
+    }
+
+    /// Y2K: a bolder chrome gradient frame, three starbursts and a chrome-lit
+    /// wordmark (white core, cyan/pink split shadows).
+    private var y2k: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 9 * scale)
+                .strokeBorder(
+                    AngularGradient(
+                        colors: [.cyan, .white, Color(argb: 0xFFFF2D92), .white, .cyan],
+                        center: .center
+                    ),
+                    lineWidth: 4.5 * scale
+                )
+                .padding(4 * scale)
+            Text(verbatim: "✦")
+                .font(.system(size: 22 * scale))
+                .foregroundStyle(.white)
+                .shadow(color: .cyan.opacity(0.8), radius: 3 * scale)
+                .position(x: 30 * scale, y: 34 * scale)
+            Text(verbatim: "✦")
+                .font(.system(size: 15 * scale))
+                .foregroundStyle(.cyan)
+                .position(x: width - 34 * scale, y: height - 48 * scale)
+            Text(verbatim: "✦")
+                .font(.system(size: 11 * scale))
+                .foregroundStyle(.white.opacity(0.9))
+                .position(x: 26 * scale, y: height - 30 * scale)
+            Text(verbatim: "Y2K")
+                .font(.system(size: 13 * scale, weight: .black, design: .monospaced))
+                .italic()
+                .foregroundStyle(.white)
+                .shadow(color: .cyan, radius: 0.5, x: 1.4 * scale, y: 1.4 * scale)
+                .shadow(color: Color(argb: 0xFFFF2D92), radius: 0.5,
+                        x: -1.4 * scale, y: -1.4 * scale)
+                .position(x: width - 34 * scale, y: 22 * scale)
+        }
+    }
+
+    /// チェキ: a real instax structure — the mat IS the margin (edge-to-edge
+    /// white border) plus the signature thicker bottom band, and the
+    /// handwritten date sits inside that band, never on the photos.
+    private var cheki: some View {
+        let mat = max(matWidth, 14 * scale)
+        let bottomBand = mat * 1.9
+        return ZStack(alignment: .bottom) {
+            RoundedRectangle(cornerRadius: 2 * scale)
+                .strokeBorder(Color.white, lineWidth: mat)
+            Rectangle()
+                .fill(Color.white)
+                .frame(height: bottomBand)
+            Text(Self.chekiFormatter.string(from: Date()))
+                .font(.system(size: 9.5 * scale, weight: .medium, design: .serif))
+                .italic()
+                .foregroundStyle(Color(red: 0.48, green: 0.45, blue: 0.40))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 15 * scale)
+                .padding(.bottom, (bottomBand - 12 * scale) / 2)
+        }
+    }
+
+    /// マガジン: a cover-style masthead over a cinematic top scrim, so the
+    /// serif type stays legible on any photo.
+    private var magazine: some View {
+        ZStack(alignment: .topTrailing) {
+            LinearGradient(
+                colors: [.black.opacity(0.48), .black.opacity(0.18), .clear],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: height * 0.26)
+            .frame(maxHeight: .infinity, alignment: .top)
+            VStack(alignment: .trailing, spacing: 2.5 * scale) {
+                Text(verbatim: "COLOR HUNT")
+                    .font(.system(size: 17 * scale, weight: .black, design: .serif))
+                    .foregroundStyle(.white)
+                Rectangle()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: 78 * scale, height: 1.3 * scale)
+                Text(Self.magazineFormatter.string(from: Date()))
+                    .font(.system(size: 8 * scale, weight: .semibold, design: .serif))
+                    .tracking(1.8 * scale)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.white.opacity(0.92))
+            }
+            .padding(13 * scale)
+        }
+    }
+
+    /// デイログ sticker date (localized weekday reads naturally per region).
+    private static let daylogFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "M/d EEE"
+        return f
+    }()
+
+    /// チェキ's handwritten-style date.
+    private static let chekiFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yy.MM.dd"
+        return f
+    }()
+
+    /// マガジン issue line, kept English for the editorial look.
+    private static let magazineFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMMM yyyy"
+        return f
+    }()
 }
 
 /// Dedicated crop editor: the cell frame at its real aspect ratio; drag to pan and
