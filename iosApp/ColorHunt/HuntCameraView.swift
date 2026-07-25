@@ -382,43 +382,21 @@ struct HuntCameraView: View {
     var body: some View {
         ZStack {
             if cam.authorized {
-                CameraPreviewView(session: cam.session, onTap: { layerPoint, devicePoint in
-                    cam.focus(at: devicePoint)
-                    focusStamp += 1
-                    focusPoint = layerPoint
-                    let stamp = focusStamp
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                        if stamp == focusStamp { focusPoint = nil }
-                    }
-                })
-                .overlay {
-                    if let p = focusPoint {
-                        FocusRing(point: p).id(focusStamp)
-                    }
-                }
-                .ignoresSafeArea()
+                cameraStage
 
                 if frameTemplate == nil {
                     aspectMaskView
-                }
 
-                // Gentle vignette — just enough to seat the UI on bright scenes.
-                RadialGradient(colors: [.clear, .black.opacity(0.32)],
-                               center: .center, startRadius: 180, endRadius: 520)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    // Gentle vignette — just enough to seat the UI on bright
+                    // scenes (frame mode shows true colours, no vignette).
+                    RadialGradient(colors: [.clear, .black.opacity(0.32)],
+                                   center: .center, startRadius: 180, endRadius: 520)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
 
-                // The crosshair steps aside while a guide is up — frame mode is
-                // about composing cells, and the live colour stays in the pill.
-                if frameTemplate == nil {
+                    // The crosshair and side rail step aside while a guide is
+                    // up — frame mode is a dedicated, immersive capture screen.
                     reticleLayer
-                }
-                if let tpl = frameTemplate {
-                    frameGuide(tpl)
-                }
-                // The side rail steps aside too — frame mode is a dedicated,
-                // immersive capture screen (the canvas needs the width).
-                if frameTemplate == nil {
                     railLayer
                 }
             } else {
@@ -729,14 +707,84 @@ struct HuntCameraView: View {
         .transition(.scale.combined(with: .opacity))
     }
 
+    // MARK: camera stage (one preview — full-screen, or living inside a cell)
+
+    /// The single live preview. Free mode: it fills the screen. Frame mode:
+    /// the WHOLE camera view shrinks into the active cell (aspect-filled), the
+    /// canvas takes over the screen, and after each shot the preview hops to
+    /// the next cell. One AVCaptureVideoPreviewLayer throughout — it just
+    /// moves, so mode changes animate instead of re-attaching the session.
+    private var cameraStage: some View {
+        GeometryReader { geo in
+            let s = geo.size
+            let rect = previewRect(in: s)
+            let inCell = frameTemplate != nil
+            let complete = inCell && frameShots.count >= frameCellCount
+            ZStack(alignment: .topLeading) {
+                Brand.base
+
+                if let tpl = frameTemplate {
+                    frameGuideContent(tpl, in: s)
+                }
+
+                CameraPreviewView(session: cam.session, onTap: { layerPoint, devicePoint in
+                    cam.focus(at: devicePoint)
+                    focusStamp += 1
+                    focusPoint = layerPoint
+                    let stamp = focusStamp
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                        if stamp == focusStamp { focusPoint = nil }
+                    }
+                })
+                .frame(width: rect.width, height: rect.height)
+                .clipShape(RoundedRectangle(cornerRadius: inCell ? 4 : 0))
+                .overlay {
+                    if let p = focusPoint {
+                        FocusRing(point: p).id(focusStamp)
+                    }
+                }
+                .overlay {
+                    // The breathing "you are here" ring in frame mode.
+                    if inCell && !complete {
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(
+                                AngularGradient(
+                                    colors: [Brand.purple, Brand.pink, Brand.amber, Brand.purple],
+                                    center: .center
+                                ),
+                                lineWidth: 3
+                            )
+                            .opacity(guidePulse ? 1 : 0.55)
+                    }
+                }
+                .offset(x: rect.minX, y: rect.minY)
+                // All four shot: the preview bows out and the finished collage
+                // stands alone on the plate, waiting for the CTA.
+                .opacity(complete ? 0 : 1)
+                .animation(.spring(response: 0.45, dampingFraction: 0.85), value: rect)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    /// Where the live preview lives right now: the whole screen, or the
+    /// active cell of the guide.
+    private func previewRect(in s: CGSize) -> CGRect {
+        guard let tpl = frameTemplate else {
+            return CGRect(origin: .zero, size: s)
+        }
+        let g = guideGeometry(in: s, tpl: tpl)
+        return g.cells[min(frameShots.count, g.cells.count - 1)]
+    }
+
     /// The template canvas laid out in SCREEN coordinates — one source of
-    /// truth shared by the on-screen guide and the capture crop, so what shows
-    /// through the live cell is exactly what lands in it. Deterministic (no
-    /// geometry state), so shoot() can recompute it from UIScreen bounds.
+    /// truth for the guide drawing, the preview's cell position and the
+    /// capture crop. Deterministic (no geometry state), so shoot() can
+    /// recompute it from UIScreen bounds.
     private func guideGeometry(in s: CGSize, tpl: CollageTemplateVM)
         -> (canvas: CGRect, cells: [CGRect]) {
-        let maxW = s.width * 0.80
-        let maxH = s.height * 0.52
+        let maxW = s.width * 0.92
+        let maxH = s.height * 0.54
         let w = min(maxW, maxH * tpl.aspect)
         let h = w / tpl.aspect
         let flat = CollageBridge.shared.computeFlat(
@@ -756,30 +804,31 @@ struct HuntCameraView: View {
         return (CGRect(origin: origin, size: CGSize(width: w, height: h)), cells)
     }
 
-    /// The live collage: the template canvas dominates the screen, and the
-    /// ACTIVE cell is a transparent hole in it — the camera feed shows through
-    /// right where the shot will sit, at its real size and aspect. Shot cells
-    /// fill in around it; Pro presets render their signature deco while
-    /// shooting (Pro owners only reach them via the shelf).
-    private func frameGuide(_ tpl: CollageTemplateVM) -> some View {
-        GeometryReader { geo in
-            let g = guideGeometry(in: geo.size, tpl: tpl)
-            let gScale = g.canvas.width / 360
-            ZStack(alignment: .topLeading) {
-                canvasPlate(tpl, geometry: g)
-                ForEach(Array(g.cells.enumerated()), id: \.offset) { i, r in
-                    liveGuideCell(index: i, rect: r)
-                }
-                if tpl.isPro {
-                    ProSignatureDeco(templateID: tpl.id,
-                                     width: g.canvas.width, height: g.canvas.height,
-                                     scale: gScale, matWidth: tpl.spacing * gScale)
-                        .frame(width: g.canvas.width, height: g.canvas.height)
-                        .offset(x: g.canvas.minX, y: g.canvas.minY)
-                }
+    /// The near-full-screen collage canvas: an opaque plate in the template's
+    /// background, shot cells filled in, upcoming cells as numbered slots and
+    /// the Pro signature deco on top. The ACTIVE cell stays open — the live
+    /// preview view sits over it (see cameraStage), showing the whole camera
+    /// view aspect-filled to the cell.
+    private func frameGuideContent(_ tpl: CollageTemplateVM, in s: CGSize) -> some View {
+        let g = guideGeometry(in: s, tpl: tpl)
+        let gScale = g.canvas.width / 360
+        return ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(argb: tpl.background).opacity(0.96))
+                .frame(width: g.canvas.width, height: g.canvas.height)
+                .offset(x: g.canvas.minX, y: g.canvas.minY)
+                .shadow(color: .black.opacity(0.45), radius: 18, y: 6)
+            ForEach(Array(g.cells.enumerated()), id: \.offset) { i, r in
+                liveGuideCell(index: i, rect: r)
+            }
+            if tpl.isPro {
+                ProSignatureDeco(templateID: tpl.id,
+                                 width: g.canvas.width, height: g.canvas.height,
+                                 scale: gScale, matWidth: tpl.spacing * gScale)
+                    .frame(width: g.canvas.width, height: g.canvas.height)
+                    .offset(x: g.canvas.minX, y: g.canvas.minY)
             }
         }
-        .ignoresSafeArea()
         .allowsHitTesting(false)
         .onAppear {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
@@ -788,25 +837,9 @@ struct HuntCameraView: View {
         }
     }
 
-    /// The canvas plate: template background with the active cell punched out
-    /// (even-odd fill), so the live feed shows through only there.
-    private func canvasPlate(_ tpl: CollageTemplateVM,
-                             geometry g: (canvas: CGRect, cells: [CGRect])) -> some View {
-        let hole: CGRect? = frameShots.count < min(frameCellCount, g.cells.count)
-            ? g.cells[frameShots.count] : nil
-        return Path { p in
-            p.addRoundedRect(in: g.canvas, cornerSize: CGSize(width: 12, height: 12))
-            if let hole {
-                p.addRoundedRect(in: hole, cornerSize: CGSize(width: 4, height: 4))
-            }
-        }
-        .fill(Color(argb: tpl.background).opacity(0.90), style: FillStyle(eoFill: true))
-        .shadow(color: .black.opacity(0.35), radius: 16, y: 5)
-    }
-
-    /// One live-guide cell (rects are absolute screen coords): shot cells show
-    /// their photo; the active hole gets the breathing gradient ring; upcoming
-    /// cells are shaded, numbered slots on the plate.
+    /// One guide cell (rects are absolute screen coords): shot cells show
+    /// their photo; the active cell is a dark well the live preview covers;
+    /// upcoming cells are numbered dashed slots on the plate.
     @ViewBuilder
     private func liveGuideCell(index i: Int, rect r: CGRect) -> some View {
         ZStack {
@@ -819,15 +852,10 @@ struct HuntCameraView: View {
                 RoundedRectangle(cornerRadius: 3)
                     .stroke(.white.opacity(0.9), lineWidth: 1.5)
             } else if i == frameShots.count {
+                // The live preview sits here; this well only shows for the
+                // instant the preview is hopping between cells.
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(
-                        AngularGradient(
-                            colors: [Brand.purple, Brand.pink, Brand.amber, Brand.purple],
-                            center: .center
-                        ),
-                        lineWidth: 3
-                    )
-                    .opacity(guidePulse ? 1 : 0.55)
+                    .fill(Color.black.opacity(0.25))
             } else {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.black.opacity(0.12))
@@ -1157,14 +1185,13 @@ struct HuntCameraView: View {
     private func shoot() {
         cam.capture(flash: flashMode.av) { image in
             if let tpl = frameTemplate {
-                // Crop to the ACTIVE cell's screen rect: what showed through
-                // the live hole is exactly what lands in the cell, already at
-                // the cell's aspect (the crop editor can still refine).
+                // The cell preview aspect-fills the WHOLE camera view, so the
+                // maximal centred crop at the cell's aspect is exactly what
+                // was on screen (the crop editor can still refine).
                 guard frameShots.count < frameCellCount else { return }
-                let screen = UIScreen.main.bounds.size
-                let g = guideGeometry(in: screen, tpl: tpl)
-                let region = g.cells[min(frameShots.count, g.cells.count - 1)]
-                let final = Self.regionCrop(image, screen: screen, region: region)
+                let g = guideGeometry(in: UIScreen.main.bounds.size, tpl: tpl)
+                let cell = g.cells[min(frameShots.count, g.cells.count - 1)]
+                let final = Self.aspectCrop(image, ratio: cell.width / max(cell.height, 1))
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     frameShots.append(final)
                 }
@@ -1196,6 +1223,32 @@ struct HuntCameraView: View {
                             y: (screen.height - win.height) / 2,
                             width: win.width, height: win.height)
         return regionCrop(image, screen: screen, region: region)
+    }
+
+    /// Maximal centred crop at [ratio] (w/h) — matches what an aspect-filled
+    /// preview of the whole camera view showed. Used by frame mode's cells.
+    /// The photo arrives orientation-tagged, so it is normalised first.
+    private static func aspectCrop(_ image: UIImage, ratio: CGFloat) -> UIImage {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let normalised = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(at: .zero)
+        }
+        guard let cg = normalised.cgImage, ratio > 0 else { return image }
+        let w = CGFloat(cg.width)
+        let h = CGFloat(cg.height)
+        let current = w / max(h, 1)
+        var cropW = w
+        var cropH = h
+        if ratio > current {
+            cropH = w / ratio
+        } else {
+            cropW = h * ratio
+        }
+        let rect = CGRect(x: (w - cropW) / 2, y: (h - cropH) / 2,
+                          width: cropW, height: cropH).integral
+        guard let croppedCG = cg.cropping(to: rect) else { return normalised }
+        return UIImage(cgImage: croppedCG)
     }
 
     /// Maps an arbitrary SCREEN rect to the sensor and crops the photo to it.
