@@ -60,13 +60,26 @@ final class CameraController: NSObject, ObservableObject {
 
                 let wide = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
                 let ultra = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
+                let tele = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back)
                 var options: [LensOption] = []
                 if let ultra {
                     options.append(LensOption(id: "0.5", label: "0.5×", device: ultra, zoom: 1))
                 }
+                // Pro phones carry a real telephoto (2×/3×/4×/5× depending on
+                // generation) — label it from its actual focal ratio, and skip
+                // the digital 2× chip when the tele IS 2× (12 Pro).
+                var teleLabel: String?
+                if let wide, let tele {
+                    teleLabel = Self.opticalZoomLabel(wide: wide, tele: tele)
+                }
                 if let wide {
                     options.append(LensOption(id: "1", label: "1×", device: wide, zoom: 1))
-                    options.append(LensOption(id: "2", label: "2×", device: wide, zoom: 2))
+                    if teleLabel != "2×" {
+                        options.append(LensOption(id: "2", label: "2×", device: wide, zoom: 2))
+                    }
+                }
+                if let tele, let teleLabel {
+                    options.append(LensOption(id: "tele", label: teleLabel, device: tele, zoom: 1))
                 }
 
                 if let device = wide,
@@ -105,6 +118,21 @@ final class CameraController: NSObject, ObservableObject {
             if self.session.isRunning { self.session.stopRunning() }
             DispatchQueue.main.async { self.running = false }
         }
+    }
+
+    /// The telephoto's optical zoom relative to the wide, derived from their
+    /// fields of view (= the focal-length ratio) and snapped to half steps, so
+    /// the chip reads like the system camera: 2× (12 Pro), 3× (13–14 Pro),
+    /// 5× (15–16 Pro Max), 4× (17 Pro) — future lenses label themselves.
+    private static func opticalZoomLabel(wide: AVCaptureDevice, tele: AVCaptureDevice) -> String {
+        let wf = Double(wide.activeFormat.videoFieldOfView)
+        let tf = Double(tele.activeFormat.videoFieldOfView)
+        guard wf > 0, tf > 0, tf < wf else { return "2×" }
+        let ratio = tan(wf * .pi / 360) / tan(tf * .pi / 360)
+        let snapped = (ratio * 2).rounded() / 2
+        return snapped.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f×", snapped)
+            : String(format: "%.1f×", snapped)
     }
 
     // MARK: lens / position / flash / focus / exposure
