@@ -136,11 +136,10 @@ import cairosvg  # noqa: E402
 for appearance, name in [("light", "icon"), ("dark", "icon-dark"),
                          ("tinted", "icon-tinted")]:
     svg = build_svg(appearance)
-    # Only the light master is kept as SVG — it is the design reference.
-    if appearance == "light":
-        with open("icon.svg", "w") as f:
-            f.write(svg)
-    cairosvg.svg2png(bytestring=svg.encode(), write_to=f"{name}-1024.png",
+    # Every appearance keeps its SVG so each one can be opened and edited in a
+    # vector tool, not just the light master.
+    with open(f"{name}.svg", "w") as f:
+        f.write(svg)
+    cairosvg.svg2png(url=f"{name}.svg", write_to=f"{name}-1024.png",
                      output_width=1024, output_height=1024)
-    print(f"wrote {name}-1024.png")
-print("wrote icon.svg")
+    print(f"wrote {name}.svg + {name}-1024.png")

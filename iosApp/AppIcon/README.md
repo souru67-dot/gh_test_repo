@@ -33,11 +33,14 @@ python3 gen_icon.py   # icon.svg と icon-1024.png を再生成
 
 ## 3 つの外観（iOS 18+）
 
-| ファイル | スロット | 内容 |
-|---|---|---|
-| `icon-1024.png` | **Any Appearance** | Android と同じパステルの地 |
-| `icon-dark-1024.png` | **Dark** | 同じホイールをアプリの暗い地に載せた版 |
-| `icon-tinted-1024.png` | **Tinted** | グレースケール。iOS がユーザーの色を掛けるため、**明度だけで形が読める**よう 0.45〜0.85 に圧縮 |
+| スロット | Xcode に入れる PNG | 元データ | 内容 |
+|---|---|---|---|
+| **Any Appearance** | `icon-1024.png` | `icon.svg` | Android と同じパステルの地 |
+| **Dark** | `icon-dark-1024.png` | `icon-dark.svg` | 同じホイールをアプリの暗い地に載せた版 |
+| **Tinted** | `icon-tinted-1024.png` | `icon-tinted.svg` | グレースケール。iOS がユーザーの色を掛けるため、**明度だけで形が読める**よう 0.45〜0.85 に圧縮 |
+
+3 外観とも SVG と PNG の両方を同梱しています（SVG はベクタツールで開くため、
+PNG が Xcode に入れる実体）。すべて `gen_icon.py` が同じ図形から生成します。
 
 > Tinted は「iOS が単色を掛ける」仕様なので、色を置いても反映されません。
 > リングを素の輝度にすると黄が白飛び・青が沈んで輪が途切れるため、帯域を
