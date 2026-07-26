@@ -614,12 +614,19 @@ enum DominantColor {
             let value = maxC
             let sat = maxC == 0 ? 0 : (maxC - minC) / maxC
             // Same shape as Android's PaletteExtractor.scoreOf.
+            //
+            // Pastels used to be penalised twice — once for being bright and
+            // again for being low-saturation — so a small dark region beat a
+            // photo that was mostly pale yellow or pink. The bright penalty
+            // now only applies to near-white (a blown highlight, which is what
+            // it was for), and the saturation term has a higher floor and a
+            // gentler slope so a soft colour still competes with a vivid one.
             let valueWeight: Double
             if value < 0.12 { valueWeight = 0.2 }
             else if value < 0.28 { valueWeight = 0.2 + 0.8 * (value - 0.12) / 0.16 }
-            else if value > 0.92 { valueWeight = 0.5 }
+            else if value > 0.92 { valueWeight = sat < 0.10 ? 0.45 : 0.85 }
             else { valueWeight = 1.0 }
-            let score = Double(e.count) * (0.35 + sat) * valueWeight
+            let score = Double(e.count) * (0.45 + 0.75 * sat) * valueWeight
             if score > bestScore {
                 bestScore = score
                 best = (e.r / e.count, e.g / e.count, e.b / e.count)
