@@ -401,14 +401,15 @@ struct HuntCameraView: View {
 
     // Frame mode (dazz-style): shoot cell by cell into a collage template's
     // on-screen guide, then jump straight into the collage with it applied.
-    @State private var frameTemplate: CollageTemplateVM?
+    /// The chosen shooting style; nil = フリー (no guide).
+    @State private var frameStyle: FrameStyle?
     @State private var frameShots: [UIImage] = []
     @State private var showFramePicker = false
     /// Drives the breathing gradient ring on the next guide cell.
     @State private var guidePulse = false
-    /// Shot count + arrangement for frame mode, chosen from the picker.
-    @State private var arrangement: FrameArrangement = FrameArrangement.all[0]
-    private var frameCellCount: Int { arrangement.cells }
+
+    private var frameTemplate: CollageTemplateVM? { frameStyle?.template }
+    private var frameCellCount: Int { max(frameStyle?.cells ?? 0, 1) }
 
     private var target: Int32? { state.todayColor }
 
@@ -596,11 +597,6 @@ struct HuntCameraView: View {
                 framePicker
             }
 
-            // Arrangement is only meaningful once a template guide is up.
-            if frameTemplate != nil && frameShots.isEmpty {
-                arrangementPicker
-            }
-
             if let tpl = frameTemplate, frameShots.count >= frameCellCount {
                 frameCompleteRow(tpl)
             } else {
@@ -662,23 +658,18 @@ struct HuntCameraView: View {
         .buttonStyle(PopButtonStyle())
     }
 
-    /// The dazz-style shelf: フリー (no guide) + clear-reading templates.
-    /// Pro owners also get the Pro presets — they shoot straight into the
-    /// finished Pro look, signature deco and all.
-    private var frameShelf: [CollageTemplateVM] {
-        var shelf = CollageTemplateVM.cameraPicks
-        if state.isPro {
-            shelf += CollageTemplateVM.all.filter { $0.isPro }
-        }
-        return shelf
+    /// The dazz-style shelf, now a single row of finished styles: one tap
+    /// picks the look AND the shape. Pro styles join the row once Pro is
+    /// owned, so those users shoot straight into the finished Pro look.
+    private var frameShelf: [FrameStyle] {
+        state.isPro ? FrameStyle.free + FrameStyle.pro : FrameStyle.free
     }
 
     private var framePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                frameCard(nil)
-                ForEach(frameShelf) { tpl in
-                    frameCard(tpl)
+                ForEach(frameShelf) { style in
+                    frameCard(style)
                 }
             }
             .padding(.horizontal, 16)
@@ -686,30 +677,37 @@ struct HuntCameraView: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    private func frameCard(_ tpl: CollageTemplateVM?) -> some View {
-        let selected = frameTemplate?.id == tpl?.id
+    /// A style card: a literal miniature of the frame you will get, with the
+    /// name underneath — no abstract icons, no second choice to make.
+    private func frameCard(_ style: FrameStyle) -> some View {
+        let isFree = style.templateID == nil
+        let selected = isFree ? frameStyle == nil : frameStyle?.id == style.id
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                frameTemplate = tpl
+                frameStyle = isFree ? nil : style
                 frameShots = []
-                // Start on the arrangement the template implies; the picker
-                // can still change it before the first shot.
-                if let tpl { arrangement = FrameArrangement.forTemplate(tpl) }
             }
             // Reset so the guide's onAppear restarts the pulse next time.
-            if tpl == nil { guidePulse = false }
+            if isFree { guidePulse = false }
         } label: {
             VStack(spacing: 4) {
-                Image(systemName: frameIcon(tpl))
-                    .font(.system(size: 17, weight: .semibold))
-                Text(tpl.map { LocalizedStringKey($0.label) } ?? LocalizedStringKey("フリー"))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                Group {
+                    if isFree {
+                        Image(systemName: "viewfinder")
+                            .font(.system(size: 19, weight: .semibold))
+                    } else {
+                        frameStyleGlyph(style, selected: selected)
+                    }
+                }
+                .frame(width: 26, height: 30)
+                Text(LocalizedStringKey(style.label))
+                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
             .foregroundStyle(selected ? Color.black : .white)
-            .frame(width: 66, height: 52)
+            .frame(width: 58, height: 58)
             .background(
                 selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.black.opacity(0.35)),
                 in: RoundedRectangle(cornerRadius: 12)
@@ -718,67 +716,21 @@ struct HuntCameraView: View {
         .buttonStyle(PopButtonStyle())
     }
 
-    /// Arrangement chooser drawn as literal miniatures of the canvas — the
-    /// cards show the actual cell pattern rather than an abstract icon, so the
-    /// choice reads without labels (the count sits underneath as confirmation).
-    private var arrangementPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(FrameArrangement.all) { a in
-                    let selected = arrangement.id == a.id
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            arrangement = a
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            arrangementGlyph(a, selected: selected)
-                                .frame(width: 26, height: 32)
-                            Text(a.label)
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(selected ? Color.black : .white)
-                        .frame(width: 52, height: 58)
-                        .background(
-                            selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.black.opacity(0.35)),
-                            in: RoundedRectangle(cornerRadius: 12)
-                        )
-                    }
-                    .buttonStyle(PopButtonStyle())
-                }
-            }
-            .padding(.horizontal, 16)
-        }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-
-    /// The miniature cell pattern inside an arrangement card.
-    private func arrangementGlyph(_ a: FrameArrangement, selected: Bool) -> some View {
-        let ink = selected ? Color.black.opacity(0.55) : Color.white.opacity(0.85)
+    /// The miniature cell pattern inside a style card.
+    private func frameStyleGlyph(_ style: FrameStyle, selected: Bool) -> some View {
+        let ink = selected ? Color.black.opacity(0.6) : Color.white.opacity(0.85)
         return VStack(spacing: 2) {
-            ForEach(0..<a.rows, id: \.self) { row in
+            ForEach(0..<max(style.rows, 1), id: \.self) { row in
                 HStack(spacing: 2) {
-                    ForEach(0..<a.columns, id: \.self) { col in
-                        // The last row may be short when cells aren't a
-                        // multiple of the column count.
-                        let index = row * a.columns + col
+                    ForEach(0..<max(style.columns, 1), id: \.self) { col in
+                        // A trailing slot stays faint when the shot count is
+                        // not a multiple of the column count.
+                        let index = row * style.columns + col
                         RoundedRectangle(cornerRadius: 1.5)
-                            .fill(ink.opacity(index < a.cells ? 1 : 0.15))
+                            .fill(ink.opacity(index < style.cells ? 1 : 0.15))
                     }
                 }
             }
-        }
-    }
-
-    private func frameIcon(_ tpl: CollageTemplateVM?) -> String {
-        switch tpl?.id {
-        case nil: return "viewfinder"
-        case "fourcut": return "rectangle.grid.1x2"
-        case "kumisha", "y2k": return "rectangle.split.2x1"
-        case "seamless": return "rectangle.portrait"
-        default: return "square.grid.2x2"
         }
     }
 
@@ -791,9 +743,9 @@ struct HuntCameraView: View {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 let shots = frameShots
                 state.startCollage(with: shots, templateID: tpl.id,
-                                   layoutOrdinal: arrangement.layout)
+                                   layoutOrdinal: frameStyle?.layout)
                 frameShots = []
-                frameTemplate = nil
+                frameStyle = nil
                 guidePulse = false
                 dismiss()
             } label: {
@@ -895,7 +847,7 @@ struct HuntCameraView: View {
         let h = w / tpl.aspect
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(frameCellCount),
-            layoutOrdinal: arrangement.layout,
+            layoutOrdinal: frameStyle?.layout ?? tpl.layout,
             placementOrdinal: 0,
             spacingFrac: Float(tpl.spacing / 360.0),
             width: Float(w),
@@ -1398,48 +1350,58 @@ struct HuntCameraView: View {
 
 // MARK: - Small camera types & effects
 
-/// A frame-mode shooting plan: how many shots, and how they sit on the canvas.
-/// For 4 cells the shared geometry gives GRID and TWO_COLUMN the same 2×2
-/// shape, so the options below are the ones that genuinely look different —
-/// varying the shot count is what unlocks strips and taller grids.
-struct FrameArrangement: Identifiable, Equatable {
+/// One tap = one complete shooting style: the look (template) and the shape
+/// (shot count + arrangement) together. Choosing those separately meant two
+/// stacked rows of controls and combinations that made no sense (a 6-shot
+/// チェキ), so the shelf now offers finished styles whose card shows exactly
+/// the frame you will get.
+struct FrameStyle: Identifiable, Equatable {
     let id: String
     let label: String
+    /// nil = フリー: no guide, plain full-screen camera.
+    let templateID: String?
     let cells: Int
     /// 0 GRID / 1 VERTICAL / 2 TWO_COLUMN — the collage's ordinals.
     let layout: Int32
-    /// Rows × columns of the mini diagram drawn on the picker card.
+    /// Rows × columns of the mini diagram drawn on the card.
     let rows: Int
     let columns: Int
+    let isPro: Bool
 
-    static let all: [FrameArrangement] = [
-        .init(id: "grid4", label: "2×2", cells: 4, layout: 0, rows: 2, columns: 2),
-        .init(id: "v4", label: "縦4", cells: 4, layout: 1, rows: 4, columns: 1),
-        .init(id: "v3", label: "縦3", cells: 3, layout: 1, rows: 3, columns: 1),
-        // Half-frame: two upright shots side by side in one landscape frame.
-        .init(id: "half2", label: "ハーフ", cells: 2, layout: 2, rows: 1, columns: 2),
-        .init(id: "v2", label: "縦2", cells: 2, layout: 1, rows: 2, columns: 1),
-        // One shot — a real instax print holds a single photo.
-        .init(id: "single", label: "1枚", cells: 1, layout: 0, rows: 1, columns: 1),
-        .init(id: "col6", label: "2列6", cells: 6, layout: 2, rows: 3, columns: 2),
+    static let free: [FrameStyle] = [
+        .init(id: "free", label: "フリー", templateID: nil, cells: 0, layout: 0,
+              rows: 0, columns: 0, isPro: false),
+        // Half-frame: two upright shots in one landscape negative — always a
+        // pair, which is what makes it read as a half-frame.
+        .init(id: "half", label: "ハーフ", templateID: "half", cells: 2, layout: 2,
+              rows: 1, columns: 2, isPro: false),
+        .init(id: "fourcut", label: "4カット", templateID: "fourcut", cells: 4, layout: 1,
+              rows: 4, columns: 1, isPro: false),
+        .init(id: "grid4", label: "2×2", templateID: "dump", cells: 4, layout: 0,
+              rows: 2, columns: 2, isPro: false),
+        .init(id: "v3", label: "縦3", templateID: "white", cells: 3, layout: 1,
+              rows: 3, columns: 1, isPro: false),
+        .init(id: "col6", label: "2列6", templateID: "kumisha", cells: 6, layout: 2,
+              rows: 3, columns: 2, isPro: false),
     ]
 
-    /// The arrangement a template opens on, so each preset starts in the shape
-    /// it is actually about — ハーフ as a pair, チェキ as a single print,
-    /// 4カット as a strip — with the picker free to change it.
-    static func forTemplate(_ tpl: CollageTemplateVM) -> FrameArrangement {
-        let preferred: String?
-        switch tpl.id {
-        case "half": preferred = "half2"
-        case "cheki": preferred = "single"
-        case "fourcut": preferred = "v4"
-        default: preferred = nil
-        }
-        if let preferred, let match = all.first(where: { $0.id == preferred }) {
-            return match
-        }
-        // Otherwise the 4-shot arrangement matching the template's own layout.
-        return all.first { $0.layout == tpl.layout && $0.cells == 4 } ?? all[0]
+    /// Pro looks, appended to the shelf once Pro is owned. チェキ is a single
+    /// shot because a real instax print holds exactly one photo.
+    static let pro: [FrameStyle] = [
+        .init(id: "cheki", label: "チェキ", templateID: "cheki", cells: 1, layout: 0,
+              rows: 1, columns: 1, isPro: true),
+        .init(id: "daylog", label: "デイログ", templateID: "daylog", cells: 4, layout: 0,
+              rows: 2, columns: 2, isPro: true),
+        .init(id: "pastel", label: "パステル", templateID: "pastel", cells: 4, layout: 0,
+              rows: 2, columns: 2, isPro: true),
+        .init(id: "y2k", label: "Y2K", templateID: "y2k", cells: 4, layout: 2,
+              rows: 2, columns: 2, isPro: true),
+        .init(id: "magazine", label: "マガジン", templateID: "magazine", cells: 4, layout: 0,
+              rows: 2, columns: 2, isPro: true),
+    ]
+
+    var template: CollageTemplateVM? {
+        templateID.flatMap { id in CollageTemplateVM.all.first { $0.id == id } }
     }
 }
 

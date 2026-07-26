@@ -481,12 +481,30 @@ struct CollageView: View {
         .foregroundStyle(Brand.accent)
     }
 
-    /// One-line hint under the preview explaining the direct gestures.
+    /// How many cells the applied preset renders, regardless of how many
+    /// photos are selected. Int.max = as many as there are photos.
+    private var templateCellCap: Int {
+        switch appliedTemplateID {
+        case "half": return 2
+        case "cheki": return 1
+        default: return Int.max
+        }
+    }
+
+    /// One-line hint under the preview explaining the direct gestures, or why
+    /// a format-locked preset is showing fewer photos than are selected.
     private var previewHint: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "hand.tap").font(.caption2)
-            Text("タップでトリミング・長押しで並べ替え")
-                .font(.caption2)
+        let cap = templateCellCap
+        let capped = cap < state.orderedSelectedPhotos.count
+        return HStack(spacing: 6) {
+            Image(systemName: capped ? "info.circle" : "hand.tap").font(.caption2)
+            if capped {
+                Text(cap == 1 ? "チェキは1枚で仕上がります" : "ハーフは2枚で1枚のフィルムになります")
+                    .font(.caption2)
+            } else {
+                Text("タップでトリミング・長押しで並べ替え")
+                    .font(.caption2)
+            }
         }
         .foregroundStyle(.white.opacity(0.6))
         .frame(maxWidth: .infinity)
@@ -530,7 +548,10 @@ struct CollageView: View {
     /// preview and, at export scale, the shared image. Consumes the flat float
     /// layout from the shared module (no nested Kotlin types to bridge).
     private func canvas(width: CGFloat) -> some View {
-        let photos = state.orderedSelectedPhotos
+        // ハーフ is a two-frame negative and チェキ is a one-photo print, so
+        // those presets render exactly that many cells however many photos are
+        // selected — the format IS the point (previewHint says so on screen).
+        let photos = Array(state.orderedSelectedPhotos.prefix(templateCellCap))
         let height = width / aspect
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(photos.count),
@@ -1187,20 +1208,23 @@ struct TemplateSignatureDeco: View {
     /// handwritten date sits inside that band, never on the photos.
     private var cheki: some View {
         let mat = max(matWidth, 14 * scale)
-        let bottomBand = mat * 1.9
+        // The chin is deep enough to hold the date clear of the photo; the
+        // date is an overlay ON the band, so it can never ride up onto the
+        // image no matter the canvas size.
+        let bottomBand = max(mat * 2.4, 34 * scale)
         return ZStack(alignment: .bottom) {
             RoundedRectangle(cornerRadius: 2 * scale)
                 .strokeBorder(Color.white, lineWidth: mat)
             Rectangle()
                 .fill(Color.white)
                 .frame(height: bottomBand)
-            Text(Self.chekiFormatter.string(from: Date()))
-                .font(.system(size: 9.5 * scale, weight: .medium, design: .serif))
-                .italic()
-                .foregroundStyle(Color(red: 0.48, green: 0.45, blue: 0.40))
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, 15 * scale)
-                .padding(.bottom, (bottomBand - 12 * scale) / 2)
+                .overlay(alignment: .trailing) {
+                    Text(Self.chekiFormatter.string(from: Date()))
+                        .font(.system(size: 9.5 * scale, weight: .medium, design: .serif))
+                        .italic()
+                        .foregroundStyle(Color(red: 0.48, green: 0.45, blue: 0.40))
+                        .padding(.trailing, 15 * scale)
+                }
         }
     }
 

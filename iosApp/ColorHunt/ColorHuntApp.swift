@@ -70,12 +70,19 @@ struct RootTabView: View {
         Binding(
             get: { state.selectedTab },
             set: { tab in
-                if tab == .camera {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showCamera = true
-                } else {
+                guard tab == .camera else {
                     state.selectedTab = tab
+                    return
                 }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                showCamera = true
+                // Silently refusing the change left UIKit parked on the empty
+                // placeholder page — a black screen with the centre slot lit —
+                // because the tab controller had already moved. Accept it, then
+                // restore on the next runloop so the bar snaps back.
+                let restore = state.selectedTab
+                state.selectedTab = .camera
+                DispatchQueue.main.async { state.selectedTab = restore }
             }
         )
     }
@@ -94,7 +101,10 @@ struct RootTabView: View {
                 CollageView()
                     .tabItem { Label("コラージュ", systemImage: "square.grid.2x2") }
                     .tag(AppTab.collage)
-                Color.clear
+                // Never actually shown (selecting it opens the camera and
+                // bounces back), but it is the app base colour rather than
+                // clear so a stray frame reads as the app, not a void.
+                Brand.base.ignoresSafeArea()
                     .tabItem { Text(verbatim: "") }
                     .tag(AppTab.camera)
                 TodayColorView()
@@ -116,6 +126,13 @@ struct RootTabView: View {
         }
         .fullScreenCover(isPresented: $showCamera) {
             HuntCameraView().environmentObject(state)
+        }
+        // Safety net: nothing should ever leave the placeholder selected, but
+        // if it does the app must not sit on a blank page.
+        .onChange(of: state.selectedTab) { tab in
+            if tab == .camera && !showCamera {
+                state.selectedTab = .hunt
+            }
         }
     }
 

@@ -135,6 +135,8 @@
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
 /* v1.8 — half-frame + single-shot */
+"チェキは1枚で仕上がります" = "Instax holds a single photo";
+"ハーフは2枚で1枚のフィルムになります" = "Half-frame pairs two shots on one negative";
 "ハーフ" = "Half";
 "1枚" = "Single";
 
