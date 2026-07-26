@@ -68,6 +68,18 @@ struct HuntView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .bottom) { makeCollageBar }
+            // Auto-sort is the one action whose result is invisible: photos land
+            // inside colour buckets further down the page, and duplicates land
+            // nowhere at all. The toast says what actually happened.
+            .overlay(alignment: .top) {
+                if let summary = state.importSummary {
+                    SaveToast(message: summary.message,
+                              icon: "wand.and.stars",
+                              tint: Color(argb: 0xFF9E7CFF))
+                        .padding(.top, 8)
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: state.importSummary)
             .onChange(of: pickerItems) { items in
                 Task { await load(items) }
             }

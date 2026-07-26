@@ -108,7 +108,11 @@ final class AppState: ObservableObject {
     /// auto-sort must not stack duplicates.
     private var photoHashes = Set<Int>()
 
-    func add(images: [UIImage]) {
+    /// [unreadable] counts assets the library could not hand over at all (an
+    /// iCloud download that failed, say). Passing it — even as 0 — is what
+    /// marks this as an auto-sort run and produces the summary toast; the
+    /// photo picker and the camera pass nil and stay silent.
+    func add(images: [UIImage], unreadable: Int? = nil) {
         // Hash off-main (tiny 16×16 renders), then append only unseen images.
         Task.detached(priority: .userInitiated) { [weak self] in
             var pairs: [(UIImage, Int)] = []
@@ -116,11 +120,14 @@ final class AppState: ObservableObject {
                 if let h = DominantColor.quickHash(image) { pairs.append((image, h)) }
             }
             let result = pairs
-            await self?.appendUnique(result)
+            // An image that would not hash cannot be de-duplicated, so it is
+            // dropped here and counted with the unreadable ones.
+            let lost = unreadable.map { $0 + images.count - pairs.count }
+            await self?.appendUnique(result, unreadable: lost)
         }
     }
 
-    private func appendUnique(_ pairs: [(UIImage, Int)]) {
+    private func appendUnique(_ pairs: [(UIImage, Int)], unreadable: Int? = nil) {
         var fresh: [HuntPhoto] = []
         for (image, hash) in pairs where !photoHashes.contains(hash) {
             photoHashes.insert(hash)
@@ -129,12 +136,55 @@ final class AppState: ObservableObject {
             fresh.append(photo)
         }
         photos.append(contentsOf: fresh)
+        if let unreadable {
+            showImportSummary(ImportSummary(added: fresh.count,
+                                            duplicates: pairs.count - fresh.count,
+                                            unreadable: unreadable))
+        }
         for photo in fresh {
             persistPhotoFile(photo)
             Task.detached(priority: .userInitiated) { [weak self] in
                 let color = DominantColor.extract(from: photo.image)
                 await self?.finishAnalysis(id: photo.id, color: color)
             }
+        }
+    }
+
+    /// Why an auto-sort of "the last 200" rarely adds 200: photos already in
+    /// the hunt are skipped, and the library cannot always hand every asset
+    /// over. Reporting both makes the number make sense instead of looking
+    /// like a bug.
+    struct ImportSummary: Equatable {
+        let added: Int
+        let duplicates: Int
+        let unreadable: Int
+
+        var message: String {
+            var text = String(format: NSLocalizedString("%lld枚を追加しました", comment: ""), added)
+            var notes: [String] = []
+            if duplicates > 0 {
+                notes.append(String(format: NSLocalizedString("重複%lld枚", comment: ""), duplicates))
+            }
+            if unreadable > 0 {
+                notes.append(String(format: NSLocalizedString("読み込めず%lld枚", comment: ""), unreadable))
+            }
+            guard !notes.isEmpty else { return text }
+            // Brackets and the separator are localized too: CJK wants 全角（・）
+            // with no spaces, Latin wants " (a, b)".
+            let joined = notes.joined(separator: NSLocalizedString("・", comment: "note separator"))
+            return String(format: NSLocalizedString("%1$@（%2$@）", comment: "message then notes"),
+                          text, joined)
+        }
+    }
+
+    /// Result of the most recent auto-sort; clears itself so the toast fades.
+    @Published var importSummary: ImportSummary?
+
+    private func showImportSummary(_ summary: ImportSummary) {
+        importSummary = summary
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if importSummary == summary { importSummary = nil }
         }
     }
 
@@ -417,8 +467,11 @@ final class AppState: ObservableObject {
                 }
                 // Snapshot into a let so the concurrent Task doesn't capture a var.
                 let collected = images
+                // Assets the library never handed back — typically an iCloud
+                // original that could not be downloaded.
+                let missed = max(assets.count - collected.count, 0)
                 Task { @MainActor in
-                    if !collected.isEmpty { self?.add(images: collected) }
+                    self?.add(images: collected, unreadable: missed)
                     self?.importing = false
                 }
             }

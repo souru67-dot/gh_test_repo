@@ -183,13 +183,35 @@ struct PopButtonStyle: ButtonStyle {
 }
 
 /// The success toast used by collage/map saves — checkmark pill sliding in from
-/// the top with a glassy backing.
+/// the top with a glassy backing. Also carries the auto-sort import summary,
+/// so every "something just happened" message reads the same everywhere.
 struct SaveToast: View {
+    private let label: Text
+    private let icon: String
+    private let tint: Color
+
+    /// The default save confirmation.
+    init() {
+        self.init(text: Text("保存しました"), icon: "checkmark.circle.fill", tint: .green)
+    }
+
+    /// An already-localized message — e.g. one assembled with `String(format:)`,
+    /// which must not be looked up in the string table a second time.
+    init(message: String, icon: String = "checkmark.circle.fill", tint: Color = .green) {
+        self.init(text: Text(verbatim: message), icon: icon, tint: tint)
+    }
+
+    private init(text: Text, icon: String, tint: Color) {
+        self.label = text
+        self.icon = icon
+        self.tint = tint
+    }
+
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            Text("保存しました")
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+            label
                 .font(.system(.subheadline, design: .rounded).bold())
         }
         .padding(.horizontal, 18).padding(.vertical, 12)

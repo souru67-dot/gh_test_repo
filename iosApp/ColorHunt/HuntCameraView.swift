@@ -1025,7 +1025,10 @@ struct HuntCameraView: View {
             Text("\(huntedCount)")
                 .font(.system(.title3, design: .rounded).weight(.heavy))
                 .foregroundStyle(.white)
-            Text("ハント")
+            // Distinct key from the tab label: as a unit under a number this
+            // reads "hunts", not "Hunt". Sharing one key made the duplicate
+            // entry win and relabelled the tab in English.
+            Text("ハント数")
                 .font(.caption2).foregroundStyle(.white.opacity(0.8))
         }
     }
