@@ -1371,10 +1371,6 @@ struct FrameStyle: Identifiable, Equatable {
     static let free: [FrameStyle] = [
         .init(id: "free", label: "フリー", templateID: nil, cells: 0, layout: 0,
               rows: 0, columns: 0, isPro: false),
-        // Half-frame: two upright shots in one landscape negative — always a
-        // pair, which is what makes it read as a half-frame.
-        .init(id: "half", label: "ハーフ", templateID: "half", cells: 2, layout: 2,
-              rows: 1, columns: 2, isPro: false),
         .init(id: "fourcut", label: "4カット", templateID: "fourcut", cells: 4, layout: 1,
               rows: 4, columns: 1, isPro: false),
         .init(id: "grid4", label: "2×2", templateID: "dump", cells: 4, layout: 0,
@@ -1385,11 +1381,16 @@ struct FrameStyle: Identifiable, Equatable {
               rows: 3, columns: 2, isPro: false),
     ]
 
-    /// Pro looks, appended to the shelf once Pro is owned. チェキ is a single
-    /// shot because a real instax print holds exactly one photo.
+    /// Pro looks, grouped after the free ones so the shelf reads free-first.
+    /// ハーフ is always a pair (that is what makes it a half-frame) and チェキ
+    /// a single shot, because a real instax print holds exactly one photo.
     static let pro: [FrameStyle] = [
+        .init(id: "half", label: "ハーフ", templateID: "half", cells: 2, layout: 2,
+              rows: 1, columns: 2, isPro: true),
         .init(id: "cheki", label: "チェキ", templateID: "cheki", cells: 1, layout: 0,
               rows: 1, columns: 1, isPro: true),
+        .init(id: "seamless", label: "シームレス", templateID: "seamless", cells: 4, layout: 2,
+              rows: 2, columns: 2, isPro: true),
         .init(id: "daylog", label: "デイログ", templateID: "daylog", cells: 4, layout: 0,
               rows: 2, columns: 2, isPro: true),
         .init(id: "pastel", label: "パステル", templateID: "pastel", cells: 4, layout: 0,

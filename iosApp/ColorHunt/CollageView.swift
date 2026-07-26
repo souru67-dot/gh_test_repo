@@ -234,7 +234,12 @@ struct CollageView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 14) {
             templateSection
-            layoutSection
+            // ハーフ and チェキ ARE their arrangement — a half-frame is two
+            // frames on one negative and an instax is one print — so the
+            // layout picker would only offer ways to break them.
+            if templateCellCap == Int.max {
+                layoutSection
+            }
             paletteSection
             styleSection
         }
@@ -1008,11 +1013,11 @@ struct CollageTemplateVM: Identifiable {
               placement: 0, spacing: 12, corner: 20, background: 0xFFFF2D92,
               hexOverlay: true, dateStamp: false, isPro: true),
         // Half-frame cameras expose two upright frames inside one landscape
-        // negative — the shape IS the signature, so it gets a real film strip
-        // (sprockets + centre bar) rather than a plain background.
+        // negative, separated by the film rebate — that black bar and the
+        // 3:4 pair are the whole signature, exactly as a real print comes back.
         .init(id: "half", label: "ハーフ", category: .retro, aspect: 3.0 / 2.0, layout: 2,
-              placement: 0, spacing: 7, corner: 0, background: 0xFF141414,
-              hexOverlay: false, dateStamp: true, isPro: false),
+              placement: 0, spacing: 5, corner: 0, background: 0xFF121212,
+              hexOverlay: false, dateStamp: false, isPro: true),
         // A real instax print is one photo on a portrait card with the wide
         // chin at the bottom, so this is portrait and best used with 1 photo.
         .init(id: "cheki", label: "チェキ", category: .retro, aspect: 0.72, layout: 0,
@@ -1032,16 +1037,9 @@ struct CollageTemplateVM: Identifiable {
               hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "seamless", label: "シームレス", category: .minimal, aspect: 9.0 / 16.0, layout: 2,
               placement: 4, spacing: 0, corner: 0, background: 0xFF000000,
-              hexOverlay: false, dateStamp: false, isPro: false),
+              hexOverlay: false, dateStamp: false, isPro: true),
     ]
 
-    /// The frame-mode shelf in the Hunt Camera — layouts that read clearly as
-    /// on-screen shooting guides. Pro owners additionally get the Pro presets
-    /// (see HuntCameraView.frameShelf).
-    static let cameraPicks: [CollageTemplateVM] =
-        ["fourcut", "half", "white", "dump", "kumisha", "seamless"].compactMap { id in
-            all.first { $0.id == id }
-        }
 }
 
 // MARK: - Template signature decos
@@ -1074,45 +1072,21 @@ struct TemplateSignatureDeco: View {
         }
     }
 
-    /// ハーフ: an actual 35mm strip — sprocket perforations running along the
-    /// top and bottom edges and a slim bar between the two upright frames, so
-    /// the pair reads as one negative instead of two photos side by side.
+    /// ハーフ: exactly what comes back from the lab — two 3:4 frames sharing
+    /// one landscape print, parted by the film rebate. That rebate is notably
+    /// wider than the print's own edge, which is the tell that says "half
+    /// frame"; no sprockets and no lettering, because a real print has none.
     private var halfFrame: some View {
-        let holeW = 7 * scale
-        let holeH = 5 * scale
-        let inset = 5 * scale
-        let pitch = holeW * 2.1
-        let count = max(Int(width / pitch), 4)
+        let rebate = Color(red: 0.07, green: 0.07, blue: 0.07)
         return ZStack {
-            VStack {
-                sprocketRow(count: count, w: holeW, h: holeH)
-                Spacer(minLength: 0)
-                sprocketRow(count: count, w: holeW, h: holeH)
-            }
-            .padding(.vertical, inset)
+            // The gap between the two frames, widened past the layout spacing.
             Rectangle()
-                .fill(Color(red: 0.08, green: 0.08, blue: 0.08))
-                .frame(width: 3 * scale)
-            Text(verbatim: "HALF FRAME")
-                .font(.system(size: 6.5 * scale, weight: .semibold, design: .monospaced))
-                .tracking(2 * scale)
-                .foregroundStyle(.white.opacity(0.5))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .padding(.leading, 10 * scale)
-                .padding(.bottom, inset + holeH + 3 * scale)
+                .fill(rebate)
+                .frame(width: 7 * scale)
+            // The print's own thin edge.
+            Rectangle()
+                .strokeBorder(rebate, lineWidth: 2 * scale)
         }
-    }
-
-    private func sprocketRow(count: Int, w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: w * 1.1) {
-            ForEach(0..<count, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: h * 0.3)
-                    .fill(Color(red: 0.93, green: 0.92, blue: 0.89))
-                    .frame(width: w, height: h)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .clipped()
     }
 
     /// デイログ: a tilted journal sticker with today's date — the setlog cue.
@@ -1512,7 +1486,7 @@ struct PaywallView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 benefit("透かしなしで書き出し")
-                benefit("Pro限定テンプレート（デイログ・パステル・Y2K・チェキ・マガジン）")
+                benefit("Pro限定テンプレート7種（ハーフ・チェキ・シームレス ほか）")
                 benefit("2160pxの高画質書き出し")
                 benefit("今後のPro機能もすべて")
             }
