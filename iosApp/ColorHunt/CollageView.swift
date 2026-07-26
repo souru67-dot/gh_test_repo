@@ -237,7 +237,7 @@ struct CollageView: View {
             // ハーフ and チェキ ARE their arrangement — a half-frame is two
             // frames on one negative and an instax is one print — so the
             // layout picker would only offer ways to break them.
-            if templateCellCap == Int.max {
+            if !formatLocked {
                 layoutSection
             }
             paletteSection
@@ -448,14 +448,25 @@ struct CollageView: View {
     private var styleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Divider().overlay(Color.white.opacity(0.08))
-            sectionLabel("SNSサイズ", icon: "aspectratio")
-            Picker("サイズ", selection: $aspect) {
-                Text("1:1").tag(CGFloat(1))
-                Text("4:5").tag(CGFloat(4.0 / 5.0))
-                Text("9:16").tag(CGFloat(9.0 / 16.0))
-                Text("16:9").tag(CGFloat(16.0 / 9.0))
+            // チェキ (0.72) and ハーフ (3:2) have no entry here, so the
+            // segmented control rendered with nothing selected and any tap
+            // silently broke the format. Their sheet size IS the format, so
+            // the picker steps aside for them — as the layout picker does.
+            if formatLocked {
+                sectionLabel("サイズ", icon: "aspectratio")
+                Text(formatSizeNote)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
+            } else {
+                sectionLabel("SNSサイズ", icon: "aspectratio")
+                Picker("サイズ", selection: $aspect) {
+                    Text("1:1").tag(CGFloat(1))
+                    Text("4:5").tag(CGFloat(4.0 / 5.0))
+                    Text("9:16").tag(CGFloat(9.0 / 16.0))
+                    Text("16:9").tag(CGFloat(16.0 / 9.0))
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             sliderRow("余白", value: $spacing, range: 0...24)
             sliderRow("角丸", value: $cornerRadius, range: 0...48)
@@ -494,6 +505,16 @@ struct CollageView: View {
         case "cheki": return 1
         default: return Int.max
         }
+    }
+
+    /// True for presets that reproduce a physical format, where the sheet size
+    /// and arrangement are the preset rather than settings on top of it.
+    private var formatLocked: Bool { templateCellCap != Int.max }
+
+    private var formatSizeNote: LocalizedStringKey {
+        appliedTemplateID == "cheki"
+            ? LocalizedStringKey("チェキの印画紙サイズで固定されています")
+            : LocalizedStringKey("ハーフフレームの1コマ分で固定されています")
     }
 
     /// One-line hint under the preview explaining the direct gestures, or why
