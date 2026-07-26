@@ -1032,9 +1032,12 @@ struct CollageTemplateVM: Identifiable {
     // チェキ/マガジン) are Pro: free users can APPLY them and fall in love in
     // the preview, and the paywall appears at save/share (try-then-buy).
     static let all: [CollageTemplateVM] = [
+        // No date by default: a photobooth strip comes out clean, and the
+        // quartz imprint belongs to the film presets. The collage's stamp
+        // toggle can still add one.
         .init(id: "fourcut", label: "4カット", category: .trend, aspect: 0.36, layout: 1,
               placement: 0, spacing: 12, corner: 0, background: 0xFFFFFFFF,
-              hexOverlay: false, dateStamp: true, isPro: false),
+              hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "daylog", label: "デイログ", category: .trend, aspect: 4.0 / 5.0, layout: 0,
               placement: 0, spacing: 12, corner: 10, background: 0xFFF6F0E4,
               hexOverlay: false, dateStamp: true, isPro: true),
