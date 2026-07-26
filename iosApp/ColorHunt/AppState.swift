@@ -56,6 +56,9 @@ final class AppState: ObservableObject {
     /// Template queued by the camera's frame mode; CollageView applies it once
     /// when it becomes visible and clears it.
     @Published var pendingCollageTemplateID: String?
+    /// Arrangement the shots were framed in, so the collage opens in the same
+    /// shape the camera guide showed (nil = keep the template's own layout).
+    @Published var pendingCollageLayout: Int32?
 
     /// Photos the Grid tab picked independently (parity with Android's Grid).
     @Published var gridPhotos: [UIImage] = [] { didSet { scheduleGridSave(); scheduleSave() } }
@@ -135,7 +138,7 @@ final class AppState: ObservableObject {
     /// Frame-mode hand-off from the Hunt Camera: add the template shots, select
     /// exactly them in shooting order, queue the template and land on コラージュ.
     /// Fresh captures are unique, so this appends directly (no dedupe race).
-    func startCollage(with images: [UIImage], templateID: String) {
+    func startCollage(with images: [UIImage], templateID: String, layoutOrdinal: Int32? = nil) {
         var fresh: [HuntPhoto] = []
         for image in images {
             let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
@@ -150,6 +153,7 @@ final class AppState: ObservableObject {
         selection = Set(ids)
         collageOrder = ids
         pendingCollageTemplateID = templateID
+        pendingCollageLayout = layoutOrdinal
         selectedTab = .collage
         for photo in fresh {
             persistPhotoFile(photo)

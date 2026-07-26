@@ -22,11 +22,12 @@ struct CollageView: View {
     @State private var hexOverlay: Bool = false
     /// Retro film-camera date stamp on the collage corner (setlog/dazz vibe).
     @State private var dateStamp: Bool = false
+    /// The OVERLAY palette band is vertical-only (see paletteSection).
+    private let overlayHorizontal = false
     // Template browsing: active category filter + the last applied preset.
     @State private var templateCategory: TemplateCategory?
     @State private var appliedTemplateID: String?
     // OVERLAY palette band tuning.
-    @State private var overlayHorizontal: Bool = false
     @State private var overlayPosFrac: CGFloat = 0.5
     @State private var overlayWidthFrac: CGFloat = 0.16
     // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
@@ -398,13 +399,10 @@ struct CollageView: View {
             }
             .pickerStyle(.segmented)
 
-            // OVERLAY (重ねる) fine-tuning: orientation, position, band width.
+            // OVERLAY (重ねる) fine-tuning: position and band width. The band is
+            // always vertical — a horizontal one cut straight through the
+            // photos and never produced a usable composition.
             if placementOrdinal == 4 {
-                Picker("帯の向き", selection: $overlayHorizontal) {
-                    Text("縦の帯").tag(false)
-                    Text("横の帯").tag(true)
-                }
-                .pickerStyle(.segmented)
                 sliderRow("帯の位置", value: $overlayPosFrac, range: 0...1)
                 sliderRow("帯の幅", value: $overlayWidthFrac, range: 0.08...0.5)
             }
@@ -734,7 +732,8 @@ struct CollageView: View {
                 .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 0.5))
                 .frame(width: fs * 0.95, height: fs * 0.95)
             Text(hexString(packed))
-                .font(.system(size: fs, design: .monospaced))
+                .font(.system(size: fs, design: .serif))
+                .tracking(fs * 0.05)
                 .foregroundStyle(.white)
         }
         .padding(.horizontal, fs * 0.5)
@@ -756,8 +755,11 @@ struct CollageView: View {
                 ZStack {
                     Color(packed: c).opacity(translucent ? 0.59 : 1.0)
                     Text(hexString(c))
-                        .font(.system(size: fontSize, weight: .regular, design: .monospaced))
-                        .tracking(fontSize * 0.04)
+                        // Serif, not monospace: the palette column is the
+                        // collage's typographic accent, and a light serif with
+                        // open tracking reads like a magazine colour credit.
+                        .font(.system(size: fontSize * 1.06, weight: .regular, design: .serif))
+                        .tracking(fontSize * 0.10)
                         .foregroundStyle(paletteTextColor(c, translucent: translucent))
                         .lineLimit(1)
                         .minimumScaleFactor(0.4)
@@ -868,8 +870,13 @@ struct CollageView: View {
         guard let id = state.pendingCollageTemplateID,
               let tpl = CollageTemplateVM.all.first(where: { $0.id == id }) else { return }
         state.pendingCollageTemplateID = nil
+        let shotLayout = state.pendingCollageLayout
+        state.pendingCollageLayout = nil
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             apply(tpl)
+            // Keep the shape the camera guide framed, which may differ from
+            // the template's own layout.
+            if let shotLayout { layoutOrdinal = shotLayout }
         }
     }
 

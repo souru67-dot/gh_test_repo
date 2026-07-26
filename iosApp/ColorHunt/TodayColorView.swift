@@ -54,18 +54,38 @@ struct TodayColorView: View {
                         .frame(maxWidth: 300)
                         .aspectRatio(1, contentMode: .fit)
 
-                    Button {
-                        spin()
-                    } label: {
-                        Label("今日の色を自動で", systemImage: "sparkles")
-                            .font(.system(.callout, design: .rounded).bold())
-                            .padding(.horizontal, 28).padding(.vertical, 15)
-                            .background(Brand.gradient, in: Capsule())
-                            .foregroundStyle(.white)
-                            .shadow(color: Brand.purple.opacity(0.5), radius: 14, y: 5)
+                    HStack(spacing: 10) {
+                        Button {
+                            spin()
+                        } label: {
+                            Label(picked ? "もう一度まわす" : "今日の色を自動で",
+                                  systemImage: "sparkles")
+                                .font(.system(.callout, design: .rounded).bold())
+                                .padding(.horizontal, 28).padding(.vertical, 15)
+                                .background(Brand.gradient, in: Capsule())
+                                .foregroundStyle(.white)
+                                .shadow(color: Brand.purple.opacity(0.5), radius: 14, y: 5)
+                        }
+                        .buttonStyle(PopButtonStyle())
+                        .disabled(spinning)
+
+                        // Clears today's pick so the wheel is free again — the
+                        // roulette was otherwise a one-way door.
+                        if picked && !spinning {
+                            Button {
+                                reset()
+                            } label: {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .font(.callout.weight(.semibold))
+                                    .foregroundStyle(.white.opacity(0.9))
+                                    .padding(14)
+                                    .background(.white.opacity(0.10), in: Circle())
+                                    .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
+                            }
+                            .buttonStyle(PopButtonStyle())
+                            .transition(.scale.combined(with: .opacity))
+                        }
                     }
-                    .buttonStyle(PopButtonStyle())
-                    .disabled(spinning)
 
                     if picked {
                         resultCard
@@ -262,6 +282,17 @@ struct TodayColorView: View {
             spinning = false
             state.todayColor = packedColor   // Hunt Camera targets this
         }
+    }
+
+    /// Back to "nothing picked yet": clears the result card and the camera's
+    /// target so the wheel and the roulette can be used fresh.
+    private func reset() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            picked = false
+            huntPulse = false
+        }
+        state.todayColor = nil
     }
 }
 

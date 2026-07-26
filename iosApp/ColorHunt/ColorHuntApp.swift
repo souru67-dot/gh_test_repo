@@ -138,7 +138,10 @@ struct RootTabView: View {
             }
         }
         .buttonStyle(PopButtonStyle())
-        .offset(y: 6)
+        // Float clear of the bar: iOS 26 draws a selection capsule behind the
+        // active tab, and the neighbouring items' capsules ran under a button
+        // that sat down inside the bar.
+        .offset(y: -14)
     }
 }
 

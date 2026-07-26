@@ -123,19 +123,44 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
-    /// The telephoto's optical zoom relative to the wide, derived from their
-    /// fields of view (= the focal-length ratio) and snapped to half steps, so
-    /// the chip reads like the system camera: 2× (12 Pro), 3× (13–14 Pro),
-    /// 5× (15–16 Pro Max), 4× (17 Pro) — future lenses label themselves.
+    /// The telephoto's optical zoom relative to the wide, read from the
+    /// virtual multi-camera's own switch-over factors — the exact numbers iOS
+    /// uses, so the chip matches the system camera on every generation
+    /// (2× on 12 Pro, 3× on 13–14 Pro, 4× on 17 Pro, 5× on 15–16 Pro Max).
+    /// Deriving it from fields of view only approximated these (17 Pro landed
+    /// on 4.5×), so that is now just the fallback.
     private static func opticalZoomLabel(wide: AVCaptureDevice, tele: AVCaptureDevice) -> String {
+        if let ratio = switchOverRatio() {
+            return format(ratio)
+        }
         let wf = Double(wide.activeFormat.videoFieldOfView)
         let tf = Double(tele.activeFormat.videoFieldOfView)
         guard wf > 0, tf > 0, tf < wf else { return "2×" }
-        let ratio = tan(wf * .pi / 360) / tan(tf * .pi / 360)
-        let snapped = (ratio * 2).rounded() / 2
-        return snapped.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f×", snapped)
-            : String(format: "%.1f×", snapped)
+        return format(tan(wf * .pi / 360) / tan(tf * .pi / 360))
+    }
+
+    /// Telephoto-to-wide ratio from the virtual device. Factors are expressed
+    /// against the virtual device's base lens: on a triple camera that base is
+    /// the ultra-wide, so [wide, tele] must be divided out; on a wide+tele dual
+    /// the single factor is already relative to the wide.
+    private static func switchOverRatio() -> Double? {
+        if let triple = AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back) {
+            let f = triple.virtualDeviceSwitchOverVideoZoomFactors.map { Double(truncating: $0) }
+            if f.count >= 2, f[0] > 0 { return f[1] / f[0] }
+        }
+        if let dual = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back) {
+            let f = dual.virtualDeviceSwitchOverVideoZoomFactors.map { Double(truncating: $0) }
+            if let first = f.first, first > 0 { return first }
+        }
+        return nil
+    }
+
+    /// "4×" for whole numbers, "2.5×" otherwise — never a stray ".0".
+    private static func format(_ zoom: Double) -> String {
+        let rounded = (zoom * 10).rounded() / 10
+        return abs(rounded.rounded() - rounded) < 0.05
+            ? String(format: "%.0f×", rounded)
+            : String(format: "%.1f×", rounded)
     }
 
     // MARK: lens / position / flash / focus / exposure
@@ -228,8 +253,17 @@ final class CameraController: NSObject, ObservableObject {
                 settings.flashMode = flash
             }
             settings.photoQualityPrioritization = .quality
-            if let conn = self.photoOutput.connection(with: .video), conn.isVideoOrientationSupported {
-                conn.videoOrientation = .portrait
+            if let conn = self.photoOutput.connection(with: .video) {
+                if conn.isVideoOrientationSupported {
+                    conn.videoOrientation = .portrait
+                }
+                // Selfies: the preview is mirrored (that is what feels natural),
+                // so mirror the capture too — otherwise the saved shot comes out
+                // flipped relative to what was framed.
+                if conn.isVideoMirroringSupported {
+                    conn.automaticallyAdjustsVideoMirroring = false
+                    conn.isVideoMirrored = self.currentDevice?.position == .front
+                }
             }
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
@@ -372,7 +406,9 @@ struct HuntCameraView: View {
     @State private var showFramePicker = false
     /// Drives the breathing gradient ring on the next guide cell.
     @State private var guidePulse = false
-    private let frameCellCount = 4
+    /// Shot count + arrangement for frame mode, chosen from the picker.
+    @State private var arrangement: FrameArrangement = FrameArrangement.all[0]
+    private var frameCellCount: Int { arrangement.cells }
 
     private var target: Int32? { state.todayColor }
 
@@ -560,6 +596,11 @@ struct HuntCameraView: View {
                 framePicker
             }
 
+            // Arrangement is only meaningful once a template guide is up.
+            if frameTemplate != nil && frameShots.isEmpty {
+                arrangementPicker
+            }
+
             if let tpl = frameTemplate, frameShots.count >= frameCellCount {
                 frameCompleteRow(tpl)
             } else {
@@ -652,6 +693,9 @@ struct HuntCameraView: View {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 frameTemplate = tpl
                 frameShots = []
+                // Start on the arrangement the template implies; the picker
+                // can still change it before the first shot.
+                if let tpl { arrangement = FrameArrangement.matching(tpl.layout) }
             }
             // Reset so the guide's onAppear restarts the pulse next time.
             if tpl == nil { guidePulse = false }
@@ -674,6 +718,60 @@ struct HuntCameraView: View {
         .buttonStyle(PopButtonStyle())
     }
 
+    /// Arrangement chooser drawn as literal miniatures of the canvas — the
+    /// cards show the actual cell pattern rather than an abstract icon, so the
+    /// choice reads without labels (the count sits underneath as confirmation).
+    private var arrangementPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(FrameArrangement.all) { a in
+                    let selected = arrangement.id == a.id
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            arrangement = a
+                        }
+                    } label: {
+                        VStack(spacing: 4) {
+                            arrangementGlyph(a, selected: selected)
+                                .frame(width: 26, height: 32)
+                            Text(a.label)
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(selected ? Color.black : .white)
+                        .frame(width: 52, height: 58)
+                        .background(
+                            selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.black.opacity(0.35)),
+                            in: RoundedRectangle(cornerRadius: 12)
+                        )
+                    }
+                    .buttonStyle(PopButtonStyle())
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    /// The miniature cell pattern inside an arrangement card.
+    private func arrangementGlyph(_ a: FrameArrangement, selected: Bool) -> some View {
+        let ink = selected ? Color.black.opacity(0.55) : Color.white.opacity(0.85)
+        return VStack(spacing: 2) {
+            ForEach(0..<a.rows, id: \.self) { row in
+                HStack(spacing: 2) {
+                    ForEach(0..<a.columns, id: \.self) { col in
+                        // The last row may be short when cells aren't a
+                        // multiple of the column count.
+                        let index = row * a.columns + col
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(ink.opacity(index < a.cells ? 1 : 0.15))
+                    }
+                }
+            }
+        }
+    }
+
     private func frameIcon(_ tpl: CollageTemplateVM?) -> String {
         switch tpl?.id {
         case nil: return "viewfinder"
@@ -692,7 +790,8 @@ struct HuntCameraView: View {
             Button {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 let shots = frameShots
-                state.startCollage(with: shots, templateID: tpl.id)
+                state.startCollage(with: shots, templateID: tpl.id,
+                                   layoutOrdinal: arrangement.layout)
                 frameShots = []
                 frameTemplate = nil
                 guidePulse = false
@@ -796,7 +895,7 @@ struct HuntCameraView: View {
         let h = w / tpl.aspect
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(frameCellCount),
-            layoutOrdinal: tpl.layout,
+            layoutOrdinal: arrangement.layout,
             placementOrdinal: 0,
             spacingFrac: Float(tpl.spacing / 360.0),
             width: Float(w),
@@ -1297,6 +1396,35 @@ struct HuntCameraView: View {
 }
 
 // MARK: - Small camera types & effects
+
+/// A frame-mode shooting plan: how many shots, and how they sit on the canvas.
+/// For 4 cells the shared geometry gives GRID and TWO_COLUMN the same 2×2
+/// shape, so the options below are the ones that genuinely look different —
+/// varying the shot count is what unlocks strips and taller grids.
+struct FrameArrangement: Identifiable, Equatable {
+    let id: String
+    let label: String
+    let cells: Int
+    /// 0 GRID / 1 VERTICAL / 2 TWO_COLUMN — the collage's ordinals.
+    let layout: Int32
+    /// Rows × columns of the mini diagram drawn on the picker card.
+    let rows: Int
+    let columns: Int
+
+    static let all: [FrameArrangement] = [
+        .init(id: "grid4", label: "2×2", cells: 4, layout: 0, rows: 2, columns: 2),
+        .init(id: "v4", label: "縦4", cells: 4, layout: 1, rows: 4, columns: 1),
+        .init(id: "v3", label: "縦3", cells: 3, layout: 1, rows: 3, columns: 1),
+        .init(id: "v2", label: "縦2", cells: 2, layout: 1, rows: 2, columns: 1),
+        .init(id: "col6", label: "2列6", cells: 6, layout: 2, rows: 3, columns: 2),
+    ]
+
+    /// The arrangement a template starts on, so picking フォトダンプ lands on a
+    /// grid and 4カット lands on a strip.
+    static func matching(_ layoutOrdinal: Int32) -> FrameArrangement {
+        all.first { $0.layout == layoutOrdinal && $0.cells == 4 } ?? all[0]
+    }
+}
 
 /// Flash cycle: off → auto → on.
 enum CamFlash {
