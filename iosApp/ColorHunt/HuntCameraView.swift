@@ -364,6 +364,17 @@ struct CameraPreviewView: UIViewRepresentable {
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+
+        /// The capture layer animates its own bounds changes by default, so a
+        /// SwiftUI-driven resize ran two animations at once — the frame
+        /// visibly lagged behind the guide it was supposed to fill. Suppress
+        /// the implicit one and let SwiftUI drive the move alone.
+        override func layoutSubviews() {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            super.layoutSubviews()
+            CATransaction.commit()
+        }
     }
 }
 
@@ -815,7 +826,10 @@ struct HuntCameraView: View {
                 // All four shot: the preview bows out and the finished collage
                 // stands alone on the plate, waiting for the CTA.
                 .opacity(complete ? 0 : 1)
-                .animation(.spring(response: 0.45, dampingFraction: 0.85), value: rect)
+                // Quick and near-critically damped: the preview should land in
+                // the cell about as fast as the guide appears, with no overshoot
+                // on the wide half-frame canvas.
+                .animation(.spring(response: 0.28, dampingFraction: 0.92), value: rect)
             }
         }
         .ignoresSafeArea()

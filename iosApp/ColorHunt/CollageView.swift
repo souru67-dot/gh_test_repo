@@ -428,10 +428,15 @@ struct CollageView: View {
             }
             .tint(Color(argb: 0xFF7C4DFF))
 
-            Toggle(isOn: $dateStamp) {
-                Text("日付スタンプ").font(.callout)
+            // On チェキ the date belongs to the print's chin (the deco draws
+            // it there) and a half-frame print carries none at all, so the
+            // generic stamp would only land on top of a photo.
+            if !formatLocked {
+                Toggle(isOn: $dateStamp) {
+                    Text("日付スタンプ").font(.callout)
+                }
+                .tint(Color(argb: 0xFF7C4DFF))
             }
-            .tint(Color(argb: 0xFF7C4DFF))
 
             Button { state.sortCollageByHue() } label: {
                 Label("色相で自動整列", systemImage: "sparkles")
@@ -475,14 +480,19 @@ struct CollageView: View {
             sectionLabel("枠線の色")
             swatchRow(selected: borderColor) { borderColor = $0 }
 
-            HStack {
-                sectionLabel("背景色")
-                Spacer()
-                Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
-                Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
-            }
-            if !bgFollowsTheme {
-                swatchRow(selected: background) { background = $0 }
+            // The sheet colour is part of a physical format: ハーフ's rebate
+            // bars are drawn film-black, so a light background left the gaps
+            // and the bars mismatched, and チェキ's mat covers it entirely.
+            if !formatLocked {
+                HStack {
+                    sectionLabel("背景色")
+                    Spacer()
+                    Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
+                    Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
+                }
+                if !bgFollowsTheme {
+                    swatchRow(selected: background) { background = $0 }
+                }
             }
         }
     }
