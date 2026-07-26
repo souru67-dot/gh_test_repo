@@ -47,12 +47,6 @@ struct CollageView: View {
         0xFF7C4DFF, 0xFF26C6DA, 0xFFEC407A, 0xFFFFC107,
     ]
 
-    /// Retro quartz-date look for the corner stamp.
-    private static let stampFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yy.MM.dd"
-        return f
-    }()
 
     private var effectiveBackground: Int64 { bgFollowsTheme ? 0xFF0E0E12 : background }
 
@@ -437,10 +431,11 @@ struct CollageView: View {
             }
             .tint(Color(argb: 0xFF7C4DFF))
 
-            // On チェキ the date belongs to the print's chin (the deco draws
-            // it there) and a half-frame print carries none at all, so the
-            // generic stamp would only land on top of a photo.
-            if !formatLocked {
+            // チェキ is the exception: its date belongs to the print's chin and
+            // the deco already draws it there. Everything else — ハーフ
+            // included, where a date back burns into the frame itself — can
+            // turn the quartz stamp on and off.
+            if appliedTemplateID != "cheki" {
                 Toggle(isOn: $dateStamp) {
                     Text("日付スタンプ").font(.callout)
                 }
@@ -675,13 +670,7 @@ struct CollageView: View {
             // bottom-right, where every quartz camera printed it. The
             // watermark lives bottom-left so the two never collide.
             if dateStamp {
-                Text(Self.stampFormatter.string(from: Date()))
-                    .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color(red: 1.0, green: 0.65, blue: 0.26))
-                    .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.15).opacity(0.85),
-                            radius: 2.5 * scale)
-                    .padding(12 * scale)
-                    .allowsHitTesting(false)
+                QuartzDateStamp(scale: scale)
             }
         }
         .overlay(alignment: .bottomLeading) {
@@ -1063,7 +1052,7 @@ struct CollageTemplateVM: Identifiable {
         // 3:4 pair are the whole signature, exactly as a real print comes back.
         .init(id: "half", label: "ハーフ", category: .retro, aspect: 3.0 / 2.0, layout: 2,
               placement: 0, spacing: 5, corner: 0, background: 0xFF121212,
-              hexOverlay: false, dateStamp: false, isPro: true),
+              hexOverlay: false, dateStamp: true, isPro: true),
         // A real instax print is one photo on a portrait card with the wide
         // chin at the bottom, so this is portrait and best used with 1 photo.
         .init(id: "cheki", label: "チェキ", category: .retro, aspect: 0.72, layout: 0,
@@ -1086,6 +1075,37 @@ struct CollageTemplateVM: Identifiable {
               hexOverlay: false, dateStamp: false, isPro: true),
     ]
 
+}
+
+/// The date a film camera's quartz date back burns into the corner of the
+/// frame: apostrophe-year, month and day in glowing amber-red LED digits
+/// ('26 7 26). Shared by the collage canvas and the camera's live guide, so a
+/// shot is framed with the stamp already in place.
+struct QuartzDateStamp: View {
+    /// Canvas scale (width / 360 design units).
+    let scale: CGFloat
+
+    var body: some View {
+        Text(Self.formatter.string(from: Date()))
+            .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
+            .tracking(1.2 * scale)
+            .foregroundStyle(Color(red: 1.0, green: 0.42, blue: 0.20))
+            // Two shadows: a tight core bloom and a wide halo, the way the
+            // imprint blooms into surrounding grain on real film.
+            .shadow(color: Color(red: 1.0, green: 0.30, blue: 0.10).opacity(0.9), radius: 3 * scale)
+            .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.25).opacity(0.55), radius: 8 * scale)
+            .padding(14 * scale)
+            .allowsHitTesting(false)
+    }
+
+    private static let formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        // '' is an escaped literal apostrophe; no leading zeros, like the back
+        // of a date-printing compact.
+        f.dateFormat = "''yy M d"
+        return f
+    }()
 }
 
 // MARK: - Template signature decos

@@ -789,7 +789,7 @@ struct HuntCameraView: View {
                 Brand.base
 
                 if let tpl = frameTemplate {
-                    frameGuideContent(tpl, in: s)
+                    frameGuidePlate(tpl, in: s)
                 }
 
                 CameraPreviewView(session: cam.session, onTap: { layerPoint, devicePoint in
@@ -830,6 +830,14 @@ struct HuntCameraView: View {
                 // the cell about as fast as the guide appears, with no overshoot
                 // on the wide half-frame canvas.
                 .animation(.spring(response: 0.28, dampingFraction: 0.92), value: rect)
+
+                // Above the preview, because these ARE part of the frame: the
+                // チェキ chin (and its date) and ハーフ's rebate would otherwise
+                // sit under the live feed, letting the shot spill into space the
+                // print does not have.
+                if let tpl = frameTemplate {
+                    frameGuideOverlay(tpl, in: s)
+                }
             }
         }
         .ignoresSafeArea()
@@ -881,9 +889,8 @@ struct HuntCameraView: View {
     /// the Pro signature deco on top. The ACTIVE cell stays open — the live
     /// preview view sits over it (see cameraStage), showing the whole camera
     /// view aspect-filled to the cell.
-    private func frameGuideContent(_ tpl: CollageTemplateVM, in s: CGSize) -> some View {
+    private func frameGuidePlate(_ tpl: CollageTemplateVM, in s: CGSize) -> some View {
         let g = guideGeometry(in: s, tpl: tpl)
-        let gScale = g.canvas.width / 360
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(argb: tpl.background).opacity(0.96))
@@ -893,14 +900,6 @@ struct HuntCameraView: View {
             ForEach(Array(g.cells.enumerated()), id: \.offset) { i, r in
                 liveGuideCell(index: i, rect: r)
             }
-            // Every preset with a deco renders it live (the view is empty for
-            // the plain ones), so ハーフ's film strip frames the shot just like
-            // the Pro decos do.
-            TemplateSignatureDeco(templateID: tpl.id,
-                                  width: g.canvas.width, height: g.canvas.height,
-                                  scale: gScale, matWidth: tpl.spacing * gScale)
-                .frame(width: g.canvas.width, height: g.canvas.height)
-                .offset(x: g.canvas.minX, y: g.canvas.minY)
         }
         .allowsHitTesting(false)
         .onAppear {
@@ -908,6 +907,25 @@ struct HuntCameraView: View {
                 guidePulse = true
             }
         }
+    }
+
+    /// The parts of the frame that sit ON the photo: the preset's signature
+    /// deco (every preset that has one renders it, so ハーフ's rebate and
+    /// チェキ's chin appear live) and the quartz date the preset burns in.
+    private func frameGuideOverlay(_ tpl: CollageTemplateVM, in s: CGSize) -> some View {
+        let g = guideGeometry(in: s, tpl: tpl)
+        let gScale = g.canvas.width / 360
+        return ZStack(alignment: .bottomTrailing) {
+            TemplateSignatureDeco(templateID: tpl.id,
+                                  width: g.canvas.width, height: g.canvas.height,
+                                  scale: gScale, matWidth: tpl.spacing * gScale)
+            if tpl.dateStamp {
+                QuartzDateStamp(scale: gScale)
+            }
+        }
+        .frame(width: g.canvas.width, height: g.canvas.height)
+        .offset(x: g.canvas.minX, y: g.canvas.minY)
+        .allowsHitTesting(false)
     }
 
     /// One guide cell (rects are absolute screen coords): shot cells show
