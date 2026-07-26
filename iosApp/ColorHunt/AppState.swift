@@ -1,4 +1,8 @@
 import SwiftUI
+// ObservableObject/@Published live in Combine. SwiftUI happens to re-export
+// them, but Xcode 26's MemberImportVisibility requires the defining module to
+// be imported directly, so this import is load-bearing.
+import Combine
 import PhotosUI
 import Photos
 import CoreLocation

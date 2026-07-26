@@ -1,4 +1,7 @@
 import SwiftUI
+// Required for ObservableObject/@Published under MemberImportVisibility
+// (see AppState.swift).
+import Combine
 import AVFoundation
 import SharedColor
 

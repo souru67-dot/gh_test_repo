@@ -97,6 +97,13 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    AVFoundation のコールバックを受ける `CameraController` が並行性エラーに
    なります（本コードは Swift 5 言語モード・従来の隔離規則が前提）。
 
+   > なお `AppState.swift` / `HuntCameraView.swift` の `import Combine` は
+   > **削除しないでください**。Xcode 26 既定の **MemberImportVisibility**
+   > では `ObservableObject` / `@Published` の定義元モジュールを直接
+   > import する必要があり、外すと
+   > `Initializer 'init(wrappedValue:)' is not available due to missing
+   > import of defining module 'Combine'` が多発します。
+
 5. Info.plist に以下を追加:
    - `NSPhotoLibraryAddUsageDescription`（コラージュ保存）
    - `NSPhotoLibraryUsageDescription`（ハントの「自動で仕分け」で
