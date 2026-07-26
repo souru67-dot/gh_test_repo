@@ -66,6 +66,27 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
    ```
 
+   > **3・4 のパスは `.xcodeproj` の置き場所に依存します。** `$(SRCROOT)` は
+   > `.xcodeproj` があるフォルダです。上記は `<リポジトリ>/iosApp/` に置いた
+   > 場合の値。たとえば `~/Desktop/git/ColorHunt/ColorHunt.xcodeproj` を作り、
+   > リポジトリを `~/Desktop/git/ColorHunt/gh_test_repo/` に clone した配置なら
+   > `cd "$SRCROOT/gh_test_repo"` と
+   > `$(SRCROOT)/gh_test_repo/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)`
+   > になります。パスが違うと `Unable to resolve module dependency: 'SharedColor'`
+   > で落ちます。
+
+5. **実行先は必ず iPhone 実機か iOS Simulator**。`shared` は iOS ターゲット
+   （`iosX64`/`iosArm64`/`iosSimulatorArm64`）のみを生成するため、**「My Mac」で
+   ビルドすると `SharedColor` が存在せず**同じエラーになります。
+   ログの `-target arm64-apple-macos...` / バンドルパスの `Contents/Resources/`
+   は macOS 向けビルドになっているサインです。
+
+6. **Xcode 26 で新規作成した場合**: Build Settings の
+   **Default Actor Isolation** を `nonisolated` に設定してください。
+   既定の `MainActor`（Approachable Concurrency）だと、専用キューで
+   AVFoundation のコールバックを受ける `CameraController` が並行性エラーに
+   なります（本コードは Swift 5 言語モード・従来の隔離規則が前提）。
+
 5. Info.plist に以下を追加:
    - `NSPhotoLibraryAddUsageDescription`（コラージュ保存）
    - `NSPhotoLibraryUsageDescription`（ハントの「自動で仕分け」で
