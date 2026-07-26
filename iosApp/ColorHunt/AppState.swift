@@ -73,7 +73,10 @@ final class AppState: ObservableObject {
     // MARK: Pro (StoreKit 2) — free tier shows the collage watermark.
     @Published var isPro: Bool = UserDefaults.standard.bool(forKey: "isPro")
     @Published var proProduct: Product?
-    private let proID = "com.souru.colorhunt.pro"
+    /// Must match the In-App Purchase created in App Store Connect exactly, and
+    /// that identifier can never be renamed once it exists — so it shares the
+    /// bundle's prefix (com.yk-dev.ColorHunt) to stay unambiguous.
+    private let proID = "com.yk-dev.ColorHunt.pro"
 
     init() {
         // Restore entitlements and keep listening for purchases/renewals.

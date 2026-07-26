@@ -47,6 +47,16 @@ struct ColorHuntApp: App {
         }
         UITabBar.appearance().standardAppearance = ap
         UITabBar.appearance().scrollEdgeAppearance = ap
+
+        // The bar sizes each item to its own title, so "コラージュ" claims more
+        // room than "今日の色" and the empty centre slot ends up off-centre —
+        // the raised camera button then sits closer to one neighbour than the
+        // other. Pinning every item to the same width makes the five slots, and
+        // therefore the gaps around the button, identical.
+        let bar = UITabBar.appearance()
+        bar.itemPositioning = .centered
+        bar.itemSpacing = 0
+        bar.itemWidth = (UIScreen.main.bounds.width - 32) / 5
     }
 
     var body: some Scene {
