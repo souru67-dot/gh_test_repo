@@ -24,6 +24,17 @@ object ColorClassifierConfig {
      */
     const val ACHROMATIC_MAX_SATURATION = 0.20f
 
+    /**
+     * Pastels are bright and only softly saturated, so the flat threshold above
+     * swallowed pale mint, butter yellow and baby pink into WHITE — the whole
+     * point of hunting them was lost. From [PASTEL_MIN_VALUE] upwards a colour
+     * only has to clear this much lower bar to keep its hue. Mid-tone scenes
+     * keep the stricter threshold, so a filmic blue-grey street still sorts to
+     * GRAY rather than being pulled into BLUE.
+     */
+    const val PASTEL_MIN_VALUE = 0.75f
+    const val PASTEL_ACHROMATIC_MAX_SATURATION = 0.12f
+
     // --- Pink refinement -------------------------------------------------------
     // A light, softly-saturated red reads as "pink" rather than "red", so reds in
     // the pink-ish region are re-labelled before the plain hue lookup.
@@ -76,7 +87,14 @@ object ColorClassifier {
 
         // 1 & 2: achromatic separation first.
         if (hsv.value <= cfg.BLACK_MAX_VALUE) return ColorBucket.BLACK
-        if (hsv.saturation <= cfg.ACHROMATIC_MAX_SATURATION) {
+        // Bright colours get a lower bar to count as chromatic, so pastels keep
+        // their hue while mid-tone muted scenes still fall through to GRAY.
+        val achromaticMax = if (hsv.value >= cfg.PASTEL_MIN_VALUE) {
+            cfg.PASTEL_ACHROMATIC_MAX_SATURATION
+        } else {
+            cfg.ACHROMATIC_MAX_SATURATION
+        }
+        if (hsv.saturation <= achromaticMax) {
             return if (hsv.value >= cfg.WHITE_MIN_VALUE) ColorBucket.WHITE else ColorBucket.GRAY
         }
 

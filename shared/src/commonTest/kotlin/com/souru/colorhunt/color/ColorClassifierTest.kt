@@ -38,6 +38,24 @@ class ColorClassifierTest {
 
     @Test fun white() = assertEquals(ColorBucket.WHITE, bucketOf(245, 245, 245))
 
+    // --- Pastels keep their hue -------------------------------------------
+    // Bright, softly-saturated colours used to clear the flat achromatic bar
+    // and land in WHITE, which made pale subjects unhuntable.
+
+    @Test fun pastelGreenIsGreen() = assertEquals(ColorBucket.GREEN, bucketOf(200, 235, 200))
+
+    @Test fun pastelYellowIsYellow() = assertEquals(ColorBucket.YELLOW, bucketOf(250, 240, 180))
+
+    @Test fun pastelPinkIsPink() = assertEquals(ColorBucket.PINK, bucketOf(250, 200, 210))
+
+    @Test fun paleMintKeepsItsHue() = assertEquals(ColorBucket.GREEN, bucketOf(210, 240, 225))
+
+    /** A warm off-white sheet is still white, not a pale orange. */
+    @Test fun creamPaperIsWhite() = assertEquals(ColorBucket.WHITE, bucketOf(245, 235, 220))
+
+    /** A blown highlight stays white however bright it is. */
+    @Test fun blownHighlightIsWhite() = assertEquals(ColorBucket.WHITE, bucketOf(250, 252, 255))
+
     @Test fun black() = assertEquals(ColorBucket.BLACK, bucketOf(18, 18, 18))
 
     @Test fun gray() = assertEquals(ColorBucket.GRAY, bucketOf(158, 158, 158))
