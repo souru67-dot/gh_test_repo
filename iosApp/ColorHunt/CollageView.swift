@@ -334,7 +334,18 @@ struct CollageView: View {
     /// and palette placement.
     private func templateGlyph(_ tpl: CollageTemplateVM, ink: Color) -> some View {
         let gap: CGFloat = tpl.spacing > 8 ? 4 : (tpl.spacing > 0 ? 2 : 0)
-        return HStack(spacing: gap) {
+        // ハーフ is a pair, not a grid — show the two upright frames it makes.
+        if tpl.id == "half" {
+            return AnyView(
+                HStack(spacing: 2) {
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                    RoundedRectangle(cornerRadius: 2).fill(ink)
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 16)
+            )
+        }
+        return AnyView(HStack(spacing: gap) {
             if tpl.placement == 3 { // LEFT rail
                 Brand.gradient.frame(width: 7).clipShape(RoundedRectangle(cornerRadius: 1.5))
             }
@@ -364,7 +375,7 @@ struct CollageView: View {
                 Brand.gradient.opacity(0.75).frame(width: 8)
                     .clipShape(RoundedRectangle(cornerRadius: 1.5))
             }
-        }
+        })
     }
 
     /// Template application with a light haptic + soft morph of the preview.
@@ -583,7 +594,7 @@ struct CollageView: View {
         // colours/corners/spacing are free sliders. Shared with the camera's
         // live frame guide so Pro owners shoot inside the same look.
         .overlay {
-            ProSignatureDeco(templateID: appliedTemplateID, width: width, height: height,
+            TemplateSignatureDeco(templateID: appliedTemplateID, width: width, height: height,
                              scale: scale, matWidth: spacing * scale)
                 .allowsHitTesting(false)
         }
@@ -639,7 +650,9 @@ struct CollageView: View {
                 editTarget = EditTarget(
                     index: i,
                     photoID: photos[i].id,
-                    ratio: cells[i].width / cells[i].height
+                    // max() keeps a degenerate cell from producing an infinite
+                    // ratio, which collapsed the crop editor to zero height.
+                    ratio: cells[i].width / max(cells[i].height, 1)
                 )
             }
     }
@@ -973,8 +986,16 @@ struct CollageTemplateVM: Identifiable {
         .init(id: "y2k", label: "Y2K", category: .trend, aspect: 4.0 / 5.0, layout: 2,
               placement: 0, spacing: 12, corner: 20, background: 0xFFFF2D92,
               hexOverlay: true, dateStamp: false, isPro: true),
-        .init(id: "cheki", label: "チェキ", category: .retro, aspect: 1.0, layout: 0,
-              placement: 0, spacing: 22, corner: 2, background: 0xFFFDFBF5,
+        // Half-frame cameras expose two upright frames inside one landscape
+        // negative — the shape IS the signature, so it gets a real film strip
+        // (sprockets + centre bar) rather than a plain background.
+        .init(id: "half", label: "ハーフ", category: .retro, aspect: 3.0 / 2.0, layout: 2,
+              placement: 0, spacing: 7, corner: 0, background: 0xFF141414,
+              hexOverlay: false, dateStamp: true, isPro: false),
+        // A real instax print is one photo on a portrait card with the wide
+        // chin at the bottom, so this is portrait and best used with 1 photo.
+        .init(id: "cheki", label: "チェキ", category: .retro, aspect: 0.72, layout: 0,
+              placement: 0, spacing: 20, corner: 1, background: 0xFFFDFBF5,
               hexOverlay: false, dateStamp: false, isPro: true),
         .init(id: "film", label: "フィルム", category: .retro, aspect: 4.0 / 5.0, layout: 1,
               placement: 0, spacing: 10, corner: 0, background: 0xFF121212,
@@ -997,20 +1018,20 @@ struct CollageTemplateVM: Identifiable {
     /// on-screen shooting guides. Pro owners additionally get the Pro presets
     /// (see HuntCameraView.frameShelf).
     static let cameraPicks: [CollageTemplateVM] =
-        ["fourcut", "white", "dump", "kumisha", "seamless"].compactMap { id in
+        ["fourcut", "half", "white", "dump", "kumisha", "seamless"].compactMap { id in
             all.first { $0.id == id }
         }
 }
 
-// MARK: - Pro signature decos
+// MARK: - Template signature decos
 
-/// The Pro presets' exclusive decorative layer — a journal sticker, sticker
-/// sprinkles, a chrome frame, an instax mat, a magazine masthead. These exist
-/// ONLY in this renderer: no slider/swatch combination can produce them, so a
-/// hand-built free replica of a Pro preset stays visibly "not the preset".
-/// Shared by the collage canvas and the camera's live frame guide (Pro owners
-/// shoot inside the same finished look).
-struct ProSignatureDeco: View {
+/// A preset's exclusive decorative layer — the half-frame film strip, and for
+/// the Pro presets a journal sticker, sticker sprinkles, a chrome frame, an
+/// instax mat, a magazine masthead. These exist ONLY in this renderer: no
+/// slider/swatch combination can produce them, so a hand-built replica of a
+/// preset stays visibly "not the preset". Shared by the collage canvas and the
+/// camera's live frame guide, so shots are framed inside the finished look.
+struct TemplateSignatureDeco: View {
     let templateID: String?
     let width: CGFloat
     let height: CGFloat
@@ -1022,6 +1043,7 @@ struct ProSignatureDeco: View {
 
     var body: some View {
         switch templateID ?? "" {
+        case "half": halfFrame
         case "daylog": daylog
         case "pastel": pastel
         case "y2k": y2k
@@ -1029,6 +1051,47 @@ struct ProSignatureDeco: View {
         case "magazine": magazine
         default: EmptyView()
         }
+    }
+
+    /// ハーフ: an actual 35mm strip — sprocket perforations running along the
+    /// top and bottom edges and a slim bar between the two upright frames, so
+    /// the pair reads as one negative instead of two photos side by side.
+    private var halfFrame: some View {
+        let holeW = 7 * scale
+        let holeH = 5 * scale
+        let inset = 5 * scale
+        let pitch = holeW * 2.1
+        let count = max(Int(width / pitch), 4)
+        return ZStack {
+            VStack {
+                sprocketRow(count: count, w: holeW, h: holeH)
+                Spacer(minLength: 0)
+                sprocketRow(count: count, w: holeW, h: holeH)
+            }
+            .padding(.vertical, inset)
+            Rectangle()
+                .fill(Color(red: 0.08, green: 0.08, blue: 0.08))
+                .frame(width: 3 * scale)
+            Text(verbatim: "HALF FRAME")
+                .font(.system(size: 6.5 * scale, weight: .semibold, design: .monospaced))
+                .tracking(2 * scale)
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 10 * scale)
+                .padding(.bottom, inset + holeH + 3 * scale)
+        }
+    }
+
+    private func sprocketRow(count: Int, w: CGFloat, h: CGFloat) -> some View {
+        HStack(spacing: w * 1.1) {
+            ForEach(0..<count, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: h * 0.3)
+                    .fill(Color(red: 0.93, green: 0.92, blue: 0.89))
+                    .frame(width: w, height: h)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .clipped()
     }
 
     /// デイログ: a tilted journal sticker with today's date — the setlog cue.

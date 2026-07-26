@@ -349,7 +349,9 @@ struct HuntView: View {
                         .shadow(color: Brand.purple.opacity(0.55), radius: 16, y: 6)
                 }
                 .buttonStyle(PopButtonStyle())
-                .padding(.bottom, 14)
+                // Clear of the raised camera button, which pokes above the tab
+                // bar right where this CTA sits.
+                .padding(.bottom, 34)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

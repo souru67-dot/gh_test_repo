@@ -695,7 +695,7 @@ struct HuntCameraView: View {
                 frameShots = []
                 // Start on the arrangement the template implies; the picker
                 // can still change it before the first shot.
-                if let tpl { arrangement = FrameArrangement.matching(tpl.layout) }
+                if let tpl { arrangement = FrameArrangement.forTemplate(tpl) }
             }
             // Reset so the guide's onAppear restarts the pulse next time.
             if tpl == nil { guidePulse = false }
@@ -927,13 +927,14 @@ struct HuntCameraView: View {
             ForEach(Array(g.cells.enumerated()), id: \.offset) { i, r in
                 liveGuideCell(index: i, rect: r)
             }
-            if tpl.isPro {
-                ProSignatureDeco(templateID: tpl.id,
-                                 width: g.canvas.width, height: g.canvas.height,
-                                 scale: gScale, matWidth: tpl.spacing * gScale)
-                    .frame(width: g.canvas.width, height: g.canvas.height)
-                    .offset(x: g.canvas.minX, y: g.canvas.minY)
-            }
+            // Every preset with a deco renders it live (the view is empty for
+            // the plain ones), so ハーフ's film strip frames the shot just like
+            // the Pro decos do.
+            TemplateSignatureDeco(templateID: tpl.id,
+                                  width: g.canvas.width, height: g.canvas.height,
+                                  scale: gScale, matWidth: tpl.spacing * gScale)
+                .frame(width: g.canvas.width, height: g.canvas.height)
+                .offset(x: g.canvas.minX, y: g.canvas.minY)
         }
         .allowsHitTesting(false)
         .onAppear {
@@ -1415,14 +1416,30 @@ struct FrameArrangement: Identifiable, Equatable {
         .init(id: "grid4", label: "2×2", cells: 4, layout: 0, rows: 2, columns: 2),
         .init(id: "v4", label: "縦4", cells: 4, layout: 1, rows: 4, columns: 1),
         .init(id: "v3", label: "縦3", cells: 3, layout: 1, rows: 3, columns: 1),
+        // Half-frame: two upright shots side by side in one landscape frame.
+        .init(id: "half2", label: "ハーフ", cells: 2, layout: 2, rows: 1, columns: 2),
         .init(id: "v2", label: "縦2", cells: 2, layout: 1, rows: 2, columns: 1),
+        // One shot — a real instax print holds a single photo.
+        .init(id: "single", label: "1枚", cells: 1, layout: 0, rows: 1, columns: 1),
         .init(id: "col6", label: "2列6", cells: 6, layout: 2, rows: 3, columns: 2),
     ]
 
-    /// The arrangement a template starts on, so picking フォトダンプ lands on a
-    /// grid and 4カット lands on a strip.
-    static func matching(_ layoutOrdinal: Int32) -> FrameArrangement {
-        all.first { $0.layout == layoutOrdinal && $0.cells == 4 } ?? all[0]
+    /// The arrangement a template opens on, so each preset starts in the shape
+    /// it is actually about — ハーフ as a pair, チェキ as a single print,
+    /// 4カット as a strip — with the picker free to change it.
+    static func forTemplate(_ tpl: CollageTemplateVM) -> FrameArrangement {
+        let preferred: String?
+        switch tpl.id {
+        case "half": preferred = "half2"
+        case "cheki": preferred = "single"
+        case "fourcut": preferred = "v4"
+        default: preferred = nil
+        }
+        if let preferred, let match = all.first(where: { $0.id == preferred }) {
+            return match
+        }
+        // Otherwise the 4-shot arrangement matching the template's own layout.
+        return all.first { $0.layout == tpl.layout && $0.cells == 4 } ?? all[0]
     }
 }
 

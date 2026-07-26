@@ -134,6 +134,10 @@
 "全%lld色コンプリートを目指そう" = "Collect all %lld colours";
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
+/* v1.8 — half-frame + single-shot */
+"ハーフ" = "Half";
+"1枚" = "Single";
+
 /* v1.7 — roulette reset */
 "もう一度まわす" = "Spin again";
 

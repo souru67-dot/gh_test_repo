@@ -129,19 +129,20 @@ struct RootTabView: View {
             ZStack {
                 Circle()
                     .fill(Brand.gradient)
-                    .frame(width: 62, height: 62)
-                    .overlay(Circle().stroke(Brand.base, lineWidth: 5))
-                    .shadow(color: Brand.purple.opacity(0.6), radius: 12, y: 4)
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(Brand.base, lineWidth: 4))
+                    .shadow(color: Brand.purple.opacity(0.6), radius: 10, y: 3)
                 Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 23, weight: .bold))
                     .foregroundStyle(.white)
             }
         }
         .buttonStyle(PopButtonStyle())
-        // Float clear of the bar: iOS 26 draws a selection capsule behind the
-        // active tab, and the neighbouring items' capsules ran under a button
-        // that sat down inside the bar.
-        .offset(y: -14)
+        // Sized to sit INSIDE its own tab slot (~71pt on a 6.1"): the previous
+        // 62pt+5pt ring overflowed into the neighbours, so iOS 26's selection
+        // capsule ran underneath it. Lifting it instead only pushed the button
+        // into the screen content above, so the fix is width, not height.
+        .offset(y: -2)
     }
 }
 
