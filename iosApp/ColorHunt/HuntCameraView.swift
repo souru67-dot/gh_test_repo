@@ -916,6 +916,10 @@ struct HuntCameraView: View {
         let g = guideGeometry(in: s, tpl: tpl)
         let gScale = g.canvas.width / 360
         return ZStack(alignment: .bottomTrailing) {
+            // Color.clear forces the stack to take the whole canvas. Without
+            // it the stack shrank to its content, and presets with no deco
+            // (4カット) left only the date — which the frame then centred.
+            Color.clear
             TemplateSignatureDeco(templateID: tpl.id,
                                   width: g.canvas.width, height: g.canvas.height,
                                   scale: gScale, matWidth: tpl.spacing * gScale)
