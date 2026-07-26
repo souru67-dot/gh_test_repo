@@ -36,16 +36,23 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    iOS 16.0+）を作成し、`iosApp/ColorHunt/*.swift` を参照追加。
    ※ プロジェクトの **Minimum Deployments を iOS 16.0** に設定してください。
 
-   > **`iosApp` フォルダを丸ごとドラッグしないでください。** `iosApp/README.md`
-   > と `iosApp/AppIcon/README.md` が両方リソースに入り、バンドル内で同じ
-   > `Resources/README.md` に衝突して
-   > `Multiple commands produce ... README.md` でビルドが落ちます。
-   > 追加するのは **`ColorHunt/*.swift` と `ColorHunt/*.lproj`** だけ。
-   > 既に入れてしまった場合は TARGETS → Build Phases →
-   > **Copy Bundle Resources** から `README.md`（2つあります）と
-   > `gen_icon.py` / `icon.svg` / `icon-1024.png` を「−」で削除し、
-   > Clean Build Folder（⇧⌘K）してください。
-   > Copy Bundle Resources に残すべきは `*.lproj/Localizable.strings` のみです。
+   > **リポジトリや `iosApp` フォルダを丸ごとドラッグしないでください。**
+   > 追加するのは **`iosApp/ColorHunt/*.swift` と `iosApp/ColorHunt/*.lproj`**
+   > だけです。
+   >
+   > iOS のバンドルはリソースを **`Resources/` 直下にフラットにコピー**する
+   > ため、フォルダで名前を分けている Android 側のファイルが軒並み衝突し、
+   > `Multiple commands produce ...` でビルドが落ちます（`README.md` ×2、
+   > `values-*/strings.xml` ×5、`build.gradle.kts` ×3、`themes.xml` ×2 など）。
+   >
+   > **既に入れてしまった場合の復旧**: TARGETS → Build Phases →
+   > **Copy Bundle Resources** で全項目を選択して「−」で削除し（実ファイルは
+   > 消えません）、「＋」で以下の **5つだけ**を追加し直してから
+   > Clean Build Folder（⇧⌘K）:
+   > `Assets.xcassets` と `Localizable.strings`（en/ja/ko/zh-Hans）。
+   >
+   > ナビゲータからも消す場合は右クリック → Delete → **Remove Reference**
+   > を選ぶこと（**Move to Trash はリポジトリの実ファイルを削除します**）。
 
 3. 共有フレームワークを埋め込む **Run Script** ビルドフェーズを
    「Compile Sources」より前に追加:
