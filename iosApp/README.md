@@ -36,6 +36,17 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    iOS 16.0+）を作成し、`iosApp/ColorHunt/*.swift` を参照追加。
    ※ プロジェクトの **Minimum Deployments を iOS 16.0** に設定してください。
 
+   > **`iosApp` フォルダを丸ごとドラッグしないでください。** `iosApp/README.md`
+   > と `iosApp/AppIcon/README.md` が両方リソースに入り、バンドル内で同じ
+   > `Resources/README.md` に衝突して
+   > `Multiple commands produce ... README.md` でビルドが落ちます。
+   > 追加するのは **`ColorHunt/*.swift` と `ColorHunt/*.lproj`** だけ。
+   > 既に入れてしまった場合は TARGETS → Build Phases →
+   > **Copy Bundle Resources** から `README.md`（2つあります）と
+   > `gen_icon.py` / `icon.svg` / `icon-1024.png` を「−」で削除し、
+   > Clean Build Folder（⇧⌘K）してください。
+   > Copy Bundle Resources に残すべきは `*.lproj/Localizable.strings` のみです。
+
 3. 共有フレームワークを埋め込む **Run Script** ビルドフェーズを
    「Compile Sources」より前に追加:
    ```bash
