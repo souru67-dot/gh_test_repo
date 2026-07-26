@@ -773,10 +773,14 @@ struct HuntCameraView: View {
     /// Where the live preview lives right now: the whole screen, or the
     /// active cell of the guide.
     private func previewRect(in s: CGSize) -> CGRect {
+        // Falling back to full-screen keeps the camera usable even if the
+        // shared geometry ever hands back no cells (an empty array would make
+        // `count - 1` a negative index).
         guard let tpl = frameTemplate else {
             return CGRect(origin: .zero, size: s)
         }
         let g = guideGeometry(in: s, tpl: tpl)
+        guard !g.cells.isEmpty else { return CGRect(origin: .zero, size: s) }
         return g.cells[min(frameShots.count, g.cells.count - 1)]
     }
 
@@ -1193,6 +1197,7 @@ struct HuntCameraView: View {
                 // was on screen (the crop editor can still refine).
                 guard frameShots.count < frameCellCount else { return }
                 let g = guideGeometry(in: UIScreen.main.bounds.size, tpl: tpl)
+                guard !g.cells.isEmpty else { return }
                 let cell = g.cells[min(frameShots.count, g.cells.count - 1)]
                 let final = Self.aspectCrop(image, ratio: cell.width / max(cell.height, 1))
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
