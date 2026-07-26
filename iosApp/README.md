@@ -58,8 +58,18 @@ shared/                     # KMP: 色分類 + コラージュ幾何 + ブリッ
    「Compile Sources」より前に追加:
    ```bash
    cd "$SRCROOT/.."
+   export JAVA_HOME=$(/usr/libexec/java_home -v 17)
    ./gradlew :shared:embedAndSignAppleFrameworkForXcode
    ```
+
+   > **`JAVA_HOME` の明示は必須です。** Xcode の Run Script は `~/.zshrc` を
+   > 読まないため、シェルで JDK 17 を設定していても Xcode からは
+   > システム既定の JDK が使われます。新しい JDK（例: 26）を拾うと
+   > Gradle 8.14.3 が対応しておらず、
+   > `FAILURE: Build failed with an exception. * What went wrong: 26.0.2`
+   > のように**バージョン番号だけのエラー**で落ちます（本プロジェクトは
+   > Java 17 前提）。`/usr/libexec/java_home -V` で 17 の有無を確認し、
+   > 無ければ `brew install --cask temurin@17`。
 
 4. Build Settings の **Framework Search Paths** に追加:
    ```
