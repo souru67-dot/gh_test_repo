@@ -1080,9 +1080,12 @@ struct TemplateSignatureDeco: View {
         let rebate = Color(red: 0.07, green: 0.07, blue: 0.07)
         return ZStack {
             // The gap between the two frames, widened past the layout spacing.
+            // Measured off a real print, the rebate runs ~3.5% of the sheet —
+            // several times the outer edge, which is what makes the pair read
+            // as one negative.
             Rectangle()
                 .fill(rebate)
-                .frame(width: 7 * scale)
+                .frame(width: 13 * scale)
             // The print's own thin edge.
             Rectangle()
                 .strokeBorder(rebate, lineWidth: 2 * scale)
