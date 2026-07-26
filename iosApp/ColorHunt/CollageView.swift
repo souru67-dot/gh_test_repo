@@ -166,7 +166,16 @@ struct CollageView: View {
                 // Cap the preview height so tall ratios (9:16) shrink in width and
                 // stay in line with the other sizes instead of filling the screen.
                 canvas(width: min(340, 440 * aspect))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    // The export has square outer corners, so rounding only
+                    // the preview made the 角丸 control look broken (it never
+                    // moved the sheet's corners) and rounded the photos
+                    // themselves whenever 余白 was 0. A hairline instead marks
+                    // where the sheet ends — which the eye needs for dark
+                    // presets like ハーフ against the dark screen — and it is
+                    // outside canvas(), so it never reaches the export.
+                    .overlay {
+                        Rectangle().stroke(.white.opacity(0.14), lineWidth: 1)
+                    }
                     .overlay(alignment: .topLeading) {
                         // Try-then-buy: Pro presets preview freely; this badge
                         // says why save/share will ask for Pro.
@@ -473,12 +482,18 @@ struct CollageView: View {
                 .pickerStyle(.segmented)
             }
 
-            sliderRow("余白", value: $spacing, range: 0...24)
-            sliderRow("角丸", value: $cornerRadius, range: 0...48)
-            sliderRow("枠線の太さ", value: $borderWidth, range: 0...8)
+            // A film print and an instax card have fixed margins, square
+            // corners and no drawn border — every one of these controls could
+            // only pull the preset away from the format it reproduces, and on
+            // ハーフ the 余白 slider fought the fixed rebate bar besides.
+            if !formatLocked {
+                sliderRow("余白", value: $spacing, range: 0...24)
+                sliderRow("角丸", value: $cornerRadius, range: 0...48)
+                sliderRow("枠線の太さ", value: $borderWidth, range: 0...8)
 
-            sectionLabel("枠線の色")
-            swatchRow(selected: borderColor) { borderColor = $0 }
+                sectionLabel("枠線の色")
+                swatchRow(selected: borderColor) { borderColor = $0 }
+            }
 
             // The sheet colour is part of a physical format: ハーフ's rebate
             // bars are drawn film-black, so a light background left the gaps
