@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  ColorHunt privacy manifest.
+
+	  Required since May 2024: an app that calls a "required reason API"
+	  without declaring it here is rejected at upload (ITMS-91053).
+
+	  ColorHunt sends nothing off the device — no analytics, no ads, no
+	  crash reporting, no account, no URLSession anywhere in the target —
+	  so both the tracking flags and the collected-data list stay empty.
+	  UserDefaults is the one required-reason API in use.
+	-->
+
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!--
+			  @AppStorage for onboarding state, the Today's Colour reminder
+			  settings and the hunt counter, plus UserDefaults directly for
+			  the Pro entitlement flag. All of it is read and written by this
+			  app only — never shared through an App Group — which is exactly
+			  what reason CA92.1 covers.
+			-->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

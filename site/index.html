@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ColorHunt — サポート</title>
+<meta name="description" content="ColorHunt のサポートページ。使い方、よくある質問、お問い合わせ先。">
+<style>
+  :root {
+    --ink: #1A1622;
+    --muted: #6B6480;
+    --line: #E4E0EE;
+    --bg: #FFFFFF;
+    --card: #FAF9FD;
+    --accent: #6B3FE0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #ECE9F3; --muted: #9C95AD; --line: #2A2536;
+      --bg: #101014; --card: #17151F; --accent: #A88BFF;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN",
+                 "Yu Gothic UI", "Noto Sans JP", sans-serif;
+    line-height: 1.8;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 24px 80px; }
+  a { color: var(--accent); }
+
+  .mark {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 26px;
+  }
+  .mark svg { flex: none; }
+  .mark h1 {
+    font-size: 30px; margin: 0; letter-spacing: -.02em;
+    background: linear-gradient(105deg, #7C4DFF, #EC407A 55%, #FFA726);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tagline { font-size: 17px; color: var(--muted); margin: 0 0 44px; }
+
+  h2 {
+    font-size: 18px; margin: 44px 0 14px; padding-top: 24px;
+    border-top: 1px solid var(--line); line-height: 1.5;
+  }
+  h3 { font-size: 15px; margin: 22px 0 4px; }
+  p, li { font-size: 15px; }
+  ul { padding-left: 1.3em; }
+  li { margin-bottom: 7px; }
+
+  .faq { margin-top: 6px; }
+  .faq details {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); padding: 0 16px; margin-bottom: 8px;
+  }
+  .faq summary {
+    cursor: pointer; padding: 13px 0; font-weight: 600; font-size: 15px;
+    list-style: none;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::before {
+    content: "＋"; color: var(--accent); margin-right: 9px; font-weight: 700;
+  }
+  .faq details[open] summary::before { content: "−"; }
+  .faq details p { margin: 0 0 14px; }
+
+  .contact {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px 22px; margin-top: 16px;
+  }
+  .contact p { margin: 0 0 6px; }
+  .contact a { font-weight: 600; }
+
+  footer {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mark">
+    <svg width="52" height="52" viewBox="0 0 100 100" role="img" aria-label="ColorHunt">
+      <g fill="none" stroke-width="15">
+        <path d="M50 12a38 38 0 0 1 32.9 19" stroke="#E5484D"/>
+        <path d="M82.9 31A38 38 0 0 1 82.9 69" stroke="#FFA726"/>
+        <path d="M82.9 69A38 38 0 0 1 50 88" stroke="#30A46C"/>
+        <path d="M50 88A38 38 0 0 1 17.1 69" stroke="#00B4D8"/>
+        <path d="M17.1 69A38 38 0 0 1 17.1 31" stroke="#5B4BD6"/>
+        <path d="M17.1 31A38 38 0 0 1 50 12" stroke="#E5518F"/>
+      </g>
+      <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round">
+        <path d="M34 41v-7h7M66 41v-7h-7M34 59v7h7M66 59v7h-7"/>
+      </g>
+    </svg>
+    <h1>ColorHunt</h1>
+  </div>
+  <p class="tagline">世界を、色で集めよう。</p>
+
+  <p>
+    ColorHunt は、写真を「色」で集めて楽しむカメラ＆コラージュアプリです。
+    テーマ色を決めて街で写真を撮り、色ごとに整理して、そのままコラージュにできます。
+  </p>
+
+  <h2>できること</h2>
+  <ul>
+    <li><strong>ハントカメラ</strong> — コラージュの枠を当てながら撮影。
+        撮った瞬間にコマが埋まっていきます</li>
+    <li><strong>色で自動仕分け</strong> — カメラロールの写真を主役の色で
+        12色のグループに自動分類</li>
+    <li><strong>コラージュ</strong> — 12種類のテンプレートと HEX カラーパレット付きの
+        書き出し</li>
+    <li><strong>今日の色</strong> — ルーレットで今日ハントする色を決めて、
+        毎日のリマインダーに</li>
+    <li><strong>カラーマップ</strong> — 撮影地が記録された写真を、色のピンで地図に表示</li>
+  </ul>
+
+  <h2>よくある質問</h2>
+  <div class="faq">
+
+    <details>
+      <summary>「自動で仕分け」が、ちょうど200枚にならない</summary>
+      <p>
+        仕様どおりの動作です。取り込み後に表示される「◯枚を追加しました」の
+        カッコの中に理由が出ています。
+      </p>
+      <p>
+        <strong>重複</strong>＝すでにハントに入っている写真です。同じ写真が二重に
+        並ばないよう自動でスキップしています。<br>
+        <strong>読み込めず</strong>＝iCloud に本体があり、ダウンロードできなかった
+        写真です。Wi-Fi に接続してからもう一度お試しください。
+      </p>
+    </details>
+
+    <details>
+      <summary>写真の色の判定が、思っていたものと違う</summary>
+      <p>
+        写真を<strong>長押し</strong>すると、色を選び直せます。選んだ色のグループへ
+        すぐ移動します。
+      </p>
+      <p>
+        色は「その写真で一番目立つ色」を自動で選ぶ仕組みのため、背景が広い写真では
+        意図と異なることがあります。手動で直した内容は保存されます。
+      </p>
+    </details>
+
+    <details>
+      <summary>購入した Pro が反映されない / 機種変更した</summary>
+      <p>
+        コラージュ画面から Pro の案内を開き、<strong>「購入を復元」</strong>を
+        タップしてください。購入時と同じ Apple ID でサインインしている必要があります。
+      </p>
+      <p>
+        買い切りのため、追加の支払いは発生しません。復元しても反映されない場合は、
+        下記のメールアドレスまでご連絡ください。
+      </p>
+    </details>
+
+    <details>
+      <summary>写真へのアクセスを「一部の写真のみ」にしている</summary>
+      <p>
+        許可した写真だけが仕分けの対象になります。すべての写真を対象にするには、
+        iOS の「設定」→「ColorHunt」→「写真」から変更してください。
+      </p>
+      <p>
+        アクセスを許可しなくても、写真を手動で選んで追加すれば基本機能は使えます。
+      </p>
+    </details>
+
+    <details>
+      <summary>カメラが起動しない</summary>
+      <p>
+        iOS の「設定」→「ColorHunt」→「カメラ」がオンになっているかご確認ください。
+      </p>
+    </details>
+
+    <details>
+      <summary>アプリを消したら写真も消えますか</summary>
+      <p>
+        アプリが保存していたデータ（取り込んだ写真のコピー、コラージュの設定）は
+        削除されます。<strong>カメラロールの元の写真は消えません。</strong>
+      </p>
+      <p>
+        作ったコラージュを残したい場合は、削除前に書き出して写真に保存してください。
+      </p>
+    </details>
+
+    <details>
+      <summary>写真はどこかに送信されますか</summary>
+      <p>
+        いいえ。色の解析はすべて端末内で完結し、写真が外部に送信されることは
+        ありません。詳しくは<a href="privacy.html">プライバシーポリシー</a>を
+        ご覧ください。
+      </p>
+    </details>
+
+  </div>
+
+  <h2>お問い合わせ</h2>
+  <div class="contact">
+    <p>不具合のご報告・ご要望はこちらへお願いします。</p>
+    <p><a href="mailto:souru67.giants.6@gmail.com">souru67.giants.6@gmail.com</a></p>
+    <p style="color:var(--muted);font-size:13.5px;margin-top:10px">
+      不具合の場合、<strong>端末の機種</strong>・<strong>iOS のバージョン</strong>・
+      <strong>操作の手順</strong>を書き添えていただけると、原因の特定が早くなります。
+    </p>
+  </div>
+
+  <footer>
+    ColorHunt · <a href="privacy.html">プライバシーポリシー</a>
+  </footer>
+
+</div>
+</body>
+</html>
