@@ -1,25 +1,76 @@
 # ColorHunt iOS リリース完全ガイド
 
-初リリース向けに「今日から審査提出まで」を1本にまとめたガイドです。
-対象: iOS 16〜26 / 開発機は新しい MacBook（Apple Silicon）+ Xcode 26。
+**このドキュメント1本で、審査提出までたどり着けます。**
+対象: iOS 16〜26 / 開発機は MacBook（Apple Silicon）+ Xcode 26。
 
 ---
 
-## 0. 全体ロードマップ（目安 2〜4週間）
+## 0. 現在地と、リリースまでの全工程
 
-| 週 | やること |
+### 0-1. いま完了していること
+
+| | 項目 |
 |---|---|
-| 1 | 環境構築 → 現行コードのビルド → 実機(iPhone 11)で自己テスト |
-| 2 | Apple Developer 登録 → アイコン/スクショ作成 → TestFlight で知人配信 |
-| 3 | フィードバック修正 → App Store Connect 登載情報 → 審査提出 |
-| 4 | 審査対応（通常1〜3日）→ リリース 🎉 |
+| ✅ | アプリの実装（v1.0 凍結済み） |
+| ✅ | 4言語対応（ja / en / ko / zh-Hans） |
+| ✅ | アイコン（Light / Dark / Tinted） |
+| ✅ | Privacy Manifest ファイルの作成 |
+| ✅ | サポート／プライバシーポリシーのページ（`site/`） |
+| ✅ | ストア掲載文 4言語分（`docs/APP_STORE_LISTING.md`） |
+| ✅ | Apple Developer Program の登録申請 |
+| ⏳ | **Apple Developer Program の承認待ち** ← いまここ |
+
+### 0-2. 残っている工程
+
+**フェーズ1 — 承認を待たずに、今すぐできること**
+
+`docs/OWNER_TASKS.md` に、初めての方向けの手順を書いてあります。
+
+| # | 作業 | 所要 | 場所 |
+|---|---|---|---|
+| A | Privacy Manifest を Xcode に追加 | 10分 | OWNER_TASKS.md §A |
+| B | サポート/プライバシーページを公開 | 1時間 | OWNER_TASKS.md §B |
+| C | **メモリ実測**（唯一のクラッシュリスク） | 30分 | OWNER_TASKS.md §C ／ 判定基準は §3.4 |
+| D | スクリーンショット6枚 | 半日 | OWNER_TASKS.md §D |
+
+**フェーズ2 — 承認メールが届いてから**
+
+本ドキュメントの §8 を、Step 1 から順に実施します。
+
+| Step | 内容 | 所要 |
+|---|---|---|
+| 1 | 署名を有料チームに切り替え | 30分 |
+| 2 | **有料App契約・W-8BEN** ★最優先 | 30分＋審査数日 |
+| 3 | App Store Connect にアプリを作成 | 30分 |
+| 4 | 課金アイテム作成＋Sandboxテスト | 1〜2時間 |
+| 5 | 掲載情報を入力 | 半日 |
+| 6 | アップロード → TestFlight | 半日＋テスト期間 |
+| 7 | 審査に提出 | 30分＋審査1〜3日 |
+
+> **Step 2 が全体のクリティカルパスです。** 契約が「アクティブ」になるまで
+> 数日かかることがあり、それまで課金は Sandbox ですら動きません。承認されたら
+> 真っ先に着手し、待っている間に Step 3 以降を進めてください。
+
+### 0-3. 提出前に必ず通すゲート
+
+この3つが未達のまま提出しないでください。
+
+| ゲート | 確認方法 |
+|---|---|
+| メモリ実測に合格 | §3.4 の判定表 |
+| Privacy Manifest がバンドルに入っている | Build Phases → Copy Bundle Resources |
+| サポート/プライバシーURLが実際に開ける | ブラウザとスマホの両方で確認 |
 
 ---
 
-## 1. 新しい Mac の環境構築
+## 1. 開発環境（構築済み・再構築時のみ参照）
+
+> 現在の Mac では構築済みです。機材を変えるときだけ見てください。
 
 1. **Xcode 26** を App Store からインストール（初回起動で追加コンポーネント許可）
 2. **JDK 17**（KMP 共有モジュール用）: `brew install temurin@17`
+   - Xcode の Run Script は `~/.zshrc` を読まないため、スクリプト内で
+     `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` が必要です
 3. リポジトリを clone し、ルートで一度:
    ```bash
    ./gradlew :shared:embedAndSignAppleFrameworkForXcode || true
@@ -27,21 +78,27 @@
    ```
 4. Xcode プロジェクト（ColorHunt）を開き、以下を確認:
    - Minimum Deployments = **iOS 16.0**
+   - Supported Destinations = **iPhone のみ**
    - Run Script（shared フレームワーク埋め込み）のパスが新環境の実パスか
    - Framework Search Paths が `shared/build/xcode-frameworks/...` を指すか
    - Info.plist: `NSPhotoLibraryUsageDescription` / `NSPhotoLibraryAddUsageDescription`
      / `NSCameraUsageDescription`（ハントカメラ）
+   - Copy Bundle Resources には `Assets.xcassets` / 4つの `Localizable.strings` /
+     `PrivacyInfo.xcprivacy` **のみ**（リポジトリ全体を追加すると
+     `Multiple commands produce` で失敗します）
    - Localizations: en / ja / ko / zh-Hans が登録済みか
-5. **Xcode 26 でのモダン化（任意・推奨）**: iOS 26 実機/シミュレータでは
-   システム部品が自動で Liquid Glass 化。独自ガラスは `#available(iOS 26)` で
-   追加予定（コードは iOS 16 フォールバック前提で設計済み）
 
-## 2. Apple Developer Program（$99/年）
+> ⚠️ **`.xcodeproj` はこのリポジトリに含まれていません。** 署名設定・Info.plist の
+> 権限文言・アイコンの割り当ては Mac 上にしか存在しないため、Mac が壊れると
+> 失われます。v1.0 提出後に、`.xcodeproj` をリポジトリへコミットすることを
+> 強くおすすめします。
 
-1. https://developer.apple.com で Apple ID から登録（個人でOK・住所は公開されない）
-2. Xcode → Settings → Accounts にサインイン
-3. ターゲットの Signing & Capabilities → **Automatically manage signing** + 自分の Team
-4. これで実機インストールと TestFlight/提出が可能に
+## 2. Apple Developer Program（$99/年）— 申請済み
+
+登録手続きは完了し、**承認待ち**の状態です。承認後の作業は §8 Step 1 以降。
+
+> 承認メールの件名は "Welcome to the Apple Developer Program" です。
+> 迷惑メールに入ることがあるので確認してください。
 
 ## 3. テストチェックリスト
 
@@ -306,44 +363,41 @@ Memory Gauge の絶対値だけで見る場合の代替基準は **700MB**。こ
 > |---|---|---|---|---|---|
 > |  |  |  |  |  |  |
 
-## 4. TestFlight（知人配信）
+## 4. TestFlight の考え方
 
-1. App Store Connect → My Apps → ＋ → New App（Bundle ID は Xcode と一致）
-2. Xcode: Product → **Archive** → Distribute → **TestFlight & App Store**
-3. App Store Connect → TestFlight タブ → ビルドが処理完了後:
-   - **Internal Testing**: 自分（最大100人・審査なし・即配信）
-   - **External Testing**: 知人のメール招待（最初の1回だけ軽い審査・最大1万人）
-4. 知人は TestFlight アプリから招待コードでインストール
-5. フィードバックは TestFlight のスクショコメント機能で回収可能
+操作手順は **§8 Step 6** にあります。ここでは方針だけ。
 
-> 以後は Archive → Upload するだけで自動的にテスターへ新ビルドが届きます。
+- **Internal Testing**: 自分（最大100人・審査なし・即配信）。まずここで自分が触る
+- **External Testing**: 知人のメール招待（最初の1回だけ軽い審査・最大1万人）
+- フィードバックは TestFlight のスクショコメント機能で回収できます
 
-## 5. App Store 提出
+> 以後は Archive → Upload するだけで、テスターへ自動的に新ビルドが届きます。
 
-**必要素材**
-- アイコン 1024px（`iosApp/AppIcon/` 参照）
-- スクリーンショット（**6.9"** を用意すれば小さい端末には自動流用。iPhone 16 Pro Max シミュレータで ⌘S）
-  - 構成案（6枚・全ロケール共通画像＋ローカライズ見出しテキスト）:
-    1. ハントカメラ・フレームモード「撮りながら、コラージュになる。」（一番の差別化）
-    2. ハント「色で、写真が整う。」（コレクションカードが見える状態）
-    3. コラージュ組写「HEXパレットで、組写を。」
-    4. テンプレカテゴリ「4カットもデイログも、ワンタップ。」
-    5. 今日の色「今日は何色をハントする？」
-    6. カラーマップ「あなたの街が、パレットになる。」
-- プロモテキスト/説明文/キーワード（ja/en/ko/zh、`docs/STORE_LISTING.md` を流用）
-- サポートURL（GitHub Pages 等の1枚ページでOK）/ プライバシーポリシーURL
+**個人開発で外部テストをやる価値**: 自分の端末では絶対に出ないバグ
+（別の写真構成、別のiOSバージョン、写真アクセス「一部のみ」の人）が見つかります。
+最低3人・3日は回すことをおすすめします。
 
-**App Privacy（申告）**
-- 写真: アプリ機能のため・トラッキングなし／位置: 写真のメタデータのみ・収集なし
-- 収集データ「なし」（すべて端末内処理）— 強い訴求点なので説明文にも書く
+## 5. 提出に必要な素材（どこにあるか）
 
-**In-App Purchase**
-- App Store Connect → **App内課金** → **非消耗型**（Non-Consumable）
-  製品IDは `AppState.swift` の `proID` と完全一致させること（§8 Step 0-1）
+| 素材 | 状態 | 場所 |
+|---|---|---|
+| アイコン 1024px（Light/Dark/Tinted） | ✅ 作成済み | `iosApp/AppIcon/` |
+| スクリーンショット 6枚 | ⏳ **要作業** | 手順は `OWNER_TASKS.md` §D |
+| App名/サブタイトル/キーワード（4言語） | ✅ 作成済み | `APP_STORE_LISTING.md` §1 |
+| プロモテキスト/説明文（4言語） | ✅ 作成済み | `APP_STORE_LISTING.md` §1 |
+| App プライバシーの回答 | ✅ 作成済み | `APP_STORE_LISTING.md` §2 |
+| 年齢制限の回答 | ✅ 作成済み | `APP_STORE_LISTING.md` §3 |
+| 審査メモ | ✅ 作成済み | `APP_STORE_LISTING.md` §4 |
+| サポートURL / プライバシーポリシーURL | ⏳ **要作業** | 手順は `OWNER_TASKS.md` §B |
+| Privacy Manifest | ⏳ **要追加** | 手順は `OWNER_TASKS.md` §A |
+| 課金の審査用スクショ（ペイウォール画面） | ⏳ 要撮影 | §8 Step 4 で必要 |
 
-**審査の注意**
-- 初回はリジェクトされがち: 「復元ボタンがある」「課金前に機能説明がある」
-  （どちらも実装済み）/ デモ用に写真数枚のスクリーン録画を添付すると通りやすい
+**審査でつまずきやすい点**（いずれも実装側は対応済み）
+
+- 「購入を復元」ボタンがあること → ペイウォールに実装済み
+- 課金前に何が得られるか説明されていること → ペイウォールに特典4項目を表示
+- 無料でも使えること → 無料テンプレ5種で書き出しまで可能
+- 審査メモに動作確認手順を書くこと → `APP_STORE_LISTING.md` §4 をそのまま貼る
 
 ## 6. 収益化ロードマップ
 
@@ -362,16 +416,42 @@ Memory Gauge の絶対値だけで見る場合の代替基準は **700MB**。こ
 SNSハッシュタグ（#colorhunt #色集め）をキャプション自動コピーで統一済み。
 ローンチ時は自分のSNSで「今日の色チャレンジ」を仕掛けるのが最短です。
 
-## 7. リリース直前チェック
+## 7. リリース直前チェック（提出ボタンを押す前に）
 
-- [ ] **メモリ実測に合格（3.4）** ← 未実施なら提出しない。唯一の実クラッシュリスク
-- [ ] 測定用に Scheme の Build Configuration を Release にしていたら **Debug に戻した**
-- [ ] 測定用に貼った `os_proc_available_memory()` の一時コードを**削除した**
-- [ ] バージョン 1.0.0 / ビルド番号インクリメント
-- [ ] デバッグ解除ボタンが RELEASE ビルドに出ないこと（#if DEBUG 済み）
-- [ ] クラッシュ収集: Xcode Organizer の Crashes を有効化（追加SDK不要）
-- [ ] App Store 用スクショが最新UIか
-- [ ] 審査メモ: 写真権限の用途説明を一言添える
+**必ず通すゲート**
+
+- [ ] **メモリ実測に合格した**（§3.4 の判定表）← 未実施なら提出しない
+- [ ] **`PrivacyInfo.xcprivacy` が Copy Bundle Resources にある**
+      ← 無いとアップロードが ITMS-91053 で弾かれます
+- [ ] **サポートURL / プライバシーポリシーURL が実際に開ける**（スマホでも確認）
+- [ ] **有料App契約が「アクティブ」になっている**（§8 Step 2）
+- [ ] **Sandbox で購入と復元の両方が成功した**（§8 Step 4）
+
+**測定用コードの後片付け**
+
+- [ ] Scheme の Build Configuration を **Debug に戻した**
+- [ ] `os_proc_available_memory()` の一時コードを**削除した**
+- [ ] 一時的に追加した `import os` を**削除した**
+
+**ビルド設定**
+
+- [ ] バージョン 1.0.0 / ビルド番号をインクリメントした
+- [ ] Supported Destinations が **iPhone のみ**
+- [ ] `ITSAppUsesNonExemptEncryption` = NO を Info に設定した
+- [ ] デバッグ解除ボタンが Release ビルドに出ないこと（`#if DEBUG` 済み）
+
+**掲載情報**
+
+- [ ] スクリーンショット6枚が最新UIで、1320×2868 になっている
+- [ ] 4言語すべての掲載文を入力した
+- [ ] App のプライバシー = 「データを収集していません」で提出した
+- [ ] 審査メモ（`APP_STORE_LISTING.md` §4）を貼った
+- [ ] 課金アイテムを「App審査に追加」した ← **忘れると課金なしで審査されます**
+
+**リリース後の備え**
+
+- [ ] クラッシュ収集: Xcode Organizer の Crashes を確認する習慣（追加SDK不要）
+- [ ] 問い合わせメールを受け取れる状態か確認した
 
 ## 8. リリース実務ガイド（Apple Developer 承認後）
 
@@ -380,9 +460,10 @@ SNSハッシュタグ（#colorhunt #色集め）をキャプション自動コ�
 
 ---
 
-### Step 0. 承認待ちの今やること（1〜2日）
+### Step 0. 承認待ちの今やること
 
-承認前でも進められる準備です。ここを済ませておくと承認後が一気に短縮できます。
+**手を動かす4件（A〜D）は `docs/OWNER_TASKS.md` にクリック単位で書いてあります。**
+そちらを先に済ませてください。ここには、Xcode 側の設定変更だけを残しています。
 
 **0-1. 課金プロダクトID（対応済み・確認のみ）**
 
@@ -393,11 +474,10 @@ SNSハッシュタグ（#colorhunt #色集め）をキャプション自動コ�
   入力してください。違うと購入画面が「製品情報を読み込めませんでした」になります
 - **一度作成したIDは削除も改名もできません。**登録時に必ず見比べること
 
-**0-2. iPhone 専用に絞る（推奨・15分）**
+**0-2. iPhone 専用に絞る（15分）**
 
-現在は iPhone / iPad / Vision Pro 向けにビルドされています（`TARGETED_DEVICE_FAMILY = 1,2,7`）。
 iPad を対象に含めると **iPad用スクリーンショットが必須**になり、iPadでの表示崩れが
-リジェクト理由にもなります。本アプリは縦持ちiPhone前提の設計なので、絞るのが安全です。
+リジェクト理由にもなります。本アプリは縦持ちiPhone前提の設計です。
 
 - Xcode → TARGETS → General → **Supported Destinations** から
   iPad / Apple Vision を削除し、**iPhone だけ**にする
@@ -413,43 +493,6 @@ iPad を対象に含めると **iPad用スクリーンショットが必須**に
 
 - General → Identity → **Version = 1.0.0** / **Build = 1**
 - 以後アップロードのたびに Build を +1（1.0.0 のまま Build だけ上げる）
-
-**0-5. スクリーンショット撮影（半日）**
-
-§5 の6枚構成で、**6.9インチ（iPhone 16 Pro Max）シミュレータ**で撮影します。
-このサイズを入れておけば、小さい端末サイズには自動で流用されます。
-
-- シミュレータで ⌘S → デスクトップに保存
-- Proのデコを見せたい場合は、ペイウォールの「デバッグ切替」でPro状態にしてから撮影
-
-**0-6. Privacy Manifest をターゲットに追加（10分）★必須・見落とし注意**
-
-`iosApp/ColorHunt/PrivacyInfo.xcprivacy` を**作成済み**です。
-Xcode のプロジェクトナビゲータへドラッグし、**Target Membership に `ColorHunt`
-をチェック**してください。
-
-- これが無いと、アップロード時に **ITMS-91053 (Missing API declaration)** で
-  弾かれます（2024年5月以降、必須要件）
-- 本アプリは `UserDefaults` を使っている（`@AppStorage` 5箇所＋直接2箇所）ため
-  該当します。理由コード `CA92.1`（自App内のみで読み書き）で宣言済み
-- トラッキングなし・収集データなしも同ファイルで宣言しています
-
-**0-7. 2つのURLを公開（1時間）★必須**
-
-`site/` に**実物を用意済み**です。
-
-- `site/index.html` — サポートページ（使い方・FAQ・問い合わせ先）
-- `site/privacy.html` — プライバシーポリシー（日英併記）
-
-公開手順は `docs/APP_STORE_LISTING.md` §5 を参照。**このリポジトリをそのまま
-公開しない**でください（ビルド設定やリリース計画が入っています）。`site/` の中身
-だけを別の公開リポジトリに push し、GitHub Pages を有効化するのが安全です。
-
-**0-8. 掲載文の準備（済）**
-
-App名・サブタイトル・キーワード・説明文を**4言語分**、文字数上限を検証済みで
-`docs/APP_STORE_LISTING.md` にまとめてあります。App プライバシー質問票の回答、
-年齢制限の回答、審査メモもそのまま貼り付けられる形で入っています。
 
 ---
 
