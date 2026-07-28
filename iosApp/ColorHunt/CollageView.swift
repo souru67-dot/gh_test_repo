@@ -844,12 +844,8 @@ struct CollageView: View {
     /// is drawn on the iOS side, so the number continues the same sequence
     /// without the Kotlin enum needing a new case.
     private var footerPlacement: Int32 { 5 }
-    /// Height of the 下帯 band as a fraction of the canvas. A fifth of it is the
-    /// label strip, so 0.1875 * 0.80 = 0.15 stays colour — the same band of
-    /// colour the footer carried before the labels moved off the swatch.
-    private static let footerRatio: CGFloat = 0.1875
-    /// Share of each palette block given to the label strip.
-    private static let paletteLabelRatio: CGFloat = 0.20
+    /// Height of the 下帯 band as a fraction of the canvas.
+    private static let footerRatio: CGFloat = 0.15
 
     /// Space the 下帯 occupies along the bottom edge, so corner-anchored marks
     /// (date stamp, watermark) clear it. Zero for every other placement.
@@ -866,19 +862,13 @@ struct CollageView: View {
         let bucket: String?
     }
 
-    /// The colour record — a colour plate, not a swatch chart.
+    /// The colour record — 採集票, not a swatch chart.
     ///
     /// A stack of equal blocks with the hex centred in each is what every colour
-    /// tool ships. Here the swatch stays pure and the type sits on a strip of the
-    /// collage's own background beneath it, the way a plate in an art book or a
-    /// paint chip carries its name. That strip is what makes it read as printed
-    /// rather than generated: the ink is one constant colour instead of flipping
-    /// between black and white per swatch, which is what made mid-tones look
-    /// muddy. The rail widened to pay for the strip, so the colour keeps exactly
-    /// the area it had.
-    ///
-    /// Runs down a rail or across the 下帯 band — the block's proportions change
-    /// and nothing else does.
+    /// tool ships, so this reads the other way: the swatch keeps its full area,
+    /// and the type is a left-aligned catalogue entry — classification, then hex
+    /// — hung off a ruler tick. Runs down a rail or across the 下帯 band; the
+    /// long/short edges swap and nothing else changes.
     private func paletteRail(_ rect: CGRect, photos: [HuntPhoto], translucent: Bool) -> some View {
         let entries = photos.compactMap { p in
             p.dominantColor.map { PaletteEntry(color: $0, bucket: p.bucketKey) }
@@ -890,7 +880,8 @@ struct CollageView: View {
         let h = horizontal ? rect.height : rect.height / CGFloat(n)
         return ZStack(alignment: .topLeading) {
             ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
-                paletteBlock(entry, w: w, h: h, translucent: translucent)
+                paletteBlock(entry, w: w, h: h, translucent: translucent,
+                             horizontal: horizontal, first: idx == 0)
                     .offset(x: horizontal ? w * CGFloat(idx) : 0,
                             y: horizontal ? 0 : h * CGFloat(idx))
             }
@@ -900,62 +891,66 @@ struct CollageView: View {
     }
 
     private func paletteBlock(_ entry: PaletteEntry, w: CGFloat, h: CGFloat,
-                              translucent: Bool) -> some View {
-        let strip = h * Self.paletteLabelRatio
-        // The strip holds two lines, so it sets the type size; the width caps it
+                              translucent: Bool, horizontal: Bool, first: Bool) -> some View {
+        // Sized off the short edge so a block reads the same whether it is a tall
+        // slice of a rail or a wide slice of the band, then capped by the width
         // so a seven-character hex never runs past the block.
-        let hexSize = min(max(strip * 0.46, 5), w * 0.20)
-        let tagSize = hexSize * 0.56
-        let padX = w * 0.07
-        let ink = paperInk
-        // The classification is the first thing to go when the strip gets thin.
-        let roomForTag = strip >= hexSize * 1.9
+        let short = min(w, h)
+        let hexSize = min(max(short * 0.15, 5), w * 0.22)
+        let tagSize = hexSize * 0.60
+        let inset = short * 0.13
+        let ink = paletteTextColor(entry.color, translucent: translucent)
+        // The entry stacks downwards, so what it needs is height, in both
+        // orientations. With many photos the blocks thin out and the record
+        // sheds the classification; the hex is the line that never goes.
+        let roomForTag = h >= hexSize * 3.2
 
-        return VStack(spacing: 0) {
-            // The swatch stays untouched — nothing is printed on the colour.
-            Color(packed: entry.color)
-                .opacity(translucent ? 0.62 : 1.0)
-                .frame(height: h - strip)
+        return ZStack(alignment: .bottomLeading) {
+            Color(packed: entry.color).opacity(translucent ? 0.62 : 1.0)
 
-            VStack(alignment: .leading, spacing: hexSize * 0.10) {
+            VStack(alignment: .leading, spacing: hexSize * 0.14) {
                 if roomForTag, let bucket = entry.bucket {
                     Text(bucket.replacingOccurrences(of: "_", with: " "))
                         .font(.system(size: tagSize, weight: .semibold))
-                        .tracking(tagSize * 0.22)
-                        .foregroundStyle(ink.opacity(0.55))
+                        .tracking(tagSize * 0.20)
+                        .foregroundStyle(ink.opacity(0.6))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
                 Text(hexString(entry.color))
                     .font(.system(size: hexSize, weight: .regular, design: .serif))
-                    .tracking(hexSize * 0.04)
-                    .foregroundStyle(ink.opacity(0.92))
+                    .tracking(hexSize * 0.05)
+                    .foregroundStyle(ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .padding(.horizontal, padX)
-            .frame(height: strip)
-            // Opaque even when the swatches float over photos, so the record
-            // stays crisp against whatever is underneath.
-            .background(Color(argb: background).opacity(translucent ? 0.92 : 1.0))
+            .shadow(color: translucent ? .black.opacity(0.45) : .clear, radius: 2, y: 1)
+            .padding(inset)
         }
         .frame(width: w, height: h)
+        .overlay(alignment: .topLeading) {
+            // A ruler tick, not a full rule: it marks where one catch ends and the
+            // next begins without cutting the column into separate bars.
+            if !first {
+                Rectangle()
+                    .fill(ink.opacity(translucent ? 0.22 : 0.32))
+                    .frame(width: horizontal ? 1 : w * 0.40,
+                           height: horizontal ? h * 0.40 : 1)
+            }
+        }
     }
 
-    /// Ink for the label strip: one constant colour taken from the collage's own
-    /// background, rather than flipping per swatch. Printing on the swatch meant
-    /// choosing black or white by luminance, and vivid mid-tones had enough of
-    /// both to look muddy either way.
-    private var paperInk: Color {
-        let v = Int(UInt32(truncatingIfNeeded: background))
+    /// Near-black ink on light swatches, off-white on dark ones (always off-white
+    /// when the column floats over the photos). Mirrors Android's rule.
+    private func paletteTextColor(_ packed: Int32, translucent: Bool) -> Color {
+        let v = Int(UInt32(bitPattern: packed))
         let r = Double((v >> 16) & 0xFF), g = Double((v >> 8) & 0xFF), b = Double(v & 0xFF)
         let luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        return luminance > 135
-            ? Color(red: 22 / 255, green: 20 / 255, blue: 28 / 255)
-            : Color(red: 243 / 255, green: 242 / 255, blue: 246 / 255)
+        if !translucent && luminance > 135 {
+            return Color(red: 25 / 255, green: 25 / 255, blue: 32 / 255).opacity(0.8)
+        }
+        return Color(red: 240 / 255, green: 240 / 255, blue: 244 / 255).opacity(translucent ? 0.92 : 0.8)
     }
-
 
     // MARK: export
 

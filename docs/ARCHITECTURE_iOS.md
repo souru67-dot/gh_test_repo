@@ -135,7 +135,7 @@ v1.0 時点で認識している弱点です。詳細と理由は
 | Swift 側の自動テストが無い | 色分類は Kotlin 側に21件あるが、`AppState` は未テスト | 重複排除と保存/読込から |
 | `.xcodeproj` が未管理 | 署名設定・権限文言・アイコン割り当てが Mac 上のみ | v1.0 提出後にコミット |
 | **パレット配置「下帯」が iOS 専用** | 共有 `CollageGeometry` に FOOTER が無く、`CollageView.canvas(width:)` が高さを縮めて帯を足している。計算は帯＋減算のみで両OS同一に再現可能だが、共有されていない | Android 提出前に `CollageGeometry` へ FOOTER を追加し、レンダラーも新デザインへ移植 |
-| **パレットの意匠が iOS のみ新設計** | Android の `CollageRenderer.drawPalette` は旧「等分ブロック＋HEX中央寄せ」のまま。共有の `PALETTE_RATIO` は 0.20 に広げてあるので、Android は**帯なしの色ブロックが太くなった**状態で描画される | Android 提出前に、色帯80%＋背景色の活字帯20%へ移植 |
+| **パレットの意匠が iOS のみ新設計** | iOS は「採集票」（分類名＋HEXを左揃え・下端そろえ、区切りは幅40%の目盛り）。Android の `CollageRenderer.drawPalette` は旧「等分ブロック＋HEX中央寄せ」のまま | Android 提出前に移植 |
 
 ## 7. 将来の伸びしろ（設計済みの余白）
 
