@@ -18,6 +18,7 @@
 | ドキュメント | いつ開くか |
 |---|---|
 | [APP_STORE_LISTING.md](APP_STORE_LISTING.md) | 掲載情報を入力するとき（Step 5）。4言語の文言をコピペする |
+| [IP_REVIEW.md](IP_REVIEW.md) | 商標・UI類似の確認記録。**提出前に🔴の3件を判断すること** |
 | [REEL_SCRIPT.md](REEL_SCRIPT.md) | 紹介動画を作るとき。24秒・7カットの台本 |
 
 **今の状況**: Apple Developer Program の承認待ち。
