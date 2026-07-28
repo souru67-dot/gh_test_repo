@@ -32,8 +32,16 @@ data class FocalPoint(
  */
 object CollageGeometry {
 
-    /** Fraction of the total width taken by the palette column/rail. */
-    const val PALETTE_RATIO = 0.16f
+    /**
+     * Fraction of the total width taken by the palette column/rail.
+     *
+     * The rail is a colour band with a label strip beneath it taking a fifth of
+     * each block, so 0.20 leaves 0.20 * 0.80 = 0.16 of the canvas as colour —
+     * exactly what the rail carried when the hex was printed on the swatch
+     * itself. The type gained a constant ground without the colour giving
+     * anything up; the width comes out of the photo cells instead.
+     */
+    const val PALETTE_RATIO = 0.20f
 
     data class Rect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
         val width: Float get() = right - left
