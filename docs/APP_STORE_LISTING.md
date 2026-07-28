@@ -68,9 +68,10 @@ ColorHunt は、写真を「色」で集めて楽しむカメラ＆コラージ�
 写真はドラッグで並べ替え、タップでトリミング（ピンチで拡大縮小）。
 1:1 / 4:5 / 9:16 のSNSサイズで書き出せます。
 
-■ HEXカラーパレット
-コラージュに、使われている色のHEXコードを添えて書き出せます。
-配色の記録としても、そのまま映える一枚としても。
+■ カラーパレット（採集票）
+コラージュに、使った色の記録を添えて書き出せます。
+連番・色の分類・HEXコードが並ぶ、標本ラベルのようなパレット。
+作品の下辺に帯として敷くことも、中央や左右の列にすることもできます。
 
 ■ 今日の色
 ルーレットを回して、今日ハントする色を決めましょう。
@@ -139,9 +140,10 @@ White / Duo / Seamless
 Sorted into Trend, Retro and Minimal so you can find one fast.
 Drag to reorder, tap to crop, pinch to zoom. Export at 1:1, 4:5 or 9:16.
 
-■ HEX palettes
-Export your collage with the HEX codes of the colours it contains — a record
-of the palette, and a design in its own right.
+■ The colour record
+Export your collage with a record of the colours in it — index, colour class
+and hex, set like a specimen label. Run it down a column, or lay it along the
+foot of the artwork as a band.
 
 ■ Today's colour
 Spin the wheel to pick the colour you're hunting today, with an optional

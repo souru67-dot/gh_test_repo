@@ -11,7 +11,10 @@ struct CollageView: View {
 
     // Mirrors Android CollageStyle (subset; ordinals match shared enums).
     @State private var layoutOrdinal: Int32 = 0      // 0 GRID / 1 VERTICAL / 2 TWO_COLUMN
-    @State private var placementOrdinal: Int32 = 1   // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY
+    // 0 NONE / 1 CENTER / 2 SIDE / 3 LEFT / 4 OVERLAY — these match the shared
+    // PalettePlacement enum. 5 (下帯) continues the sequence but is laid out on
+    // this side; see canvas(width:).
+    @State private var placementOrdinal: Int32 = 1
     @State private var spacing: CGFloat = 4          // dp-equivalent on a 360 canvas
     @State private var cornerRadius: CGFloat = 6
     @State private var borderWidth: CGFloat = 0
@@ -411,6 +414,11 @@ struct CollageView: View {
             sectionLabel("カラーパレット", icon: "paintpalette")
             Picker("パレット", selection: $placementOrdinal) {
                 Text("なし").tag(Int32(0))
+                // ハーフ and チェキ reproduce a print: their deco already owns the
+                // bottom edge, so a band there would be buried under the mat.
+                if !formatLocked {
+                    Text("下帯").tag(Int32(5))
+                }
                 Text("中央").tag(Int32(1))
                 Text("重ねる").tag(Int32(4))
                 Text("左").tag(Int32(3))
@@ -599,18 +607,30 @@ struct CollageView: View {
         // selected — the format IS the point (previewHint says so on screen).
         let photos = Array(state.orderedSelectedPhotos.prefix(templateCellCap))
         let height = width / aspect
+        // 下帯 reserves a strip along the bottom edge, so the photo grid is laid
+        // out against a shorter canvas and the band is placed underneath it.
+        // The shared module has no FOOTER case: the arithmetic is a band and a
+        // shortened height, which both platforms can reproduce exactly, and
+        // adding an enum case would mean changing Kotlin that cannot be built
+        // or tested from here. See ARCHITECTURE_iOS.md §6.
+        let footerH = placementOrdinal == footerPlacement ? height * Self.footerRatio : 0
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(photos.count),
             layoutOrdinal: layoutOrdinal,
-            placementOrdinal: placementOrdinal,
+            // The band is drawn here, so the shared geometry is asked for a
+            // plain grid with no rail eating horizontal space.
+            placementOrdinal: placementOrdinal == footerPlacement ? 0 : placementOrdinal,
             spacingFrac: Float(spacing / 360.0),
             width: Float(width),
-            height: Float(height),
+            height: Float(height - footerH),
             overlayHorizontal: overlayHorizontal,
             overlayPosFrac: Float(overlayPosFrac),
             overlayWidthFrac: Float(overlayWidthFrac)
         )
-        let layout = decodeLayout(flat)
+        var layout = decodeLayout(flat)
+        if footerH > 0 {
+            layout.palette = CGRect(x: 0, y: height - footerH, width: width, height: footerH)
+        }
 
         // Scale the tappable/editable state to whatever width we render at, so the
         // 340pt preview and the 1080px export share one code path (WYSIWYG).
@@ -668,15 +688,19 @@ struct CollageView: View {
         .overlay(alignment: .bottomTrailing) {
             // Retro film-camera date stamp (the setlog/dazz nostalgia cue) —
             // bottom-right, where every quartz camera printed it. The
-            // watermark lives bottom-left so the two never collide.
+            // watermark lives bottom-left so the two never collide. 下帯 owns
+            // the bottom edge, so both lift clear of the band rather than
+            // printing on top of a swatch.
             if dateStamp {
                 QuartzDateStamp(scale: scale)
+                    .padding(.bottom, footerInset(height))
             }
         }
         .overlay(alignment: .bottomLeading) {
             if !state.isPro {
                 watermarkPill(scale: scale)
                     .padding(10 * scale)
+                    .padding(.bottom, footerInset(height))
                     .allowsHitTesting(false)
             }
         }
@@ -816,42 +840,115 @@ struct CollageView: View {
         .padding(fs * 0.5)
     }
 
+    /// Placement ordinal for 下帯. The shared enum stops at 4 (OVERLAY); this one
+    /// is drawn on the iOS side, so the number continues the same sequence
+    /// without the Kotlin enum needing a new case.
+    private var footerPlacement: Int32 { 5 }
+    /// Height of the 下帯 band as a fraction of the canvas.
+    private static let footerRatio: CGFloat = 0.15
+
+    /// Space the 下帯 occupies along the bottom edge, so corner-anchored marks
+    /// (date stamp, watermark) clear it. Zero for every other placement.
+    private func footerInset(_ height: CGFloat) -> CGFloat {
+        placementOrdinal == footerPlacement ? height * Self.footerRatio : 0
+    }
+
+    /// One catch in the colour record.
+    private struct PaletteEntry {
+        let color: Int32
+        /// Bucket key from the shared classifier ("RED", "YELLOW_GREEN"), if the
+        /// photo has been analysed. This is the one thing a generic palette tool
+        /// cannot print — it only exists because the app classified the hunt.
+        let bucket: String?
+    }
+
+    /// The colour record — 採集票, not a swatch chart.
+    ///
+    /// A stack of equal blocks with the hex centred in each is what every colour
+    /// tool ships, so this reads the other way: the swatch keeps the mass, and
+    /// the type is a left-aligned catalogue entry — index, classification, hex —
+    /// hung off a ruler tick. Runs down a rail or across the 下帯 band; the
+    /// long/short edges swap and nothing else changes.
     private func paletteRail(_ rect: CGRect, photos: [HuntPhoto], translucent: Bool) -> some View {
-        let colors = photos.compactMap { $0.dominantColor }
-        let n = max(colors.count, 1)
-        let blockH = rect.height / CGFloat(n)
-        // Match Android CollageRenderer.drawPalette: a quiet, even-spaced serif-mono
-        // hex, sized to the block but never wider than the rail — a single centred
-        // line (the old size scaled with block height and wrapped when tall).
-        let fontSize = min(blockH * 0.14, rect.width * 0.16)
-        return VStack(spacing: 0) {
-            ForEach(Array(colors.enumerated()), id: \.offset) { idx, c in
-                ZStack {
-                    Color(packed: c).opacity(translucent ? 0.59 : 1.0)
-                    Text(hexString(c))
-                        // Serif, not monospace: the palette column is the
-                        // collage's typographic accent, and a light serif with
-                        // open tracking reads like a magazine colour credit.
-                        .font(.system(size: fontSize * 1.06, weight: .regular, design: .serif))
-                        .tracking(fontSize * 0.10)
-                        .foregroundStyle(paletteTextColor(c, translucent: translucent))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .shadow(color: translucent ? .black.opacity(0.5) : .clear, radius: 2, y: 1)
-                        .frame(width: rect.width * 0.86)
-                }
-                .frame(height: blockH)
-                .overlay(alignment: .top) {
-                    if idx > 0 {
-                        Rectangle()
-                            .fill(.black.opacity(translucent ? 0.07 : 0.12))
-                            .frame(height: 1)
-                    }
-                }
+        let entries = photos.compactMap { p in
+            p.dominantColor.map { PaletteEntry(color: $0, bucket: p.bucketKey) }
+        }
+        let n = max(entries.count, 1)
+        // A wider-than-tall rect is the 下帯: blocks run left to right.
+        let horizontal = rect.width > rect.height
+        let w = horizontal ? rect.width / CGFloat(n) : rect.width
+        let h = horizontal ? rect.height : rect.height / CGFloat(n)
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
+                paletteBlock(entry, index: idx, w: w, h: h,
+                             translucent: translucent, horizontal: horizontal, first: idx == 0)
+                    .offset(x: horizontal ? w * CGFloat(idx) : 0,
+                            y: horizontal ? 0 : h * CGFloat(idx))
             }
         }
-        .frame(width: rect.width, height: rect.height)
+        .frame(width: rect.width, height: rect.height, alignment: .topLeading)
         .offset(x: rect.minX, y: rect.minY)
+    }
+
+    private func paletteBlock(_ entry: PaletteEntry, index: Int, w: CGFloat, h: CGFloat,
+                              translucent: Bool, horizontal: Bool, first: Bool) -> some View {
+        // Sized off the short edge so a block reads the same whether it is a tall
+        // slice of a rail or a wide slice of the band, then capped by the width
+        // so a seven-character hex never runs past the block.
+        let short = min(w, h)
+        let hexSize = min(max(short * 0.15, 5), w * 0.22)
+        let tagSize = hexSize * 0.60
+        let inset = short * 0.13
+        let ink = paletteTextColor(entry.color, translucent: translucent)
+        // The entry stacks downwards — index at the top, classification and hex
+        // at the bottom — so what it needs is height, in both orientations. With
+        // many photos the blocks thin out and the record sheds detail in order of
+        // importance; the hex is the line that never goes.
+        let roomForTag = h >= hexSize * 3.2
+        let roomForIndex = h >= hexSize * 4.6
+
+        return ZStack(alignment: .bottomLeading) {
+            Color(packed: entry.color).opacity(translucent ? 0.62 : 1.0)
+
+            if roomForIndex {
+                Text(String(format: "%02d", index + 1))
+                    .font(.system(size: tagSize, weight: .medium, design: .serif))
+                    .tracking(tagSize * 0.14)
+                    .foregroundStyle(ink.opacity(0.45))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(inset)
+            }
+
+            VStack(alignment: .leading, spacing: hexSize * 0.14) {
+                if roomForTag, let bucket = entry.bucket {
+                    Text(bucket.replacingOccurrences(of: "_", with: " "))
+                        .font(.system(size: tagSize, weight: .semibold))
+                        .tracking(tagSize * 0.20)
+                        .foregroundStyle(ink.opacity(0.6))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+                Text(hexString(entry.color))
+                    .font(.system(size: hexSize, weight: .regular, design: .serif))
+                    .tracking(hexSize * 0.05)
+                    .foregroundStyle(ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
+            }
+            .shadow(color: translucent ? .black.opacity(0.45) : .clear, radius: 2, y: 1)
+            .padding(inset)
+        }
+        .frame(width: w, height: h)
+        .overlay(alignment: .topLeading) {
+            // A ruler tick, not a full rule: it marks where one catch ends and the
+            // next begins without cutting the column into separate bars.
+            if !first {
+                Rectangle()
+                    .fill(ink.opacity(translucent ? 0.22 : 0.32))
+                    .frame(width: horizontal ? 1 : w * 0.40,
+                           height: horizontal ? h * 0.40 : 1)
+            }
+        }
     }
 
     /// Mirrors Android's luminance rule: near-black ink on light swatches, off-white

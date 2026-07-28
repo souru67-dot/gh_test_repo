@@ -136,6 +136,11 @@ iOS 側は Kotlin の enum / 入れ子データクラスに触れず、**文字�
     `CGRect` 配列に変換
   - 配置は **ordinal 指定**: layout 0=GRID/1=VERTICAL/2=TWO_COLUMN、
     placement 0=NONE/1=CENTER/2=SIDE/3=LEFT/4=OVERLAY
+  - **placement 5（下帯）は iOS 側だけで組み立てます。** 共有 enum には無い値で、
+    `CollageView.canvas(width:)` が「高さを帯のぶん縮めて placement 0 で計算し、
+    下辺に帯の矩形を足す」処理をしています。計算自体は帯と減算だけなので
+    両OSで同一に再現できますが、Android を出す際は `CollageGeometry` に
+    FOOTER を足して共有側へ寄せてください（`ARCHITECTURE_iOS.md` §6）
 
 > 唯一の KMP 標準型依存は `KotlinFloatArray`（`decodeLayout` 内）。生成名が
 > フレームワーク接頭辞付き等で異なる場合は、その一箇所だけ合わせてください。
