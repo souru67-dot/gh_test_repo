@@ -1,11 +1,17 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
+import SharedColor
 
-/// グリッド — a light feed-preview (Instagram-flavoured, not a clone) that wraps the
-/// user's own picked photos so they can see how a themed 3-up feed reads. Tiles are
-/// 4:5 with 1px gutters; long-press and drag to reorder; a context menu removes one.
-/// A single "+" tile in the grid adds more photos.
+/// グリッド — a feed preview: the user's own picked photos laid out 3-up so they can
+/// see how a themed feed reads before posting. Tiles are 4:5 with 1px gutters;
+/// long-press and drag to reorder; a context menu removes one. A single "+" tile
+/// in the grid adds more photos.
+///
+/// The header reads as a social profile because that is what the preview is for,
+/// but deliberately not as any one service's: the counters are ColorHunt's own
+/// (photos staged, colours collected) rather than posts/followers/following, and
+/// the avatar carries today's hunted colour instead of a brand gradient.
 struct GridPreviewView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -34,35 +40,49 @@ struct GridPreviewView: View {
 
     // MARK: header
 
+    /// Colours the hunt has actually collected, out of the full set.
+    private var collectedColors: (found: Int, total: Int) {
+        (state.groupedByBucket.count, ColorBridge.shared.bucketKeys().count)
+    }
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 22) {
+        let colors = collectedColors
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
                 Circle()
-                    .fill(LinearGradient(
-                        colors: [Color(argb: 0xFF7C4DFF), Color(argb: 0xFFEC407A), Color(argb: 0xFFFFA726)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 76, height: 76)
+                    .fill(avatarColor)
+                    .frame(width: 64, height: 64)
+                    .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
                     .overlay(Image(systemName: "camera.fill").foregroundStyle(.white.opacity(0.9)))
-                stat("\(state.gridPhotos.count)", "投稿")
-                stat("—", "フォロワー")
-                stat("—", "フォロー中")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ColorHunt").font(.subheadline.bold()).foregroundStyle(.white)
+                    Text("集めたテーマ色でフィードを組む 🎨")
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                }
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ColorHunt").font(.subheadline.bold()).foregroundStyle(.white)
-                Text("集めたテーマ色でフィードを組む 🎨")
-                    .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+            HStack(spacing: 8) {
+                stat("\(state.gridPhotos.count)", "枚を配置")
+                stat("\(colors.found) / \(colors.total)", "色を収集")
             }
         }
         .padding(16)
     }
 
+    /// Today's hunted colour, so the avatar means something in this app instead of
+    /// repeating the brand gradient (which, on a profile-shaped header, read as
+    /// another service's).
+    private var avatarColor: Color {
+        state.todayColor.map { Color(packed: $0) } ?? Color(argb: 0xFF7C4DFF)
+    }
+
     private func stat(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 2) {
-            Text(value).font(.headline.bold()).foregroundStyle(.white)
-            Text(LocalizedStringKey(label)).font(.caption).foregroundStyle(.white.opacity(0.7))
+        HStack(spacing: 5) {
+            Text(value).font(.subheadline.bold()).foregroundStyle(.white)
+            Text(LocalizedStringKey(label))
+                .font(.caption).foregroundStyle(.white.opacity(0.7))
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(.white.opacity(0.08), in: Capsule())
     }
 
     private var tabHint: some View {

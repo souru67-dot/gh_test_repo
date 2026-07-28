@@ -101,9 +101,8 @@
 "今日のテーマ色を決めて、街で見つけよう 🎨" = "Set today's theme colour and find it around town 🎨";
 
 /* Grid */
-"投稿" = "Posts";
-"フォロワー" = "Followers";
-"フォロー中" = "Following";
+"枚を配置" = "staged";
+"色を収集" = "colours";
 "プロフィールを編集" = "Edit Profile";
 "プロフィールをシェア" = "Share Profile";
 "新規" = "New";
@@ -135,10 +134,10 @@
 "全色コンプリート！🎉" = "Collection complete! 🎉";
 
 /* v1.8 — half-frame + single-shot */
-"チェキの印画紙サイズで固定されています" = "Fixed to the instax print size";
+"チェキの印画紙サイズで固定されています" = "Fixed to the instant print size";
 "ハーフフレームの1コマ分で固定されています" = "Fixed to one half-frame exposure";
-"Pro限定テンプレート7種（ハーフ・チェキ・シームレス ほか）" = "7 Pro-only templates (Half, Instax, Seamless and more)";
-"チェキは1枚で仕上がります" = "Instax holds a single photo";
+"Pro限定テンプレート7種（ハーフ・チェキ・シームレス ほか）" = "7 Pro-only templates (Half, Instant, Seamless and more)";
+"チェキは1枚で仕上がります" = "Instant holds a single photo";
 "ハーフは2枚で1枚のフィルムになります" = "Half-frame pairs two shots on one negative";
 "ハーフ" = "Half";
 "1枚" = "Single";
@@ -147,7 +146,7 @@
 "もう一度まわす" = "Spin again";
 
 /* v1.6 — Pro boundary + persistence */
-"Pro限定テンプレート（デイログ・パステル・Y2K・チェキ・マガジン）" = "Pro-only templates (Day Log, Pastel, Y2K, Instax, Magazine)";
+"Pro限定テンプレート（デイログ・パステル・Y2K・チェキ・マガジン）" = "Pro-only templates (Day Log, Pastel, Y2K, Instant, Magazine)";
 "2160pxの高画質書き出し" = "2160px high-resolution export";
 "デバッグ切替" = "Debug toggle";
 
@@ -163,7 +162,7 @@
 
 /* v1.4 — trending collage templates */
 "4カット" = "4-Cut";
-"チェキ" = "Instax";
+"チェキ" = "Instant";
 "フォトダンプ" = "Photo Dump";
 "Y2K" = "Y2K";
 "タップでトリミング・長押しで並べ替え" = "Tap to crop · long-press to reorder";
