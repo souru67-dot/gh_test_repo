@@ -356,6 +356,20 @@ struct CollageView: View {
                 .padding(.vertical, 16)
             )
         }
+        // インスタント is one photo on a print, so the generic 2×2 grid below
+        // advertised the wrong format entirely. Show the single frame and the
+        // signature chin instead.
+        if tpl.id == "cheki" {
+            return AnyView(
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 1.5).fill(ink)
+                    Spacer(minLength: 0).frame(height: 9)
+                }
+                .padding(.horizontal, 7)
+                .padding(.top, 7)
+                .padding(.bottom, 4)
+            )
+        }
         return AnyView(HStack(spacing: gap) {
             if tpl.placement == 3 { // LEFT rail
                 Brand.gradient.frame(width: 7).clipShape(RoundedRectangle(cornerRadius: 1.5))
@@ -412,24 +426,31 @@ struct CollageView: View {
     private var paletteSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionLabel("カラーパレット", icon: "paintpalette")
-            Picker("パレット", selection: $placementOrdinal) {
-                Text("なし").tag(Int32(0))
-                // ハーフ and チェキ reproduce a print: their deco already owns the
-                // bottom edge, so a band there would be buried under the mat.
-                if !formatLocked {
-                    Text("下帯").tag(Int32(5))
+            // ハーフ and インスタント print their palette into the sheet's own
+            // margin, so there is no placement to choose — only whether the lab
+            // printed it. Offering the rail here was what let the format break.
+            if formatLocked {
+                Toggle(isOn: Binding(get: { placementOrdinal != 0 },
+                                     set: { placementOrdinal = $0 ? 1 : 0 })) {
+                    Text("カラーパレットを印字").font(.callout)
                 }
-                Text("中央").tag(Int32(1))
-                Text("重ねる").tag(Int32(4))
-                Text("左").tag(Int32(3))
-                Text("右").tag(Int32(2))
+                .tint(Color(argb: 0xFF7C4DFF))
+            } else {
+                Picker("パレット", selection: $placementOrdinal) {
+                    Text("なし").tag(Int32(0))
+                    Text("下帯").tag(Int32(5))
+                    Text("中央").tag(Int32(1))
+                    Text("重ねる").tag(Int32(4))
+                    Text("左").tag(Int32(3))
+                    Text("右").tag(Int32(2))
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             // OVERLAY (重ねる) fine-tuning: position and band width. The band is
             // always vertical — a horizontal one cut straight through the
             // photos and never produced a usable composition.
-            if placementOrdinal == 4 {
+            if placementOrdinal == 4 && !formatLocked {
                 sliderRow("帯の位置", value: $overlayPosFrac, range: 0...1)
                 sliderRow("帯の幅", value: $overlayWidthFrac, range: 0.08...0.5)
             }
@@ -613,13 +634,20 @@ struct CollageView: View {
         // shortened height, which both platforms can reproduce exactly, and
         // adding an enum case would mean changing Kotlin that cannot be built
         // or tested from here. See ARCHITECTURE_iOS.md §6.
-        let footerH = placementOrdinal == footerPlacement ? height * Self.footerRatio : 0
+        let footerH = (placementOrdinal == footerPlacement && !formatLocked)
+            ? height * Self.footerRatio : 0
         let flat = CollageBridge.shared.computeFlat(
             cellCount: Int32(photos.count),
             layoutOrdinal: layoutOrdinal,
             // The band is drawn here, so the shared geometry is asked for a
-            // plain grid with no rail eating horizontal space.
-            placementOrdinal: placementOrdinal == footerPlacement ? 0 : placementOrdinal,
+            // plain grid with no rail eating horizontal space. ハーフ and
+            // インスタント never reserve one either: a rail carved out of the
+            // canvas shifts the cells while the deco keeps drawing the rebate
+            // and the mat against the full sheet, so the frames and their
+            // furniture come apart. Their palette is printed into the sheet's
+            // own margin instead — see formatPalette.
+            placementOrdinal: (placementOrdinal == footerPlacement || formatLocked)
+                ? 0 : placementOrdinal,
             spacingFrac: Float(spacing / 360.0),
             width: Float(width),
             height: Float(height - footerH),
@@ -685,6 +713,13 @@ struct CollageView: View {
                              scale: scale, matWidth: spacing * scale)
                 .allowsHitTesting(false)
         }
+        // Above the deco, because the margin it prints into is drawn by the deco.
+        .overlay(alignment: .bottom) {
+            if formatPaletteActive {
+                formatPalette(scale: scale, photos: photos)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             // Retro film-camera date stamp (the setlog/dazz nostalgia cue) —
             // bottom-right, where every quartz camera printed it. The
@@ -693,14 +728,14 @@ struct CollageView: View {
             // printing on top of a swatch.
             if dateStamp {
                 QuartzDateStamp(scale: scale)
-                    .padding(.bottom, footerInset(height))
+                    .padding(.bottom, footerInset(height, scale: scale))
             }
         }
         .overlay(alignment: .bottomLeading) {
             if !state.isPro {
                 watermarkPill(scale: scale)
                     .padding(10 * scale)
-                    .padding(.bottom, footerInset(height))
+                    .padding(.bottom, footerInset(height, scale: scale))
                     .allowsHitTesting(false)
             }
         }
@@ -847,10 +882,18 @@ struct CollageView: View {
     /// Height of the 下帯 band as a fraction of the canvas.
     private static let footerRatio: CGFloat = 0.15
 
-    /// Space the 下帯 occupies along the bottom edge, so corner-anchored marks
-    /// (date stamp, watermark) clear it. Zero for every other placement.
-    private func footerInset(_ height: CGFloat) -> CGFloat {
-        placementOrdinal == footerPlacement ? height * Self.footerRatio : 0
+    /// Space something already owns along the bottom edge, so corner-anchored
+    /// marks (date stamp, watermark) clear it: the 下帯 band, or ハーフ's caption
+    /// strip. インスタント needs none — its date is drawn by the deco inside the
+    /// chin, and the palette sits at the opposite end of the same chin.
+    private func footerInset(_ height: CGFloat, scale: CGFloat) -> CGFloat {
+        if placementOrdinal == footerPlacement && !formatLocked {
+            return height * Self.footerRatio
+        }
+        if formatPaletteActive && appliedTemplateID == "half" {
+            return 23 * scale
+        }
+        return 0
     }
 
     /// One catch in the colour record.
@@ -938,6 +981,92 @@ struct CollageView: View {
                            height: horizontal ? h * 0.40 : 1)
             }
         }
+    }
+
+    /// True when a format preset should print its palette into its own margin.
+    private var formatPaletteActive: Bool { formatLocked && placementOrdinal != 0 }
+
+    /// ハーフ and インスタント reproduce a physical sheet, so they get their own
+    /// palette rather than the shared rail. A lab prints the reference in the
+    /// margin it already has — the chin of a print, the foot of a film sheet —
+    /// and that margin is drawn by the deco on top of the photos, so nothing
+    /// about the frames' geometry has to move to make room.
+    @ViewBuilder
+    private func formatPalette(scale: CGFloat, photos: [HuntPhoto]) -> some View {
+        let entries = photos.compactMap { p in
+            p.dominantColor.map { PaletteEntry(color: $0, bucket: p.bucketKey) }
+        }
+        if !entries.isEmpty {
+            if appliedTemplateID == "cheki" {
+                chekiPalette(entries, scale: scale)
+            } else if appliedTemplateID == "half" {
+                halfPalette(entries, scale: scale)
+            }
+        }
+    }
+
+    /// インスタント: the chin is already there and already holds the date, so the
+    /// swatch and its reading sit at the other end of it. Nothing moves.
+    private func chekiPalette(_ entries: [PaletteEntry], scale: CGFloat) -> some View {
+        let mat = max(spacing * scale, 14 * scale)
+        let chin = max(mat * 2.4, 34 * scale)
+        let chip = chin * 0.30
+        return HStack(spacing: chip * 0.46) {
+            RoundedRectangle(cornerRadius: 1 * scale)
+                .fill(Color(packed: entries[0].color))
+                .frame(width: chip, height: chip)
+            VStack(alignment: .leading, spacing: 0) {
+                if let bucket = entries[0].bucket {
+                    Text(bucket.replacingOccurrences(of: "_", with: " "))
+                        .font(.system(size: chip * 0.34, weight: .semibold))
+                        .tracking(chip * 0.05)
+                        .foregroundStyle(Color(red: 0.60, green: 0.57, blue: 0.52))
+                }
+                Text(hexString(entries[0].color))
+                    .font(.system(size: chip * 0.50, weight: .regular, design: .serif))
+                    .foregroundStyle(Color(red: 0.38, green: 0.36, blue: 0.32))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+        }
+        .frame(height: chin)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 15 * scale)
+    }
+
+    /// ハーフ: a strip along the foot of the sheet, in the rebate's own black, so
+    /// it reads as the lab's caption margin rather than a rail bolted on. One
+    /// reading per frame, each aligned under the frame it came from.
+    private func halfPalette(_ entries: [PaletteEntry], scale: CGFloat) -> some View {
+        let bar = 21 * scale
+        let chip = bar * 0.38
+        return HStack(spacing: 0) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
+                HStack(spacing: chip * 0.5) {
+                    RoundedRectangle(cornerRadius: 1 * scale)
+                        .fill(Color(packed: entry.color))
+                        .frame(width: chip, height: chip)
+                    Text(hexString(entry.color))
+                        .font(.system(size: bar * 0.36, weight: .regular, design: .serif))
+                        .foregroundStyle(.white.opacity(0.88))
+                    if let bucket = entry.bucket {
+                        Text(bucket.replacingOccurrences(of: "_", with: " "))
+                            .font(.system(size: bar * 0.25, weight: .semibold))
+                            .tracking(bar * 0.04)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .frame(maxWidth: .infinity, alignment: idx == 0 ? .leading : .trailing)
+                .padding(.horizontal, 10 * scale)
+            }
+        }
+        .frame(height: bar)
+        .frame(maxWidth: .infinity)
+        .background(Color(red: 0.07, green: 0.07, blue: 0.07))
+        // Sit inside the print's own edge, which the deco strokes at 2pt.
+        .padding(2 * scale)
     }
 
     /// Near-black ink on light swatches, off-white on dark ones (always off-white

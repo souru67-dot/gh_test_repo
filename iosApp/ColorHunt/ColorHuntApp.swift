@@ -113,8 +113,11 @@ struct RootTabView: View {
                     .tag(AppTab.collage)
                 // Never actually shown (selecting it opens the camera and
                 // bounces back), but it is the app base colour rather than
-                // clear so a stray frame reads as the app, not a void.
-                Brand.base.ignoresSafeArea()
+                // clear so a stray frame reads as the app, not a void. It does
+                // NOT ignore the safe area: a page that bleeds past its bounds
+                // makes the TabView renegotiate its own layout, and the raised
+                // button used to be anchored to that layout.
+                Brand.base
                     .tabItem { Text(verbatim: "") }
                     .tag(AppTab.camera)
                 TodayColorView()
@@ -124,6 +127,14 @@ struct RootTabView: View {
                     .tabItem { Label("マップ", systemImage: "map") }
                     .tag(AppTab.map)
             }
+            // The button hangs off the TabView's bottom edge, so it goes wherever
+            // that edge goes. Pinning the TabView to fill its container means a
+            // frame where it would otherwise be measured short — mid-transition,
+            // or while a page renegotiates the safe area — can no longer drop the
+            // button into the middle of the screen. The keyboard is told to leave
+            // the bottom edge alone for the same reason.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
             .overlay(alignment: .bottom) { cameraButton }
 
             if !onboarded {
