@@ -1,7 +1,11 @@
-# ColorHunt iOS ソースコード全貌ガイド（Swift学習用）
+# ColorHunt iOS 構成リファレンス
 
-このドキュメントは、Swift をこれから学ぶあなたが **自分のアプリのコードを教材に**
-できるように書いた「読む順番つき」のツアーです。
+**どのファイルに何があるか**を引くためのドキュメントです。
+「なぜこの設計なのか」「Swift の文法」は学習シリーズにあります。
+
+> 📖 **Swift を学びたい場合は [learn/](learn/) から始めてください。**
+> このアプリのコードを教材に、文法 → SwiftUI → 非同期 → 設計 →
+> コードの追い方、の順で読める5本セットです。
 
 ---
 
@@ -107,33 +111,33 @@ let layout = decodeLayout(flat)                    // FloatArray → [CGRect]
 - ルーレットは**毎フレーム自分で値を更新**（`Task` + 16ms sleep）。
   「色相が虹を巡る」ような補間できない動きはこちら。使い分けを体感できます。
 
-## 5. Swift文法ミニ辞典（このコードに出る順）
+## 5. Swift / SwiftUI を学ぶには
 
-| 記法 | 意味 |
+このドキュメントには文法の解説はありません。**[learn/](learn/) にあります。**
+
+| | 内容 |
 |---|---|
-| `let` / `var` | 定数 / 変数（まず `let`、必要な時だけ `var`） |
-| `photo.dominantColor?` | Optional。「無いかもしれない値」。`if let c = ...` で取り出す |
-| `{ $0.bucketKey != nil }` | クロージャ（無名関数）。`$0` は第1引数 |
-| `some View` | 「何かの View を返す」— SwiftUI の戻り値はほぼこれ |
-| `@State` | その View 専用のミニ状態。変わると再描画 |
-| `@EnvironmentObject` | 祖先から注入される共有状態（= AppState） |
-| `guard let x else { return }` | 早期リターン。ネストを浅く保つ定石 |
-| `extension` | 既存型に機能を後付け（`Color(argb:)` など） |
+| [learn/01-swift-basics.md](learn/01-swift-basics.md) | 文法。`let`/`var`・オプショナル・struct/class・クロージャ |
+| [learn/02-swiftui.md](learn/02-swiftui.md) | View・状態管理の4記号・モディファイア・レイアウト |
+| [learn/03-concurrency.md](learn/03-concurrency.md) | `async/await`・`Task`・`@MainActor`・デバウンス |
+| [learn/04-architecture.md](learn/04-architecture.md) | **なぜこの設計なのか**と、現状の弱点 |
+| [learn/05-code-tour.md](learn/05-code-tour.md) | 実際の処理を行番号で追う練習 |
 
-## 6. 学習ロードマップ（このコードで）
+## 6. 既知の設計上の負債
 
-1. **1週目**: `TodayColorView` を読む→数値をいじって挙動を見る
-   （ホイール太さ・スピン時間など即結果が見えて楽しい）
-2. **2週目**: `HuntView` にミニ機能を足す（例: 枚数バッジの色変更→
-   お気に入りマーク追加）
-3. **3週目**: `AppState` に状態を1つ足して画面に反映
-   （例: 最後にハントした日付を保存して表示）
-4. 副読本: Apple公式「SwiftUI Tutorials」(無料) と
-   Hacking with Swift「100 Days of SwiftUI」(無料) が本コードと相性◎
+v1.0 時点で認識している弱点です。詳細と理由は
+[learn/04-architecture.md](learn/04-architecture.md) §4-7 に書いています。
+
+| 項目 | 内容 | 対応時期 |
+|---|---|---|
+| **写真の常駐メモリ** | `HuntPhoto` が `UIImage` を保持。200枚で900MB規模 | v1.1 でサムネイル分離。v1.0 は実測でゲート（`IOS_LAUNCH_GUIDE.md` §3.4） |
+| `CollageView.swift` 1625行 | プレビュー・編集・書き出し・課金UI・テンプレ定義が同居 | テンプレ定義の分離から |
+| Swift 側の自動テストが無い | 色分類は Kotlin 側に21件あるが、`AppState` は未テスト | 重複排除と保存/読込から |
+| `.xcodeproj` が未管理 | 署名設定・権限文言・アイコン割り当てが Mac 上のみ | v1.0 提出後にコミット |
 
 ## 7. 将来の伸びしろ（設計済みの余白）
 
-- **永続化**: 現在は起動中のみ保持。`SwiftData`(iOS17+) か `PHAsset` ID保存で
-  再起動復元が次の大型テーマ
 - **Liquid Glass**: iOS 26 では `#available` ガードでガラス質UIを追加予定
+  （コードは iOS 16 フォールバック前提で設計済み）
 - **ウィジェット**: 「今日の色」はWidgetKitと相性抜群（サブスク特典候補）
+- **サムネイル分離**: 上記の負債解消と同時に、一覧のスクロールも軽くなる

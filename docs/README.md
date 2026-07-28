@@ -25,11 +25,28 @@
 
 ---
 
+## 📖 Swift を学びたい
+
+**[learn/](learn/)** — ColorHunt のコードを教材にした学習シリーズ（全5本）。
+一般的な入門書ではなく、**例文はすべてあなたのアプリの実コード**です。
+
+| # | ドキュメント | 何が分かるか | 目安 |
+|---|---|---|---|
+| 1 | [learn/01-swift-basics.md](learn/01-swift-basics.md) | Swift の文法 | 3〜4時間 |
+| 2 | [learn/02-swiftui.md](learn/02-swiftui.md) | 画面の作り方・状態管理 | 3〜4時間 |
+| 3 | [learn/03-concurrency.md](learn/03-concurrency.md) | 非同期処理（固まらない仕組み） | 2時間 |
+| 4 | [learn/04-architecture.md](learn/04-architecture.md) | **なぜこの設計なのか**・弱点 | 2時間 |
+| 5 | [learn/05-code-tour.md](learn/05-code-tour.md) | 処理を追う練習 | 2時間 |
+
+1日1本、5日で一周が目安です。→ **[learn/README.md](learn/README.md) から開始**
+
+---
+
 ## 🔍 中身を知りたい
 
 | ドキュメント | 内容 |
 |---|---|
-| [ARCHITECTURE_iOS.md](ARCHITECTURE_iOS.md) | iOS 側の設計。画面構成、状態管理、KMP共有モジュールとの境界 |
+| [ARCHITECTURE_iOS.md](ARCHITECTURE_iOS.md) | どのファイルに何があるかの**リファレンス**。データの流れ、既知の負債 |
 | [../iosApp/README.md](../iosApp/README.md) | iOS のビルド手順、Xcode の配線、実装済み機能の一覧 |
 | [../iosApp/AppIcon/README.md](../iosApp/AppIcon/README.md) | アイコンの生成方法（Light / Dark / Tinted） |
 
