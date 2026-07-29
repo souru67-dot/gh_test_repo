@@ -15,7 +15,16 @@ import SharedColor
 struct GridPreviewView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
+    /// The tile the finger lifted, and whether a real drop session ever followed.
+    ///
+    /// Both are needed because `onDrag`'s closure runs the instant the tile is
+    /// lifted — before iOS has decided whether this long-press becomes a drag or
+    /// the context menu — so `dragging` alone marked a tile as picked up even when
+    /// the gesture went on to open the menu, and no drop delegate ever ran to
+    /// clear it. The tile then kept its 0.35 opacity for good. Only a live
+    /// session dims a tile, so a lift that goes nowhere leaves no trace.
     @State private var dragging: Int?
+    @State private var dragLive = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
@@ -29,6 +38,11 @@ struct GridPreviewView: View {
                 }
             }
             .background(Color.black)
+            // Backstop for a reorder drag released anywhere that is not a tile.
+            // It sits on the whole screen rather than on the grid: releasing on
+            // the black space below the last row missed a grid-sized target
+            // entirely, so nothing ran to end the session.
+            .onDrop(of: [.text], delegate: ReorderCancelDelegate(current: $dragging, live: $dragLive))
             .navigationTitle("グリッド")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.black, for: .navigationBar)
@@ -106,11 +120,6 @@ struct GridPreviewView: View {
             addTile
         }
         .padding(.top, 2)
-        // A drag that ends between tiles, on the "+" tile, or off the grid never
-        // reaches a tile's own drop target, so `dragging` stayed set: the tile
-        // held its 0.35 opacity and the next long-press picked up mid-gesture.
-        // This catches those and puts the grid back to rest.
-        .onDrop(of: [.text], delegate: ReorderCancelDelegate(current: $dragging))
     }
 
     private func tile(_ image: UIImage, index: Int) -> some View {
@@ -122,17 +131,22 @@ struct GridPreviewView: View {
                     .scaledToFill()
             }
             .clipped()
-            .opacity(dragging == index ? 0.35 : 1)
+            .opacity(dragging == index && dragLive ? 0.35 : 1)
             .onDrag {
                 dragging = index
                 return NSItemProvider(object: String(index) as NSString)
             }
             .onDrop(
                 of: [.text],
-                delegate: ReorderDropDelegate(item: index, items: $state.gridPhotos, current: $dragging)
+                delegate: ReorderDropDelegate(item: index, items: $state.gridPhotos,
+                                              current: $dragging, live: $dragLive)
             )
             .contextMenu {
                 Button(role: .destructive) {
+                    // Reaching the menu proves the long-press was not a drag, and
+                    // the removal shifts every index after this one anyway.
+                    dragging = nil
+                    dragLive = false
                     state.gridPhotos.remove(at: index)
                 } label: {
                     Label("削除", systemImage: "trash")
@@ -171,14 +185,18 @@ struct GridPreviewView: View {
 }
 
 /// Live reorder-on-hover for any array, driven through a Binding so it works on
-/// iOS 16 (no `MainActor.assumeIsolated`, which is iOS 17+). Reused by the Grid
-/// tiles and the collage cells.
+/// iOS 16 (no `MainActor.assumeIsolated`, which is iOS 17+).
+///
+/// `live` is the proof that a drop session really started: the picked-up index is
+/// set optimistically by `onDrag`, and only the events below can confirm it.
 struct ReorderDropDelegate<Item>: DropDelegate {
     let item: Int
     let items: Binding<[Item]>
     let current: Binding<Int?>
+    let live: Binding<Bool>
 
     func dropEntered(info: DropInfo) {
+        begin()
         guard let from = current.wrappedValue, from != item,
               items.wrappedValue.indices.contains(from) else { return }
         var arr = items.wrappedValue
@@ -188,27 +206,43 @@ struct ReorderDropDelegate<Item>: DropDelegate {
         current.wrappedValue = item
     }
 
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        begin()
+        return DropProposal(operation: .move)
+    }
 
     func performDrop(info: DropInfo) -> Bool {
         current.wrappedValue = nil
+        live.wrappedValue = false
         return true
     }
 
     func dropExited(info: DropInfo) {}
+
+    /// `dropUpdated` fires on every touch move, so only write on a real change —
+    /// a @State write invalidates the view whether or not the value differs.
+    private func begin() {
+        if !live.wrappedValue { live.wrappedValue = true }
+    }
 }
 
 /// Backstop for a reorder drag released anywhere that is not a tile. Accepts the
-/// drop so the item does not fly back, and clears the in-flight index.
+/// drop so the item does not fly back, and ends the session.
 struct ReorderCancelDelegate: DropDelegate {
     let current: Binding<Int?>
+    let live: Binding<Bool>
 
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 
     func performDrop(info: DropInfo) -> Bool {
         current.wrappedValue = nil
+        live.wrappedValue = false
         return true
     }
 
-    func dropExited(info: DropInfo) { current.wrappedValue = nil }
+    /// Only the highlight is dropped here, not the picked-up index: this target
+    /// wraps the tiles, and if it were to fire as a tile takes over the session
+    /// clearing `current` would break the reorder mid-drag. A drag that comes
+    /// back on to a tile simply lights up again.
+    func dropExited(info: DropInfo) { live.wrappedValue = false }
 }
