@@ -280,7 +280,8 @@ Target Membership に `ColorHunt` をチェック）。Copy Bundle Resources に
 - これが無いと、アップロード時に **ITMS-91053 (Missing API declaration)** で
   弾かれます（2024年5月以降の必須要件）
 - 宣言している内容: `UserDefaults` の使用（理由コード `CA92.1` = 自App内のみで
-  読み書き）。`@AppStorage` 5箇所＋`UserDefaults.standard` 2箇所が該当します
+  読み書き）。`@AppStorage` 5箇所＋`UserDefaults.standard` 4箇所（Pro判定＋
+  コラージュ設定の保存/復元）が該当します
 - トラッキング＝なし、収集データ＝なし、で宣言しています
 
 ---

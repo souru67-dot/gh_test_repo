@@ -58,6 +58,22 @@
 （選択・並び順・今日の色・グリッドも同じ manifest で往復）
 ```
 
+**コラージュ設定だけは別の箱**。テンプレ/レイアウト/配置/余白/角丸/枠線/背景/
+HEXチップ/日付スタンプ/SNSサイズ/セルのトリミングは AppState ではなく
+CollageView の `@State` にあり、`@State` はプロセスが死ぬと消える——キルして
+起動し直すとコラージュだけ初期値に戻っていたのはこれが理由。いまは
+`CollageSettings`（1個の Codable な値）にまとめ、`CollageSettingsStore` が
+UserDefaults の `collage_settings_v1` へ JSON で往復させる:
+
+- **保存**: `body` の `onChange(of: settingsSnapshot)` が1本だけ。全設定を1つの
+  Equatable な値に畳んであるので、コントロールを増やしても保存側は触らない。
+  消えた写真のトリミングはこの時に捨てる（無限に太らせない）。
+- **復元**: `CollageView.init()` で `_spacing = State(initialValue:)` の形に
+  流し込む。onAppear で復元すると1フレームだけデフォルトが見えるため。
+- 復元したテンプレIDは `validTemplateID` で現行11種に照合してから使う。
+- スキーマを変えるときは**キーの `_v1` を上げる**。合成デコーダは全フィールドを
+  要求するので、増減させると古いJSONが読めなくなる（1回だけ初期値に戻る）。
+
 **Pro の境界**（`CollageTemplateVM.isPro`）: 無料=拡散の主役（4カット・フレーム
 モード・基本6テンプレ・1080px+透かし）。Pro=デイログ/パステル/Y2K/チェキ/
 マガジン＋透かし削除＋2160px。Proテンプレは適用（試用）自由で、保存/共有の
@@ -131,11 +147,12 @@ v1.0 時点で認識している弱点です。詳細と理由は
 | 項目 | 内容 | 対応時期 |
 |---|---|---|
 | **写真の常駐メモリ** | `HuntPhoto` が `UIImage` を保持。200枚で900MB規模 | v1.1 でサムネイル分離。v1.0 は実測でゲート（`IOS_LAUNCH_GUIDE.md` §3.4） |
-| `CollageView.swift` 1625行 | プレビュー・編集・書き出し・課金UI・テンプレ定義が同居 | テンプレ定義の分離から |
+| `CollageView.swift` 2058行 | プレビュー・編集・書き出し・課金UI・テンプレ定義・設定の保存が同居 | テンプレ定義の分離から |
 | Swift 側の自動テストが無い | 色分類は Kotlin 側に21件あるが、`AppState` は未テスト | 重複排除と保存/読込から |
 | `.xcodeproj` が未管理 | 署名設定・権限文言・アイコン割り当てが Mac 上のみ | v1.0 提出後にコミット |
 | **パレット配置「下帯」が iOS 専用** | 共有 `CollageGeometry` に FOOTER が無く、`CollageView.canvas(width:)` が高さを縮めて帯を足している。計算は帯＋減算のみで両OS同一に再現可能だが、共有されていない | Android 提出前に `CollageGeometry` へ FOOTER を追加し、レンダラーも新デザインへ移植 |
 | **パレットの意匠が iOS のみ新設計** | iOS は「採集票」（分類名＋HEXを左揃え・下端そろえ、区切りは幅40%の目盛り）。さらに ハーフ／インスタント は**レールを使わず紙の余白に印字**（`formatPalette`）。Android の `CollageRenderer.drawPalette` は旧「等分ブロック＋HEX中央寄せ」のままで、**フォーマット固定テンプレでレールを敷くと装飾とずれる不具合も残っている** | Android 提出前に移植 |
+| **コラージュ設定の保存が iOS のみ** | iOS は `CollageSettings` + UserDefaults で再起動後も復元。Android の `CollageStyle` は ViewModel 内に持つだけで、プロセス終了で初期化される（TEST_PLAN §既知の制限のまま） | Android 提出前に DataStore へ同じ形で移植 |
 
 ## 7. 将来の伸びしろ（設計済みの余白）
 

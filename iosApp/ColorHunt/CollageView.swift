@@ -52,6 +52,52 @@ struct CollageView: View {
     @State private var saving = false
     @State private var saveDone = false
 
+    /// @State does not survive the process, so every setting above used to come
+    /// back at its default after the app was killed — the collage the user had
+    /// built was gone. Seed them from the last saved snapshot here, in init, so
+    /// the restored values are already in place for the first frame (restoring
+    /// in onAppear would render one frame of defaults first).
+    init() {
+        let saved = CollageSettingsStore.load()
+        _layoutOrdinal = State(initialValue: saved.layout)
+        _placementOrdinal = State(initialValue: saved.placement)
+        _spacing = State(initialValue: saved.spacing)
+        _cornerRadius = State(initialValue: saved.cornerRadius)
+        _borderWidth = State(initialValue: saved.borderWidth)
+        _borderColor = State(initialValue: saved.borderColor)
+        _aspect = State(initialValue: saved.aspect)
+        _background = State(initialValue: saved.background)
+        _bgFollowsTheme = State(initialValue: saved.bgFollowsTheme)
+        _hexOverlay = State(initialValue: saved.hexOverlay)
+        _dateStamp = State(initialValue: saved.dateStamp)
+        _overlayPosFrac = State(initialValue: saved.overlayPosFrac)
+        _overlayWidthFrac = State(initialValue: saved.overlayWidthFrac)
+        _appliedTemplateID = State(initialValue: saved.validTemplateID)
+        _focals = State(initialValue: saved.focals)
+    }
+
+    /// Everything the panel can change, gathered into one Equatable value so a
+    /// single onChange in `body` covers every control.
+    private var settingsSnapshot: CollageSettings {
+        CollageSettings(
+            layout: layoutOrdinal,
+            placement: placementOrdinal,
+            spacing: spacing,
+            cornerRadius: cornerRadius,
+            borderWidth: borderWidth,
+            borderColor: borderColor,
+            aspect: aspect,
+            background: background,
+            bgFollowsTheme: bgFollowsTheme,
+            hexOverlay: hexOverlay,
+            dateStamp: dateStamp,
+            overlayPosFrac: overlayPosFrac,
+            overlayWidthFrac: overlayWidthFrac,
+            templateID: appliedTemplateID,
+            focals: focals
+        )
+    }
+
     private static let swatches: [Int64] = [
         0xFFFFFFFF, 0xFF000000, 0xFFF5F5F5, 0xFF212121,
         0xFF7C4DFF, 0xFF26C6DA, 0xFFEC407A, 0xFFFFC107,
@@ -79,6 +125,14 @@ struct CollageView: View {
             .onAppear { applyPendingTemplate() }
             .onChange(of: state.pendingCollageTemplateID) { _ in
                 applyPendingTemplate()
+            }
+            .onChange(of: settingsSnapshot) { snapshot in
+                var toSave = snapshot
+                // Crops are keyed by photo, and deleting a photo leaves its entry
+                // behind; drop the orphans so the blob cannot grow without bound.
+                let live = Set(state.photos.map(\.id))
+                toSave.focals = toSave.focals.filter { live.contains($0.key) }
+                CollageSettingsStore.save(toSave)
             }
         }
         .sheet(item: $sharePayload) { payload in
@@ -1293,11 +1347,67 @@ struct CollageView: View {
 /// A cell's crop window — normalised focal point (0..1, 0.5 = centre) + zoom.
 /// Mirrors the shared `FocalPoint`, kept as plain Swift so no nested Kotlin type
 /// has to cross the ObjC bridge.
-struct CellFocal: Equatable {
+struct CellFocal: Equatable, Codable {
     var x: CGFloat = 0.5
     var y: CGFloat = 0.5
     var scale: CGFloat = 1
     static let maxScale: CGFloat = 4
+}
+
+/// Every user-tunable collage setting in one value. The panel holds these as
+/// @State — fine while the app is running, gone the moment it is killed — so the
+/// whole set is snapshotted here and written to UserDefaults on every change.
+private struct CollageSettings: Equatable, Codable {
+    var layout: Int32 = 0
+    var placement: Int32 = 1
+    var spacing: CGFloat = 4
+    var cornerRadius: CGFloat = 6
+    var borderWidth: CGFloat = 0
+    var borderColor: Int64 = 0xFFFFFFFF
+    var aspect: CGFloat = 4.0 / 5.0
+    var background: Int64 = 0xFF0E0E12
+    var bgFollowsTheme: Bool = true
+    var hexOverlay: Bool = false
+    var dateStamp: Bool = false
+    var overlayPosFrac: CGFloat = 0.5
+    var overlayWidthFrac: CGFloat = 0.16
+    var templateID: String?
+    var focals: [UUID: CellFocal] = [:]
+
+    /// A preset that has since been renamed or dropped would leave the panel
+    /// pointing at nothing (and `formatLocked` guessing), so only a template the
+    /// current build still ships is restored.
+    var validTemplateID: String? {
+        guard let templateID,
+              CollageTemplateVM.all.contains(where: { $0.id == templateID }) else { return nil }
+        return templateID
+    }
+}
+
+/// UserDefaults-backed store for the collage panel.
+///
+/// Deliberately stateless: SwiftUI re-creates `CollageView` on every parent body
+/// pass, so `load()` runs often — but it is a small keyed read plus a ~300-byte
+/// decode, and holding no cache keeps it free of shared mutable state.
+///
+/// The key is versioned because the synthesised decoder requires every field: if
+/// this struct ever gains or loses one, bump `key` instead of shipping a blob the
+/// next build cannot read (settings fall back to defaults once, rather than the
+/// decode failing silently on every launch).
+private enum CollageSettingsStore {
+    private static let key = "collage_settings_v1"
+
+    static func load() -> CollageSettings {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decoded = try? JSONDecoder().decode(CollageSettings.self, from: data)
+        else { return CollageSettings() }
+        return decoded
+    }
+
+    static func save(_ settings: CollageSettings) {
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
 }
 
 /// Carries the rendered collage into the share sheet, so the sheet can never be

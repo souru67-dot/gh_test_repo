@@ -29,9 +29,9 @@
 			<!--
 			  @AppStorage for onboarding state, the Today's Colour reminder
 			  settings and the hunt counter, plus UserDefaults directly for
-			  the Pro entitlement flag. All of it is read and written by this
-			  app only — never shared through an App Group — which is exactly
-			  what reason CA92.1 covers.
+			  the Pro entitlement flag and the saved collage settings. All of
+			  it is read and written by this app only — never shared through
+			  an App Group — which is exactly what reason CA92.1 covers.
 			-->
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
