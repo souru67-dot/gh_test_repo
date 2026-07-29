@@ -39,8 +39,11 @@ struct CollageView: View {
     // Long-press drag reorder state: picked-up cell and current drop target.
     @State private var dragCell: Int?
     @State private var dragTarget: Int?
-    @State private var shareImage: UIImage?
-    @State private var showShare = false
+    /// Wrapping the image in an Identifiable and presenting with sheet(item:)
+    /// rather than sheet(isPresented:): the latter reads its content while the
+    /// image is still nil on the first tap — both were set in the same runloop —
+    /// so the first share opened an empty sheet and only later taps worked.
+    @State private var sharePayload: SharePayload?
     @State private var showPaywall = false
     @State private var saving = false
     @State private var saveDone = false
@@ -74,10 +77,8 @@ struct CollageView: View {
                 applyPendingTemplate()
             }
         }
-        .sheet(isPresented: $showShare) {
-            if let shareImage {
-                ActivityView(items: [shareImage])
-            }
+        .sheet(item: $sharePayload) { payload in
+            ActivityView(items: [payload.image])
         }
         .sheet(item: $editTarget) { target in
             if let photo = state.photos.first(where: { $0.id == target.photoID }) {
@@ -676,7 +677,12 @@ struct CollageView: View {
                              corner: cornerRadius * scale, border: borderWidth * scale)
                         .overlay(alignment: .bottomLeading) {
                             if hexOverlay, let c = photo.dominantColor {
-                                hexChip(c, cellWidth: r.width)
+                                hexChip(c, cellWidth: r.width, scale: scale)
+                                    // インスタント's mat and chin are drawn over the
+                                    // cell, so a chip on the cell's own bottom edge
+                                    // sat underneath them and the toggle looked
+                                    // dead. Lift it into the visible photo.
+                                    .padding(.bottom, hexChipBottomInset(scale: scale))
                                     .allowsHitTesting(false)
                             }
                         }
@@ -858,11 +864,15 @@ struct CollageView: View {
     }
 
     /// A small dot + HEX pill on the cell's bottom-left (Pro "HEX overlay" look).
-    private func hexChip(_ packed: Int32, cellWidth: CGFloat) -> some View {
-        let fs = min(max(cellWidth * 0.075, 6), 11)
+    private func hexChip(_ packed: Int32, cellWidth: CGFloat, scale: CGFloat) -> some View {
+        // The clamps have to travel with the render scale. Fixed 6...11 points
+        // were sized for the 340pt preview, so the same chip came out 11px tall
+        // in a 1080px export — present, but far too small to read, which looked
+        // exactly like the toggle doing nothing on save.
+        let fs = min(max(cellWidth * 0.075, 6 * scale), 11 * scale)
         return HStack(spacing: fs * 0.4) {
             Circle().fill(Color(packed: packed))
-                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 0.5))
+                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: max(0.5 * scale, 0.5)))
                 .frame(width: fs * 0.95, height: fs * 0.95)
             Text(hexString(packed))
                 .font(.system(size: fs, design: .serif))
@@ -873,6 +883,22 @@ struct CollageView: View {
         .padding(.vertical, fs * 0.32)
         .background(.black.opacity(0.45), in: Capsule())
         .padding(fs * 0.5)
+    }
+
+    /// How much of a cell's bottom edge the format deco covers, so a HEX chip
+    /// placed there still lands on the photo. インスタント's mat runs all round
+    /// with a deep chin at the foot; ハーフ has only its thin print edge plus,
+    /// when the palette is printed, the caption strip.
+    private func hexChipBottomInset(scale: CGFloat) -> CGFloat {
+        switch appliedTemplateID {
+        case "cheki":
+            let mat = max(spacing * scale, 14 * scale)
+            return max(mat * 2.4, 34 * scale)
+        case "half":
+            return footerInset(0, scale: scale) + 2 * scale
+        default:
+            return 0
+        }
     }
 
     /// Placement ordinal for 下帯. The shared enum stops at 4 (OVERLAY); this one
@@ -1107,8 +1133,7 @@ struct CollageView: View {
         }
         // Share assist parity: hashtag caption on the pasteboard, paste-and-go.
         UIPasteboard.general.string = "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt"
-        shareImage = render()
-        showShare = shareImage != nil
+        if let image = render() { sharePayload = SharePayload(image: image) }
     }
 
     /// Save with real feedback: spinner while writing, success haptic + toast when
@@ -1205,6 +1230,13 @@ struct CellFocal: Equatable {
     static let maxScale: CGFloat = 4
 }
 
+/// Carries the rendered collage into the share sheet, so the sheet can never be
+/// presented without one.
+struct SharePayload: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
 /// Identifies which cell the crop editor is editing.
 struct EditTarget: Identifiable {
     let id = UUID()
@@ -1250,8 +1282,14 @@ struct CollageTemplateVM: Identifiable {
         // No date by default: a photobooth strip comes out clean, and the
         // quartz imprint belongs to the film presets. The collage's stamp
         // toggle can still add one.
-        .init(id: "fourcut", label: "4カット", category: .trend, aspect: 0.36, layout: 1,
-              placement: 0, spacing: 12, corner: 0, background: 0xFFFFFFFF,
+        // 9:16 rather than a photo booth's true 1:2.8 strip. That ratio is the
+        // format, but a feed shrinks anything taller than 4:5 to a sliver, and
+        // this preset exists to be posted. 9:16 is the story/reel frame, so the
+        // strip fills the screen it actually gets shared on. Spacing comes down
+        // with it so the four frames keep some height. The camera's frame guide
+        // reads the same aspect, so it follows automatically.
+        .init(id: "fourcut", label: "4カット", category: .trend, aspect: 9.0 / 16.0, layout: 1,
+              placement: 0, spacing: 7, corner: 0, background: 0xFFFFFFFF,
               hexOverlay: false, dateStamp: false, isPro: false),
         .init(id: "daylog", label: "デイログ", category: .trend, aspect: 4.0 / 5.0, layout: 0,
               placement: 0, spacing: 12, corner: 10, background: 0xFFF6F0E4,

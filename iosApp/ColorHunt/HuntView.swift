@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Photos
 import SharedColor
 
 /// ハント — pick photos, auto-sort by dominant colour (shared KMP classifier),
@@ -10,6 +11,22 @@ struct HuntView: View {
     @State private var showGrid = false
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
+
+    /// Read once per body evaluation; the picker below needs it to decide
+    /// whether it may bind to the shared library.
+    private var libraryAuthorized: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .authorized || status == .limited
+    }
+
+    private var pickPhotosLabel: some View {
+        Label("写真を選ぶ", systemImage: "photo.on.rectangle.angled")
+            .font(.callout.bold())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(.white, in: Capsule())
+            .foregroundStyle(Color(argb: 0xFF7C4DFF))
+    }
 
     /// Buckets that currently have photos, in shared display order.
     private var availableFilters: [String] { state.groupedByBucket.map { $0.key } }
@@ -144,13 +161,21 @@ struct HuntView: View {
             }
 
             HStack(spacing: 10) {
-                PhotosPicker(selection: $pickerItems, maxSelectionCount: 50, matching: .images) {
-                    Label("写真を選ぶ", systemImage: "photo.on.rectangle.angled")
-                        .font(.callout.bold())
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.white, in: Capsule())
-                        .foregroundStyle(Color(argb: 0xFF7C4DFF))
+                // Bound to the shared library when we are allowed to, because
+                // that is the only way the picker returns asset identifiers —
+                // and those are what stop a photo from landing twice once
+                // auto-sort has already brought it in. Without permission the
+                // picker still works out-of-process, just without identifiers.
+                if libraryAuthorized {
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 50,
+                                 matching: .images, photoLibrary: .shared()) {
+                        pickPhotosLabel
+                    }
+                } else {
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 50,
+                                 matching: .images) {
+                        pickPhotosLabel
+                    }
                 }
                 Button {
                     state.importRecentLibraryPhotos()
@@ -371,13 +396,19 @@ struct HuntView: View {
 
     private func load(_ items: [PhotosPickerItem]) async {
         var images: [UIImage] = []
+        var ids: [String?] = []
         for item in items {
             if let data = try? await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
                 images.append(image)
+                // Non-nil only for the in-process picker (see libraryAuthorized).
+                // It is what lets a photo already brought in by auto-sort be
+                // recognised here — the two paths decode different pixels, so a
+                // pixel hash can never match across them.
+                ids.append(item.itemIdentifier)
             }
         }
-        if !images.isEmpty { state.add(images: images) }
+        if !images.isEmpty { state.add(images: images, assetIDs: ids) }
         pickerItems = []
     }
 }

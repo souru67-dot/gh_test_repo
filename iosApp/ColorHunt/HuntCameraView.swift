@@ -3,6 +3,7 @@ import SwiftUI
 // (see AppState.swift).
 import Combine
 import AVFoundation
+import Photos
 import SharedColor
 
 // MARK: - Camera engine
@@ -828,8 +829,14 @@ struct HuntCameraView: View {
                 .opacity(complete ? 0 : 1)
                 // Quick and near-critically damped: the preview should land in
                 // the cell about as fast as the guide appears, with no overshoot
-                // on the wide half-frame canvas.
-                .animation(.spring(response: 0.28, dampingFraction: 0.92), value: rect)
+                // on the wide half-frame canvas. A single-cell format never hops
+                // between cells, so the spring only shows up once — as a sluggish
+                // settle on a nearly full-screen preview layer. Those get a short
+                // ease instead.
+                .animation(frameCellCount <= 1
+                           ? .easeOut(duration: 0.14)
+                           : .spring(response: 0.28, dampingFraction: 0.92),
+                           value: rect)
 
                 // Above the preview, because these ARE part of the frame: the
                 // チェキ chin (and its date) and ハーフ's rebate would otherwise
@@ -1282,6 +1289,11 @@ struct HuntCameraView: View {
 
     private func shoot() {
         cam.capture(flash: flashMode.av) { image in
+            // Keep the negative. The hunt stores a crop shaped to whatever frame
+            // was on screen, which is not what a camera is expected to leave
+            // behind — a shot taken in this app should turn up in Photos like
+            // any other, at full size and uncropped.
+            Self.saveToLibrary(image)
             if let tpl = frameTemplate {
                 // The cell preview aspect-fills the WHOLE camera view, so the
                 // maximal centred crop at the cell's aspect is exactly what
@@ -1325,6 +1337,19 @@ struct HuntCameraView: View {
     }
 
     /// Maximal centred crop at [ratio] (w/h) — matches what an aspect-filled
+    /// Writes the untouched capture to the photo library, best effort. Silent by
+    /// design: the shutter already gave its feedback, and a permission the user
+    /// declined should not interrupt shooting. Requires
+    /// NSPhotoLibraryAddUsageDescription, which the app already declares.
+    private static func saveToLibrary(_ image: UIImage) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else { return }
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }, completionHandler: nil)
+        }
+    }
+
     /// preview of the whole camera view showed. Used by frame mode's cells.
     /// The photo arrives orientation-tagged, so it is normalised first.
     private static func aspectCrop(_ image: UIImage, ratio: CGFloat) -> UIImage {

@@ -107,17 +107,31 @@ final class AppState: ObservableObject {
     /// Content hashes of every photo already in the hunt — re-picking or re-running
     /// auto-sort must not stack duplicates.
     private var photoHashes = Set<Int>()
+    /// PHAsset local identifiers of every library photo in the hunt. Survives the
+    /// two intake paths handing back different pixels for the same photo.
+    private var assetIDs = Set<String>()
+    private var assetIDByPhoto: [UUID: String] = [:]
 
+    /// [assetIDs] are PHAsset local identifiers, positionally matched to
+    /// [images], for photos that came from the library. They are what makes
+    /// de-duplication actually work across the two intake paths: auto-sort gets
+    /// a downscaled render from PHImageManager while the picker hands over the
+    /// original file, and no pixel hash can survive that — resampling shifts
+    /// enough channel values that the two never agree. The identifier is the
+    /// same string either way. The camera has no asset, so it still falls back
+    /// to the pixel hash, which is fine: a fresh capture is never a duplicate.
+    ///
     /// [unreadable] counts assets the library could not hand over at all (an
     /// iCloud download that failed, say). Passing it — even as 0 — is what
     /// marks this as an auto-sort run and produces the summary toast; the
     /// photo picker and the camera pass nil and stay silent.
-    func add(images: [UIImage], unreadable: Int? = nil) {
+    func add(images: [UIImage], assetIDs: [String?]? = nil, unreadable: Int? = nil) {
         // Hash off-main (tiny 16×16 renders), then append only unseen images.
         Task.detached(priority: .userInitiated) { [weak self] in
-            var pairs: [(UIImage, Int)] = []
-            for image in images {
-                if let h = DominantColor.quickHash(image) { pairs.append((image, h)) }
+            var pairs: [(image: UIImage, hash: Int, assetID: String?)] = []
+            for (i, image) in images.enumerated() {
+                guard let h = DominantColor.quickHash(image) else { continue }
+                pairs.append((image, h, assetIDs.flatMap { i < $0.count ? $0[i] : nil }))
             }
             let result = pairs
             // An image that would not hash cannot be de-duplicated, so it is
@@ -127,12 +141,24 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func appendUnique(_ pairs: [(UIImage, Int)], unreadable: Int? = nil) {
+    private func appendUnique(_ pairs: [(image: UIImage, hash: Int, assetID: String?)],
+                              unreadable: Int? = nil) {
         var fresh: [HuntPhoto] = []
-        for (image, hash) in pairs where !photoHashes.contains(hash) {
+        for (image, hash, assetID) in pairs {
+            // An identifier is authoritative when we have one; the pixel hash is
+            // only consulted for photos with no asset behind them.
+            if let assetID {
+                if assetIDs.contains(assetID) { continue }
+            } else if photoHashes.contains(hash) {
+                continue
+            }
             photoHashes.insert(hash)
             let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
             hashByID[photo.id] = hash
+            if let assetID {
+                assetIDs.insert(assetID)
+                assetIDByPhoto[photo.id] = assetID
+            }
             fresh.append(photo)
         }
         photos.append(contentsOf: fresh)
@@ -249,6 +275,8 @@ final class AppState: ObservableObject {
         collageOrder.removeAll()
         photoHashes.removeAll()
         hashByID.removeAll()
+        assetIDs.removeAll()
+        assetIDByPhoto.removeAll()
         Task.detached(priority: .utility) {
             for id in ids {
                 try? FileManager.default.removeItem(at: huntPhotoURL(id))
@@ -272,6 +300,8 @@ final class AppState: ObservableObject {
         let hash: Int?
         let color: Int32?
         let bucket: String?
+        /// Absent in manifests written before asset-identifier de-duplication.
+        var asset: String?
     }
     private struct Manifest: Codable {
         var photos: [StoredPhoto]
@@ -297,7 +327,8 @@ final class AppState: ObservableObject {
         let manifest = Manifest(
             photos: photos.map {
                 StoredPhoto(id: $0.id, hash: hashByID[$0.id],
-                            color: $0.dominantColor, bucket: $0.bucketKey)
+                            color: $0.dominantColor, bucket: $0.bucketKey,
+                            asset: assetIDByPhoto[$0.id])
             },
             selection: Array(selection),
             order: collageOrder,
@@ -371,6 +402,10 @@ final class AppState: ObservableObject {
             if let h = sp.hash {
                 photoHashes.insert(h)
                 hashByID[sp.id] = h
+            }
+            if let a = sp.asset {
+                assetIDs.insert(a)
+                assetIDByPhoto[sp.id] = a
             }
         }
         let valid = Set(photos.map { $0.id })
@@ -455,6 +490,7 @@ final class AppState: ObservableObject {
                 req.resizeMode = .fast
 
                 var images: [UIImage] = []
+                var ids: [String?] = []
                 assets.enumerateObjects { asset, _, _ in
                     manager.requestImage(
                         for: asset,
@@ -462,16 +498,21 @@ final class AppState: ObservableObject {
                         contentMode: .aspectFit,
                         options: req
                     ) { image, _ in
-                        if let image { images.append(image) }
+                        guard let image else { return }
+                        images.append(image)
+                        // Kept alongside the pixels so the same photo picked by
+                        // hand later is recognised as one we already have.
+                        ids.append(asset.localIdentifier)
                     }
                 }
                 // Snapshot into a let so the concurrent Task doesn't capture a var.
                 let collected = images
+                let collectedIDs = ids
                 // Assets the library never handed back — typically an iCloud
                 // original that could not be downloaded.
                 let missed = max(assets.count - collected.count, 0)
                 Task { @MainActor in
-                    self?.add(images: collected, unreadable: missed)
+                    self?.add(images: collected, assetIDs: collectedIDs, unreadable: missed)
                     self?.importing = false
                 }
             }

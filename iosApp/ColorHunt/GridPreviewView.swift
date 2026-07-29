@@ -106,6 +106,11 @@ struct GridPreviewView: View {
             addTile
         }
         .padding(.top, 2)
+        // A drag that ends between tiles, on the "+" tile, or off the grid never
+        // reaches a tile's own drop target, so `dragging` stayed set: the tile
+        // held its 0.35 opacity and the next long-press picked up mid-gesture.
+        // This catches those and puts the grid back to rest.
+        .onDrop(of: [.text], delegate: ReorderCancelDelegate(current: $dragging))
     }
 
     private func tile(_ image: UIImage, index: Int) -> some View {
@@ -191,4 +196,19 @@ struct ReorderDropDelegate<Item>: DropDelegate {
     }
 
     func dropExited(info: DropInfo) {}
+}
+
+/// Backstop for a reorder drag released anywhere that is not a tile. Accepts the
+/// drop so the item does not fly back, and clears the in-flight index.
+struct ReorderCancelDelegate: DropDelegate {
+    let current: Binding<Int?>
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        current.wrappedValue = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) { current.wrappedValue = nil }
 }

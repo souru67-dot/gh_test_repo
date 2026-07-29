@@ -186,3 +186,8 @@
 /* v1.5 — palette footer band */
 "下帯" = "Footer";
 "カラーパレットを印字" = "Print the colour record";
+
+/* v1.9 — notification permission alert */
+"通知がオフになっています" = "Notifications are off";
+"あとで" = "Not now";
+"毎日のリマインドを受け取るには、設定 › ColorHunt › 通知 を許可してください。" = "To get the daily reminder, allow notifications in Settings › ColorHunt › Notifications.";

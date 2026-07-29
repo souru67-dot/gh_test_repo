@@ -20,6 +20,7 @@ struct TodayColorView: View {
     @AppStorage("reminderHour") private var reminderHour = 8
     @AppStorage("reminderMinute") private var reminderMinute = 0
     @State private var showTimePicker = false
+    @State private var showNotificationDenied = false
 
     private static let spinTurns = 4
 
@@ -108,6 +109,33 @@ struct TodayColorView: View {
                 showTimePicker = false
             }
         }
+        .alert("通知がオフになっています", isPresented: $showNotificationDenied) {
+            Button("設定を開く") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("あとで", role: .cancel) {}
+        } message: {
+            Text("毎日のリマインドを受け取るには、設定 › ColorHunt › 通知 を許可してください。")
+        }
+        // The wheel keeps its angle in view state, so a relaunch showed the
+        // empty "pick a colour" card even though the colour itself had been
+        // restored and the camera was already targeting it.
+        .onAppear(perform: restoreTodayColor)
+    }
+
+    /// Puts the wheel back on the colour the hunt is already using.
+    private func restoreTodayColor() {
+        guard !picked, let packed = state.todayColor else { return }
+        let v = Int(UInt32(bitPattern: packed))
+        let ui = UIColor(red: CGFloat((v >> 16) & 0xFF) / 255,
+                         green: CGFloat((v >> 8) & 0xFF) / 255,
+                         blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+        var h: CGFloat = 0, sat: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard ui.getHue(&h, saturation: &sat, brightness: &b, alpha: &a) else { return }
+        hue = Double(h) * 360
+        picked = true
     }
 
     // MARK: reminder
@@ -152,7 +180,16 @@ struct TodayColorView: View {
                 if on {
                     ThemeReminder.request { granted in
                         reminderEnabled = granted
-                        if granted { ThemeReminder.schedule(hour: reminderHour, minute: reminderMinute) }
+                        if granted {
+                            ThemeReminder.schedule(hour: reminderHour, minute: reminderMinute)
+                        } else {
+                            // The switch springs back on its own, which on a
+                            // second attempt looks like the app ignoring the tap
+                            // — iOS only shows its dialog once, so every later
+                            // denial is silent. Say what happened and offer the
+                            // one place it can be changed.
+                            showNotificationDenied = true
+                        }
                     }
                 } else {
                     reminderEnabled = false
