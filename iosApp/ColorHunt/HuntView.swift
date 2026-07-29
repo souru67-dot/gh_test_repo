@@ -126,7 +126,7 @@ struct HuntView: View {
                     Text("ColorHunt")
                         .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                         .foregroundStyle(.white)
-                    Text("テーマ色を、集めよう。")
+                    Text("好きな色を、集めよう。")
                         .font(.subheadline).foregroundStyle(.white.opacity(0.9))
                 }
                 Spacer()
