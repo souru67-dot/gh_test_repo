@@ -191,3 +191,9 @@
 "通知がオフになっています" = "Notifications are off";
 "あとで" = "Not now";
 "毎日のリマインドを受け取るには、設定 › ColorHunt › 通知 を許可してください。" = "To get the daily reminder, allow notifications in Settings › ColorHunt › Notifications.";
+
+/* v2.0 — collage tool rail */
+"テンプレ" = "Preset";
+"パレット" = "Palette";
+"仕上げ" = "Finish";
+"サイズ" = "Size";

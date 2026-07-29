@@ -39,6 +39,10 @@ struct CollageView: View {
     // Long-press drag reorder state: picked-up cell and current drop target.
     @State private var dragCell: Int?
     @State private var dragTarget: Int?
+    /// Which settings group the panel is showing. Only one at a time — see
+    /// CollageTool.
+    @State private var tool: CollageTool = .template
+
     /// Wrapping the image in an Identifiable and presenting with sheet(item:)
     /// rather than sheet(isPresented:): the latter reads its content while the
     /// image is still nil on the first tap — both were set in the same runloop —
@@ -237,26 +241,102 @@ struct CollageView: View {
         }
     }
 
-    // Split into sub-sections to stay under SwiftUI's 10-view ViewBuilder limit.
+    /// One group of settings. Stacking all of them made the panel taller than the
+    /// screen, so the preview scrolled away exactly when you needed to watch it —
+    /// the controls at the bottom were being used blind. Only one group is on
+    /// screen at a time now, and the preview stays put.
+    private enum CollageTool: Hashable, CaseIterable {
+        case template, layout, palette, finish, size
+
+        var label: LocalizedStringKey {
+            switch self {
+            case .template: return "テンプレ"
+            case .layout:   return "レイアウト"
+            case .palette:  return "パレット"
+            case .finish:   return "仕上げ"
+            case .size:     return "サイズ"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .template: return "wand.and.stars"
+            case .layout:   return "rectangle.3.group"
+            case .palette:  return "paintpalette"
+            case .finish:   return "slider.horizontal.3"
+            case .size:     return "aspectratio"
+            }
+        }
+    }
+
+    /// ハーフ and インスタント reproduce a sheet, so arrangement and margins are
+    /// not theirs to change — those tools drop out rather than offering ways to
+    /// break the format.
+    private func tools(formatLocked: Bool) -> [CollageTool] {
+        formatLocked ? [.template, .palette, .size] : CollageTool.allCases
+    }
+
     private var controls: some View {
         VStack(alignment: .leading, spacing: 14) {
-            templateSection
-            // ハーフ and チェキ ARE their arrangement — a half-frame is two
-            // frames on one negative and an instax is one print — so the
-            // layout picker would only offer ways to break them.
-            if !formatLocked {
-                layoutSection
+            toolRail
+            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+            Group {
+                switch tool {
+                case .template: templateSection
+                case .layout:   layoutSection
+                case .palette:  paletteSection
+                case .finish:   finishSection
+                case .size:     sizeSection
+                }
             }
-            paletteSection
-            styleSection
+            // A floor so switching to a one-control group does not collapse the
+            // panel and jerk the preview down the screen.
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
         }
         .padding(16)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+        // Applying a format preset can retire the tool that is open.
+        .onChange(of: formatLocked) { locked in
+            if !tools(formatLocked: locked).contains(tool) { tool = .template }
+        }
+    }
+
+    private var toolRail: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(tools(formatLocked: formatLocked), id: \.self) { item in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.18)) { tool = item }
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: item.icon)
+                                .font(.system(size: 16, weight: .semibold))
+                            Text(item.label)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(width: 66, height: 54)
+                        .foregroundStyle(tool == item ? .white : .white.opacity(0.55))
+                        .background {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.07))
+                                if tool == item {
+                                    RoundedRectangle(cornerRadius: 14).fill(Brand.gradient)
+                                }
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 1)
+        }
     }
 
     private var templateSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionLabel("テンプレート", icon: "wand.and.stars")
             // With 11 presets a single flat row stopped scanning well — filter
             // chips group them by vibe, and the active preset gets a ring.
             ScrollView(.horizontal, showsIndicators: false) {
@@ -414,7 +494,6 @@ struct CollageView: View {
 
     private var layoutSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionLabel("レイアウト", icon: "rectangle.3.group")
             Picker("レイアウト", selection: $layoutOrdinal) {
                 Text("グリッド").tag(Int32(0))
                 Text("縦並び").tag(Int32(1))
@@ -426,7 +505,6 @@ struct CollageView: View {
 
     private var paletteSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("カラーパレット", icon: "paintpalette")
             // ハーフ and インスタント print their palette into the sheet's own
             // margin, so there is no placement to choose — only whether the lab
             // printed it. Offering the rail here was what let the format break.
@@ -484,20 +562,15 @@ struct CollageView: View {
         }
     }
 
-    private var styleSection: some View {
+    /// The sheet ratio. A format preset has none to choose — its sheet size IS
+    /// the preset — so it explains itself instead.
+    private var sizeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Divider().overlay(Color.white.opacity(0.08))
-            // チェキ (0.72) and ハーフ (3:2) have no entry here, so the
-            // segmented control rendered with nothing selected and any tap
-            // silently broke the format. Their sheet size IS the format, so
-            // the picker steps aside for them — as the layout picker does.
             if formatLocked {
-                sectionLabel("サイズ", icon: "aspectratio")
                 Text(formatSizeNote)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.callout)
+                    .foregroundStyle(.white.opacity(0.7))
             } else {
-                sectionLabel("SNSサイズ", icon: "aspectratio")
                 Picker("サイズ", selection: $aspect) {
                     Text("1:1").tag(CGFloat(1))
                     Text("4:5").tag(CGFloat(4.0 / 5.0))
@@ -506,33 +579,30 @@ struct CollageView: View {
                 }
                 .pickerStyle(.segmented)
             }
+        }
+    }
 
-            // A film print and an instax card have fixed margins, square
-            // corners and no drawn border — every one of these controls could
-            // only pull the preset away from the format it reproduces, and on
-            // ハーフ the 余白 slider fought the fixed rebate bar besides.
-            if !formatLocked {
-                sliderRow("余白", value: $spacing, range: 0...24)
-                sliderRow("角丸", value: $cornerRadius, range: 0...48)
-                sliderRow("枠線の太さ", value: $borderWidth, range: 0...8)
+    /// Margins, corners and colour. A film print and an instax card have fixed
+    /// margins, square corners and no drawn border, and their sheet colour is
+    /// part of the format — ハーフ's rebate is film-black, インスタント's mat covers
+    /// the sheet entirely — so this whole tool retires for them.
+    private var finishSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sliderRow("余白", value: $spacing, range: 0...24)
+            sliderRow("角丸", value: $cornerRadius, range: 0...48)
+            sliderRow("枠線の太さ", value: $borderWidth, range: 0...8)
 
-                sectionLabel("枠線の色")
-                swatchRow(selected: borderColor) { borderColor = $0 }
+            sectionLabel("枠線の色")
+            swatchRow(selected: borderColor) { borderColor = $0 }
+
+            HStack {
+                sectionLabel("背景色")
+                Spacer()
+                Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
+                Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
             }
-
-            // The sheet colour is part of a physical format: ハーフ's rebate
-            // bars are drawn film-black, so a light background left the gaps
-            // and the bars mismatched, and チェキ's mat covers it entirely.
-            if !formatLocked {
-                HStack {
-                    sectionLabel("背景色")
-                    Spacer()
-                    Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
-                    Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
-                }
-                if !bgFollowsTheme {
-                    swatchRow(selected: background) { background = $0 }
-                }
+            if !bgFollowsTheme {
+                swatchRow(selected: background) { background = $0 }
             }
         }
     }
