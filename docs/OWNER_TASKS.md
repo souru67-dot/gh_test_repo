@@ -43,16 +43,38 @@ Xcode に「このファイルもアプリに含めてね」と教えるだけ�
 5. その `PrivacyInfo.xcprivacy` を、**Finder から Xcode の左側の一覧へ
    ドラッグ&ドロップ**します。落とす場所は `AppState.swift` のすぐ近くでOKです。
 
-6. ダイアログが出ます。**ここが一番大事です**:
+6. `Choose options for adding these files:` というダイアログが出ます。
+   **ここが一番大事です**。
+
+   **Xcode 16 以降**（Action というプルダウンが出る新しい形）:
 
    | 項目 | 設定 |
    |---|---|
-   | Destination: Copy items if needed | **チェックを外す** |
+   | Action | **Reference files in place** |
+   | Targets: **ColorHunt** | **チェックを入れる** |
+
+   Action の3択はそれぞれこういう意味です。
+
+   | 選択肢 | 何が起きるか |
+   |---|---|
+   | Copy files to destination | ファイルが**複製**され、Xcode 側のコピーがビルドに使われる。リポジトリ側を更新しても反映されず、git にも残らない |
+   | Move files to destination | リポジトリから**ファイルが消える**。git 上は削除扱い |
+   | **Reference files in place** | リポジトリのファイルをそのまま参照。更新がそのまま反映され、履歴も残る |
+
+   リポジトリのフォルダをそのままプロジェクトに置いている構成なので、
+   Swift ファイルたちと同じ「参照」の形に揃えるのが正解です。
+
+   **Xcode 15 以前**（チェックボックスの古い形）:
+
+   | 項目 | 設定 |
+   |---|---|
+   | Destination: Copy items if needed | **チェックを外す**（＝上の Reference files in place と同じ意味） |
    | Added folders | Create groups |
    | Add to targets: **ColorHunt** | **チェックを入れる** |
 
-   > 「Copy items if needed」を**オンにしてはいけません**。オンにすると
-   > ファイルが二重に作られ、今後こちらで内容を更新しても反映されなくなります。
+   > どちらの形でも、**Targets / Add to targets の `ColorHunt` が本命**です。
+   > この作業の目的は「このファイルをアプリのバンドルに含める」ことなので、
+   > ここが外れていると追加した意味がありません。
 
 7. **Finish** をクリック。
 
