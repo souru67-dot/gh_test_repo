@@ -344,8 +344,8 @@ ColorHunt は、写真を主役の色で分類し、コラージュを作成す�
 | カテゴリ（プライマリ） | 写真/ビデオ（Photo & Video） |
 | カテゴリ（セカンダリ） | グラフィック/デザイン（Graphics & Design） |
 | 著作権 | `2026 <あなたの氏名または屋号>` |
-| サポートURL | `site/index.html` をホスティングしたURL |
-| プライバシーポリシーURL | `site/privacy.html` をホスティングしたURL |
+| サポートURL | `https://souru67-dot.github.io/colorhunt-site/` |
+| プライバシーポリシーURL | `https://souru67-dot.github.io/colorhunt-site/privacy.html` |
 | マーケティングURL | 任意（未設定でよい） |
 
 ### サポートページ / プライバシーポリシーのホスティング
@@ -369,10 +369,10 @@ git push -u origin main
 # 3. GitHub → Settings → Pages → Source: main / (root)
 ```
 
-数分後に以下で公開されます:
+**公開済み**（2026-07-30）:
 
-- サポート: `https://<あなた>.github.io/colorhunt-site/`
-- プライバシー: `https://<あなた>.github.io/colorhunt-site/privacy.html`
+- サポート: https://souru67-dot.github.io/colorhunt-site/
+- プライバシー: https://souru67-dot.github.io/colorhunt-site/privacy.html
 
 > 独自ドメインを持っている場合は Pages の Custom domain に設定できます。
 > 無くても審査は通ります。

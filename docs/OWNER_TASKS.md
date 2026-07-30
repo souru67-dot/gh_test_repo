@@ -191,13 +191,14 @@ App Store の申請画面には、**サポートURL** と **プライバシー�
 
 ### できたかの確認
 
-以下の2つのURLをブラウザで開いて、ページが表示されればOKです
-（`<あなたのID>` はご自身のGitHubユーザー名に置き換えてください）。
+以下の2つのURLをブラウザで開いて、ページが表示されればOKです。
 
 ```
-https://<あなたのID>.github.io/colorhunt-site/
-https://<あなたのID>.github.io/colorhunt-site/privacy.html
+https://souru67-dot.github.io/colorhunt-site/
+https://souru67-dot.github.io/colorhunt-site/privacy.html
 ```
+
+> **公開済み（2026-07-30）**。以降このURLをそのまま使います。
 
 **スマートフォンでも開いて確認してください。** 審査担当者はスマホで見ることが
 あります。文字が小さすぎたり横スクロールが出たりしないことを確認します。
