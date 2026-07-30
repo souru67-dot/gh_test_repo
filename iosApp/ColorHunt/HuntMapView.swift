@@ -84,6 +84,7 @@ struct HuntMapView: View {
                         .padding(10)
                         .background(.ultraThinMaterial, in: Circle())
                 }
+                .accessibilityLabel("写真から読み込む")
                 .disabled(state.mapLoading)
             }
 

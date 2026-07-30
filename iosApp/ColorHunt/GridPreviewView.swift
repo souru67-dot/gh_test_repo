@@ -97,6 +97,7 @@ struct GridPreviewView: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 7)
         .background(.white.opacity(0.08), in: Capsule())
+        .accessibilityElement(children: .combine)
     }
 
     private var tabHint: some View {
@@ -108,6 +109,8 @@ struct GridPreviewView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.12)).frame(height: 1) }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: grid
@@ -131,6 +134,11 @@ struct GridPreviewView: View {
                     .scaledToFill()
             }
             .clipped()
+            // A feed tile has no text of its own; its position in the grid is the
+            // one thing worth announcing, and it is what reordering changes.
+            .accessibilityElement()
+            .accessibilityLabel("写真")
+            .accessibilityValue(Text(verbatim: "\(index + 1)"))
             .opacity(dragging == index && dragLive ? 0.35 : 1)
             .onDrag {
                 dragging = index

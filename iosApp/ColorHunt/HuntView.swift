@@ -112,6 +112,7 @@ struct HuntView: View {
                             .padding(12)
                             .background(.black.opacity(0.4), in: Circle())
                     }
+                    .accessibilityLabel("閉じる")
                     .padding(.top, 8).padding(.trailing, 12)
                 }
         }
@@ -139,6 +140,7 @@ struct HuntView: View {
                             .background(.white.opacity(0.18), in: Circle())
                             .foregroundStyle(.white)
                     }
+                    .accessibilityLabel("グリッド")
                     if !state.photos.isEmpty {
                         Button(role: .destructive) {
                             state.clearAll()
@@ -149,6 +151,7 @@ struct HuntView: View {
                                 .background(.white.opacity(0.18), in: Circle())
                                 .foregroundStyle(.white)
                         }
+                        .accessibilityLabel("すべて削除")
                     }
                 }
             }
@@ -216,6 +219,8 @@ struct HuntView: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background(.white.opacity(0.16), in: RoundedCornerStyle.pill)
+        // "12" and "枚" are two Texts; combined they read as one "12 photos".
+        .accessibilityElement(children: .combine)
     }
 
     private var filterRow: some View {
@@ -250,6 +255,10 @@ struct HuntView: View {
                 state.huntFilter = (state.huntFilter == key ? nil : key)
             }
         }
+        // onTapGesture carries no button trait of its own, so VoiceOver would
+        // announce a plain label with no hint that it can be activated.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 
     /// カラーコレクション — the 12-bucket collection tracker that replaced the old
@@ -313,6 +322,13 @@ struct HuntView: View {
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: collected)
+        // Twelve bare circles carry no text at all. bucketLabel returns the
+        // already-localised name, so Text(String) (verbatim) is what we want —
+        // LocalizedStringKey would look the translation up a second time.
+        .accessibilityElement()
+        .accessibilityLabel(Text(bucketLabel(key)))
+        .accessibilityValue(collected ? Text("収集済み") : Text("未収集"))
+        .accessibilityAddTraits(collected ? .isButton : [])
     }
 
     private func bucketHeader(_ key: String, count: Int) -> some View {
@@ -328,6 +344,8 @@ struct HuntView: View {
             Spacer()
         }
         .padding(.top, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func thumb(_ photo: HuntPhoto) -> some View {
@@ -360,6 +378,13 @@ struct HuntView: View {
                             lineWidth: selected ? 3 : 1)
             }
             .onTapGesture { state.toggleSelection(photo.id) }
+            // One element per tile. The image carries no label of its own, and the
+            // HEX chip on its own ("#E8442A") says nothing about which photo this
+            // is — the colour name is what the user hunted by.
+            .accessibilityElement()
+            .accessibilityLabel(photo.bucketKey.map { Text(bucketLabel($0)) } ?? Text("解析中…"))
+            .accessibilityValue(photo.dominantColor.map { Text(hexString($0)) } ?? Text(verbatim: ""))
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             .contextMenu {
                 ForEach(ColorBridge.shared.bucketKeys(), id: \.self) { key in
                     Button {

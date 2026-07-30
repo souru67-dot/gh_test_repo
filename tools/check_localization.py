@@ -63,12 +63,43 @@ def parse(locale: str) -> dict[str, str]:
 SPECIFIER = r"%(?:lld|ld|d|@|\d+\$@)"
 
 
+def split_interpolations(literal: str) -> list[str]:
+    r"""\(…) を境に literal を分割する。
+
+    正規表現で \\\([^)]*\) とやると \(min(a, b)) のような入れ子で最初の )
+    で切れてしまうので、括弧の深さを数えて読み飛ばす。
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    i = 0
+    while i < len(literal):
+        if literal.startswith("\\(", i):
+            parts.append("".join(buf))
+            buf = []
+            depth = 0
+            i += 1  # ( の位置へ
+            while i < len(literal):
+                if literal[i] == "(":
+                    depth += 1
+                elif literal[i] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        i += 1
+                        break
+                i += 1
+        else:
+            buf.append(literal[i])
+            i += 1
+    parts.append("".join(buf))
+    return parts
+
+
 def key_pattern(literal: str) -> re.Pattern:
     """補間つきリテラルを、書式指定子にマッチする正規表現へ。
 
     Text("\\(n)枚") → ^%(?:lld|…)枚$ となり、"%lld枚" に当たる。
     """
-    parts = re.split(r"\\\([^)]*\)", literal)
+    parts = split_interpolations(literal)
     return re.compile(SPECIFIER.join(re.escape(p) for p in parts) + r"\Z")
 
 

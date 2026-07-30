@@ -84,6 +84,7 @@ struct TodayColorView: View {
                                     .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
                             }
                             .buttonStyle(PopButtonStyle())
+                            .accessibilityLabel("リセット")
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
@@ -237,6 +238,26 @@ struct TodayColorView: View {
                     state.todayColor = packedColor   // Hunt Camera targets this
                 }
             )
+            // The wheel is a bare drag gesture over a gradient: nothing about it
+            // is reachable without sight. As an adjustable element VoiceOver can
+            // swipe up/down through the hue and hear the colour name it lands on
+            // — the same 12 names the rest of the app sorts by.
+            .accessibilityElement()
+            .accessibilityLabel("カラーホイール")
+            .accessibilityValue(Text(bucketLabel(ColorBridge.shared.classifyKey(colorInt: packedColor))))
+            .accessibilityAdjustableAction { direction in
+                guard !spinning else { return }
+                // 15° a step: a full turn in 24 swipes, and small enough that no
+                // bucket (the narrowest spans about 20°) can be skipped over.
+                let step: Double = 15
+                switch direction {
+                case .increment: hue = displayHue + step
+                case .decrement: hue = displayHue - step
+                @unknown default: return
+                }
+                picked = true
+                state.todayColor = packedColor
+            }
         }
     }
 
@@ -255,6 +276,7 @@ struct TodayColorView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .accessibilityElement(children: .combine)
             Button {
                 huntThisColor(bucket: key)
             } label: {

@@ -200,3 +200,17 @@
 
 /* v2.0 — grid feed-preview label */
 "フィードプレビュー" = "Feed preview";
+
+/* v2.0 — VoiceOver labels */
+"閉じる" = "Close";
+"すべて削除" = "Delete all";
+"収集済み" = "Collected";
+"未収集" = "Not collected";
+"カラーホイール" = "Colour wheel";
+"写真" = "Photo";
+"カメラを切り替え" = "Switch camera";
+"フレームを選ぶ" = "Choose frame";
+"ひとつ戻す" = "Undo";
+"明るさ" = "Brightness";
+"シャッター" = "Shutter";
+"コラージュのプレビュー" = "Collage preview";

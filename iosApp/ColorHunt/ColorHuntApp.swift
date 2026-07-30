@@ -176,6 +176,7 @@ struct RootTabView: View {
             }
         }
         .buttonStyle(PopButtonStyle())
+        .accessibilityLabel("カメラで色をハント")
         // Sized to sit INSIDE its own tab slot (~71pt on a 6.1"): the previous
         // 62pt+5pt ring overflowed into the neighbours, so iOS 26's selection
         // capsule ran underneath it. Lifting it instead only pushed the button

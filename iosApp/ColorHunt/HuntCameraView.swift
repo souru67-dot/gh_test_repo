@@ -523,6 +523,7 @@ struct HuntCameraView: View {
                     .padding(12)
                     .background(.black.opacity(0.35), in: Circle())
             }
+            .accessibilityLabel("閉じる")
 
             Spacer()
 
@@ -544,6 +545,7 @@ struct HuntCameraView: View {
                         .background(.black.opacity(0.35), in: Circle())
                 }
                 .buttonStyle(PopButtonStyle())
+                .accessibilityLabel("カメラを切り替え")
             } else {
                 // Keep the pill centred even before permission is granted.
                 Color.clear.frame(width: 44, height: 44)
@@ -577,6 +579,7 @@ struct HuntCameraView: View {
             }
             .padding(.horizontal, 13).padding(.vertical, 8)
             .background(.black.opacity(0.35), in: Capsule())
+            .accessibilityElement(children: .combine)
 
             if target != nil {
                 Capsule()
@@ -652,6 +655,7 @@ struct HuntCameraView: View {
                 .background(.black.opacity(0.35), in: Capsule())
         }
         .buttonStyle(PopButtonStyle())
+        .accessibilityLabel("フレームを選ぶ")
     }
 
     private var frameUndoButton: some View {
@@ -668,6 +672,7 @@ struct HuntCameraView: View {
                 .background(.black.opacity(0.35), in: Capsule())
         }
         .buttonStyle(PopButtonStyle())
+        .accessibilityLabel("ひとつ戻す")
     }
 
     /// The dazz-style shelf, now a single row of finished styles: one tap
@@ -1003,6 +1008,7 @@ struct HuntCameraView: View {
             }
         }
         .buttonStyle(PopButtonStyle())
+        .accessibilityLabel("ハントへ")
     }
 
     private var shutter: some View {
@@ -1024,6 +1030,8 @@ struct HuntCameraView: View {
             .scaleEffect(matched ? 1.06 : 1)
         }
         .buttonStyle(PopButtonStyle())
+        // Same button, two jobs: while the timer runs it cancels the shot.
+        .accessibilityLabel(countdown != nil ? LocalizedStringKey("キャンセル") : LocalizedStringKey("シャッター"))
         .disabled(!cam.authorized || (frameTemplate != nil && frameShots.count >= frameCellCount))
     }
 
@@ -1038,6 +1046,7 @@ struct HuntCameraView: View {
             Text("ハント数")
                 .font(.caption2).foregroundStyle(.white.opacity(0.8))
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var lensChips: some View {
@@ -1123,12 +1132,15 @@ struct HuntCameraView: View {
             Image(systemName: "sun.min")
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.8))
+                .accessibilityHidden(true)
             Slider(value: $ev, in: -2...2)
                 .frame(width: 190)
                 .tint(.white)
+                .accessibilityLabel("明るさ")
             Image(systemName: "sun.max.fill")
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.8))
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background(.black.opacity(0.35), in: Capsule())

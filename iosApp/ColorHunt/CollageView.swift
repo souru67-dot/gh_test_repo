@@ -250,6 +250,14 @@ struct CollageView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
+                    // Left alone the preview is dozens of unlabelled images, HEX
+                    // chips and palette blocks — VoiceOver reads it as noise. As
+                    // one element it says what it is and how many photos are in
+                    // it; the gestures it carries (tap to crop, long-press to
+                    // reorder) are out of reach for VoiceOver either way.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("コラージュのプレビュー")
+                    .accessibilityValue(Text("\(min(state.orderedSelectedPhotos.count, templateCellCap))枚"))
 
                 previewHint
 
@@ -468,6 +476,7 @@ struct CollageView: View {
                             .padding(4)
                             .background(.black.opacity(0.55), in: Circle())
                             .padding(3)
+                            .accessibilityLabel("Pro")
                     }
                 }
             Text(LocalizedStringKey(tpl.label))
@@ -653,7 +662,9 @@ struct CollageView: View {
                 sectionLabel("背景色")
                 Spacer()
                 Text("テーマ色を使う").font(.caption).foregroundStyle(.white.opacity(0.8))
-                Toggle("", isOn: $bgFollowsTheme).labelsHidden().tint(Color(argb: 0xFF7C4DFF))
+                    .accessibilityHidden(true)
+                Toggle("テーマ色を使う", isOn: $bgFollowsTheme)
+                    .labelsHidden().tint(Color(argb: 0xFF7C4DFF))
             }
             if !bgFollowsTheme {
                 swatchRow(selected: background) { background = $0 }
@@ -720,7 +731,11 @@ struct CollageView: View {
                 Text("\(Int((value.wrappedValue * (range.upperBound <= 1 ? 100 : 1)).rounded()))")
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
             }
-            Slider(value: value, in: range).tint(Color(argb: 0xFF7C4DFF))
+            // The read-out above is a separate Text, so the Slider itself has no
+            // name of its own — VoiceOver announced a bare percentage.
+            Slider(value: value, in: range)
+                .tint(Color(argb: 0xFF7C4DFF))
+                .accessibilityLabel(LocalizedStringKey(label))
         }
     }
 
@@ -1808,6 +1823,7 @@ struct CropEditorView: View {
                         .padding(10)
                         .background(.white.opacity(0.10), in: Circle())
                 }
+                .accessibilityLabel("キャンセル")
                 Spacer()
                 VStack(spacing: 2) {
                     Text("トリミング")
@@ -2036,6 +2052,7 @@ struct PaywallView: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2).foregroundStyle(.secondary)
             }
+            .accessibilityLabel("閉じる")
             .padding()
         }
     }
