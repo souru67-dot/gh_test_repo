@@ -197,3 +197,6 @@
 "パレット" = "Palette";
 "仕上げ" = "Finish";
 "サイズ" = "Size";
+
+/* v2.0 — grid feed-preview label */
+"フィードプレビュー" = "Feed preview";
