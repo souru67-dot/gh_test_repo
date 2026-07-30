@@ -62,6 +62,16 @@ def parse(locale: str) -> dict[str, str]:
 
 SPECIFIER = r"%(?:lld|ld|d|@|\d+\$@)"
 
+# %@ / %lld / %2$@ / %.1f … 位置指定子は順番が言語で変わってよいので、比較の
+# ときだけ落として「型と数」を見る。
+FORMAT = re.compile(r"%(\d+\$)?([-+ #0]*[\d.]*)(hh|h|ll|l|q|L|z|t|j)?([@diuxXoOfeEgGcCsSpaAF%])")
+
+
+def specifiers(text: str) -> list[str]:
+    """並び順に依存しない、書式指定子の型リスト（%% は除く）。"""
+    out = [(m.group(3) or "") + m.group(4) for m in FORMAT.finditer(text)]
+    return sorted(s for s in out if s != "%")
+
 
 def split_interpolations(literal: str) -> list[str]:
     r"""\(…) を境に literal を分割する。
@@ -116,6 +126,15 @@ def main() -> int:
             fail(f'{loc}: キーがありません: "{k}"')
         for k in sorted(keys - base_keys):
             fail(f'{loc}: {BASE} に無い余分なキー: "{k}"')
+
+    # 書式指定子の一致（数と型）。ずれると String(format:) が実行時に落ちる
+    for loc in LOCALES:
+        for key, value in tables[loc].items():
+            want, got = specifiers(key), specifiers(value)
+            if want != got:
+                fail(f'{loc}: 書式指定子が合いません "{key}"'
+                     f" — キー {want or '（なし）'} に対し訳は {got or '（なし）'}"
+                     f"（String(format:) が実行時に落ちます）")
 
     # Swift 側の日本語リテラルが .strings に載っているか
     patterns = None

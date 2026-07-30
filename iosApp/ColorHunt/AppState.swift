@@ -391,7 +391,9 @@ final class AppState: ObservableObject {
             }
         }.value
         let grid: [UIImage] = await Task.detached(priority: .userInitiated) {
-            (0..<gridCount).compactMap { UIImage(contentsOfFile: huntGridURL($0).path) }
+            // max(_, 0): the count comes off disk, and a truncated or foreign
+            // manifest decoding to a negative here would make 0..<n trap.
+            (0..<max(gridCount, 0)).compactMap { UIImage(contentsOfFile: huntGridURL($0).path) }
         }.value
 
         restoring = true
@@ -800,7 +802,12 @@ struct DecodedCollageLayout {
 /// stdlib types are named in the generated framework.
 func decodeLayout(_ arr: KotlinFloatArray) -> DecodedCollageLayout {
     func f(_ i: Int) -> CGFloat { CGFloat(arr.get(index: Int32(i))) }
-    let n = Int(arr.get(index: 0))
+    // Element 0 is a count that arrived as a Float across the bridge. It is our
+    // own Kotlin writing it, but a negative or absurd value here would trap in
+    // reserveCapacity and read past the array, so bound it by what the array can
+    // actually hold (6 header floats + 4 per cell).
+    let capacity = max((Int(arr.size) - 6) / 4, 0)
+    let n = min(max(Int(arr.get(index: 0)), 0), capacity)
     let hasPalette = arr.get(index: 1) > 0.5
     let palette: CGRect? = hasPalette
         ? CGRect(x: f(2), y: f(3), width: f(4) - f(2), height: f(5) - f(3))

@@ -915,9 +915,13 @@ struct CollageView: View {
                 editTarget = EditTarget(
                     index: i,
                     photoID: photos[i].id,
-                    // max() keeps a degenerate cell from producing an infinite
-                    // ratio, which collapsed the crop editor to zero height.
-                    ratio: cells[i].width / max(cells[i].height, 1)
+                    // max() on both sides. The height guard stops an infinite
+                    // ratio, which collapsed the crop editor to zero height; the
+                    // width guard stops a ratio of zero, which is worse — the
+                    // editor computes boxW / ratio, and 0/0 is a NaN frame, and
+                    // SwiftUI traps on a non-finite frame rather than drawing
+                    // something wrong.
+                    ratio: max(cells[i].width, 1) / max(cells[i].height, 1)
                 )
             }
     }
@@ -1397,6 +1401,37 @@ private struct CollageSettings: Equatable, Codable {
               CollageTemplateVM.all.contains(where: { $0.id == templateID }) else { return nil }
         return templateID
     }
+
+    /// What comes back from UserDefaults is data, not constants — a blob written
+    /// by a different build, or a truncated one, can hold anything the decoder
+    /// accepts. `aspect` is the dangerous one: `canvas(width:)` computes
+    /// `width / aspect`, so a stored 0 hands SwiftUI a non-finite frame, and that
+    /// is a hard crash in layout rather than a preview that merely looks wrong.
+    /// Clamp every value to the range its own control offers.
+    func sanitised() -> CollageSettings {
+        func clamp(_ v: CGFloat, _ lo: CGFloat, _ hi: CGFloat, or fallback: CGFloat) -> CGFloat {
+            v.isFinite ? min(max(v, lo), hi) : fallback
+        }
+        var s = self
+        // 0.5625 (9:16) … 1.778 (16:9) are the extremes any preset or size uses.
+        s.aspect = clamp(s.aspect, 0.4, 2.0, or: 4.0 / 5.0)
+        s.spacing = clamp(s.spacing, 0, 24, or: 4)
+        s.cornerRadius = clamp(s.cornerRadius, 0, 48, or: 6)
+        s.borderWidth = clamp(s.borderWidth, 0, 8, or: 0)
+        s.overlayPosFrac = clamp(s.overlayPosFrac, 0, 1, or: 0.5)
+        s.overlayWidthFrac = clamp(s.overlayWidthFrac, 0.08, 0.5, or: 0.16)
+        s.layout = (0...2).contains(s.layout) ? s.layout : 0
+        // 0 NONE … 4 OVERLAY from the shared enum, plus 5 (下帯) laid out here.
+        s.placement = (0...5).contains(s.placement) ? s.placement : 1
+        s.focals = s.focals.mapValues { focal in
+            var f = focal
+            f.x = clamp(f.x, 0, 1, or: 0.5)
+            f.y = clamp(f.y, 0, 1, or: 0.5)
+            f.scale = clamp(f.scale, 1, CellFocal.maxScale, or: 1)
+            return f
+        }
+        return s
+    }
 }
 
 /// UserDefaults-backed store for the collage panel.
@@ -1416,7 +1451,7 @@ private enum CollageSettingsStore {
         guard let data = UserDefaults.standard.data(forKey: key),
               let decoded = try? JSONDecoder().decode(CollageSettings.self, from: data)
         else { return CollageSettings() }
-        return decoded
+        return decoded.sanitised()
     }
 
     static func save(_ settings: CollageSettings) {

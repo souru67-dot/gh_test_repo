@@ -155,6 +155,9 @@ struct GridPreviewView: View {
                     // the removal shifts every index after this one anyway.
                     dragging = nil
                     dragLive = false
+                    // The menu holds the index from the body pass that opened it;
+                    // acting on a shorter array would trap rather than misfire.
+                    guard state.gridPhotos.indices.contains(index) else { return }
                     state.gridPhotos.remove(at: index)
                 } label: {
                     Label("削除", systemImage: "trash")
