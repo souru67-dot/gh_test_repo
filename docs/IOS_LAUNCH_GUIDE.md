@@ -18,6 +18,9 @@
 | ✅ | サポート／プライバシーポリシーのページ（`site/`） |
 | ✅ | ストア掲載文 4言語分（`docs/APP_STORE_LISTING.md`） |
 | ✅ | Apple Developer Program の登録申請 |
+| ✅ | Privacy Manifest を Xcode ターゲットへ追加（OWNER_TASKS §A） |
+| ✅ | サポート／プライバシーページの公開（OWNER_TASKS §B） |
+| ✅ | VoiceOver 対応・クラッシュ耐性監査・実機での再確認 |
 | ⏳ | **Apple Developer Program の承認待ち** ← いまここ |
 
 ### 0-2. 残っている工程
@@ -28,8 +31,8 @@
 
 | # | 作業 | 所要 | 場所 |
 |---|---|---|---|
-| A | Privacy Manifest を Xcode に追加 | 10分 | OWNER_TASKS.md §A |
-| B | サポート/プライバシーページを公開 | 1時間 | OWNER_TASKS.md §B |
+| A | ~~Privacy Manifest を Xcode に追加~~ | — | **完了** |
+| B | ~~サポート/プライバシーページを公開~~ | — | **完了** |
 | C | **メモリ実測**（唯一のクラッシュリスク） | 30分 | OWNER_TASKS.md §C ／ 判定基準は §3.4 |
 | D | スクリーンショット6枚 | 半日 | OWNER_TASKS.md §D |
 
@@ -436,8 +439,8 @@ Memory Gauge の絶対値だけで見る場合の代替基準は **700MB**。こ
 | App プライバシーの回答 | ✅ 作成済み | `APP_STORE_LISTING.md` §2 |
 | 年齢制限の回答 | ✅ 作成済み | `APP_STORE_LISTING.md` §3 |
 | 審査メモ | ✅ 作成済み | `APP_STORE_LISTING.md` §4 |
-| サポートURL / プライバシーポリシーURL | ⏳ **要作業** | 手順は `OWNER_TASKS.md` §B |
-| Privacy Manifest | ⏳ **要追加** | 手順は `OWNER_TASKS.md` §A |
+| サポートURL / プライバシーポリシーURL | ✅ 公開済み | `APP_STORE_LISTING.md` §5 にURL記載 |
+| Privacy Manifest | ✅ ターゲット追加済み | Copy Bundle Resources に登録済み |
 | 課金の審査用スクショ（ペイウォール画面） | ⏳ 要撮影 | §8 Step 4 で必要 |
 
 **審査でつまずきやすい点**（いずれも実装側は対応済み）
