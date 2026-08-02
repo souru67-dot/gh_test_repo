@@ -359,17 +359,23 @@ iOS はアプリのメモリ使用量が端末ごとの上限を超えると、*
 Memory Gauge は「今いくつ使っているか」は分かりますが「あと何MB で落ちるか」は
 分かりません。それを直接測るのが `os_proc_available_memory()` です。
 
-`ColorHuntApp.swift` の `RootTabView.body` の末尾に、以下を**一時的に**貼ります
-（測定用。**測り終えたら消してください**。`#if DEBUG` 付きですが v1.0 は凍結済み
-のためコミットしない運用にします）。
+`ColorHuntApp.swift` の `AppDelegate` に、以下を**一時的に**貼ります
+（測定用。**測り終えたら消してください**。v1.0 は凍結済みのためコミットしない
+運用です）。手順の詳細と、SwiftUI 側に置いてはいけない理由は
+`OWNER_TASKS.md` §C-2 にあります。
 
 ```swift
-#if DEBUG
-.onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in
-    let remain = Double(os_proc_available_memory()) / 1_048_576
-    print(String(format: "🧠 残り %.0f MB", remain))
+func application(_ application: UIApplication,
+                 didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    let timer = Timer(timeInterval: 2, repeats: true) { _ in
+        let remain = Double(os_proc_available_memory()) / 1_048_576
+        print(String(format: "🧠 残り %.0f MB", remain))
+    }
+    // .common: 既定モードだとスクロール追跡中に止まり、メモリが最も厳しい
+    // 「一覧を最下部までスクロール」の最中がまさに測れなくなる。
+    RunLoop.main.add(timer, forMode: .common)
+    return true
 }
-#endif
 ```
 
 ファイル冒頭に `import os` が必要です。Xcode のコンソールに 2秒ごとに
