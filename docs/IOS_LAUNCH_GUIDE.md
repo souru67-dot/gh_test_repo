@@ -591,7 +591,8 @@ SNSハッシュタグ（#colorhunt #色集め）をキャプション自動コ�
 
 **0-1. 課金プロダクトID（対応済み・確認のみ）**
 
-コードの製品IDは Bundle ID の接頭辞に揃えて **`com.yk-dev.ColorHunt.pro`**
+コードの製品IDは **`com.ykdev.ColorHunt.pro`**（Bundle ID からハイフンを抜いた形。
+Xcode の StoreKit エディタがハイフンを弾くため。Bundle ID 自体は `com.yk-dev.ColorHunt` のまま）
 にしてあります（`AppState.swift` の `proID`）。
 
 - Step 4 で App Store Connect に登録するときは、**この文字列を1文字違わず**

@@ -8,7 +8,7 @@ App Store Connect にそのまま貼り付けられる形で、掲載文・申�
 > 先に更新が必要です。
 
 - Bundle ID: Xcode の設定と一致させること（例 `com.yk-dev.ColorHunt`）
-- アプリ内課金: `com.yk-dev.ColorHunt.pro`（非消耗型・買い切り）
+- アプリ内課金: `com.ykdev.ColorHunt.pro`（非消耗型・買い切り）
 - 対応言語: 日本語 / English / 한국어 / 简体中文
 - 最低対応: iOS 16.0 / iPhone のみ（Supported Destinations = iPhone）
 
@@ -322,7 +322,7 @@ ColorHunt は、写真を主役の色で分類し、コラージュを作成す�
 4. コラージュタブ → 写真を選択 → テンプレートを選ぶ → 保存
 
 【アプリ内課金について】
-・製品ID: com.yk-dev.ColorHunt.pro
+・製品ID: com.ykdev.ColorHunt.pro
 ・非消耗型の買い切りです（サブスクリプションではありません）
 ・購入導線: コラージュタブ → Proテンプレートまたは透かし表示部分をタップ
 ・「購入を復元」ボタンをペイウォール内に実装しています
@@ -387,5 +387,5 @@ git push -u origin main
 - [ ] App のプライバシー = 「データを収集していません」で提出した
 - [ ] 年齢制限 = 4+ になっていることを確認した
 - [ ] 審査メモに §4 を貼った
-- [ ] 課金アイテムのIDが `com.yk-dev.ColorHunt.pro` で一致している
+- [ ] 課金アイテムのIDが `com.ykdev.ColorHunt.pro` で一致している
 - [ ] スクリーンショット（6.9インチ）を登録した

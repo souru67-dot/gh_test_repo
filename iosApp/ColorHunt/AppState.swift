@@ -96,9 +96,15 @@ final class AppState: ObservableObject {
     @Published var isPro: Bool = UserDefaults.standard.bool(forKey: "isPro")
     @Published var proProduct: Product?
     /// Must match the In-App Purchase created in App Store Connect exactly, and
-    /// that identifier can never be renamed once it exists — so it shares the
-    /// bundle's prefix (com.yk-dev.ColorHunt) to stay unambiguous.
-    private let proID = "com.yk-dev.ColorHunt.pro"
+    /// that identifier can never be renamed or reused once it exists.
+    ///
+    /// Deliberately **without a hyphen**, even though the bundle id has one
+    /// (com.yk-dev.ColorHunt). App Store Connect's own help allows hyphens here,
+    /// but Xcode's StoreKit Configuration editor rejects them outright — and the
+    /// developer forums carry the same complaint about App Store Connect itself.
+    /// A product id does not have to match the bundle id, and this one cannot be
+    /// corrected after it is created, so it avoids the character entirely.
+    private let proID = "com.ykdev.ColorHunt.pro"
 
     /// Full-resolution photos read back from the store, kept only as long as
     /// there is room. NSCache is the right container precisely because it drops

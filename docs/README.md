@@ -84,7 +84,7 @@
 | メモリ実測のやり方 | OWNER_TASKS.md §C（判定基準は IOS_LAUNCH_GUIDE.md §3.4） |
 | App プライバシー質問票に何と答えるか | APP_STORE_LISTING.md §2 |
 | 審査メモに何を書くか | APP_STORE_LISTING.md §4 |
-| 課金の製品ID | `com.yk-dev.ColorHunt.pro`（APP_STORE_LISTING.md 冒頭） |
+| 課金の製品ID | `com.ykdev.ColorHunt.pro`（APP_STORE_LISTING.md 冒頭） |
 | スクリーンショットの構成 | OWNER_TASKS.md §D |
 | 提出直前の最終確認 | IOS_LAUNCH_GUIDE.md §7 |
 | ビルドエラーの対処 | IOS_LAUNCH_GUIDE.md §8「詰まりやすいポイント」 |

@@ -521,12 +521,19 @@ E-1 は課金まわりをローカルで丸ごとテストできるようにな�
    | 項目 | 入力 |
    |---|---|
    | Reference Name | `ColorHunt Pro` |
-   | Product ID | **`com.yk-dev.ColorHunt.pro`** |
-   | Price | `¥800`（一覧から選択） |
+   | Product ID | **`com.ykdev.ColorHunt.pro`** |
+   | Price | `¥500`（一覧から選択） |
 
    > **Product ID は1文字でも違うと価格が出ません。** これは
    > `AppState.swift` の `proID` と完全一致させる必要があります。
    > 迷ったら `AppState.swift` を開いて `proID` の行をコピーしてください。
+
+   > **ハイフンは使えません。** Xcode の StoreKit エディタは製品IDに
+   > ハイフンを受け付けず、`The product ID can contain only alphanumeric
+   > characters, underscores, and periods.` で弾きます。そのため製品IDは
+   > バンドルID（`com.yk-dev.ColorHunt`）とは別に、ハイフン抜きの
+   > `com.ykdev.ColorHunt.pro` にしてあります。**バンドルIDは変更しないで
+   > ください** — そちらはハイフンを許容します。
 
 6. さらに **Localizations** の ＋ で日本語を追加:
 
