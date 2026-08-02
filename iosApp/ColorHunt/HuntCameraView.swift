@@ -283,7 +283,13 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         DispatchQueue.main.async { self.liveColor = color }
     }
 
-    /// Average colour of the centre square of a BGRA pixel buffer.
+    /// The dominant colour of the centre square of a BGRA pixel buffer — the
+    /// same judgement `DominantColor.extract` makes on a photo.
+    ///
+    /// This was a plain mean, which is why a hunt felt impossible: averaging the
+    /// subject together with whatever surrounded it pulled the reading darker and
+    /// greyer every time, so the viewfinder disagreed with how the very same
+    /// object would be sorted once photographed.
     private static func centreColor(_ pb: CVPixelBuffer) -> Int32? {
         CVPixelBufferLockBaseAddress(pb, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
@@ -296,22 +302,20 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         let side = max(min(w, h) / 6, 8)
         let x0 = w / 2 - side / 2
         let y0 = h / 2 - side / 2
-        var r = 0, g = 0, b = 0, n = 0
+        var histogram = DominantColor.Histogram()
         var y = y0
         while y < y0 + side {
             let row = ptr + y * bpr
             var x = x0
             while x < x0 + side {
                 let p = row + x * 4
-                b += Int(p[0]); g += Int(p[1]); r += Int(p[2])   // BGRA
-                n += 1
+                histogram.add(r: Int(p[2]), g: Int(p[1]), b: Int(p[0]))   // BGRA
                 x += 3
             }
             y += 3
         }
-        guard n > 0 else { return nil }
-        let packed = (0xFF << 24) | ((r / n) << 16) | ((g / n) << 8) | (b / n)
-        return Int32(truncatingIfNeeded: packed)
+        guard !histogram.isEmpty else { return nil }
+        return histogram.dominant
     }
 }
 
@@ -425,10 +429,36 @@ struct HuntCameraView: View {
 
     private var target: Int32? { state.todayColor }
 
-    /// 0…1 closeness of the live colour to the target (1 = identical).
+    /// A hunt succeeds when the live colour lands in the same one of the twelve
+    /// buckets as today's colour — the judgement the whole rest of the app already
+    /// makes, and the one the result card announces ("今日の色: 赤").
+    ///
+    /// It used to be a hex distance instead, and the two disagreed badly. The
+    /// wheel builds its target at full saturation and full brightness, a colour no
+    /// photographed object reaches, and RGB distance charges for a difference in
+    /// brightness exactly as it charges for a difference in hue: the same hue only
+    /// 13% darker already failed. Of the colours you could realistically capture
+    /// while aiming at a target, 3% passed. The screen said 赤 and a red sign did
+    /// not count.
+    private var isMatch: Bool {
+        guard let t = target, let l = cam.liveColor else { return false }
+        return ColorBridge.shared.classifyKey(colorInt: t) == ColorBridge.shared.classifyKey(colorInt: l)
+    }
+
+    /// 0…1 warmth for the meter and the arc. Read from hue alone, because hue is
+    /// what the buckets are cut on — a red wall in shade is still red. The gate
+    /// mirrors the classifier's own achromatic cut-off, so a grey wall can never
+    /// fill the meter no matter which colour is being hunted.
     private var closeness: Double {
         guard let t = target, let l = cam.liveColor else { return 0 }
-        return 1 - min(colorDistance(t, l) / 120.0, 1)   // ~120 = generous match radius
+        let goal = hsv(t), live = hsv(l)
+        guard live.v > 0.16 else { return 0 }
+        let gate = min(max((live.s - 0.12) / 0.28, 0), 1)
+        var dh = abs(live.h - goal.h)
+        if dh > 180 { dh = 360 - dh }
+        // 60° full-scale: the narrowest bucket spans 30°, so being inside one
+        // always reads high and the neighbouring hue always reads low.
+        return (1 - min(dh / 60.0, 1)) * gate
     }
 
     var body: some View {
@@ -474,11 +504,11 @@ struct HuntCameraView: View {
         .preferredColorScheme(.dark)
         .onAppear { cam.start() }
         .onDisappear { cam.stop() }
-        .onChange(of: closeness >= 0.72) { isMatch in
-            if isMatch && !matched {
+        .onChange(of: isMatch) { hit in
+            if hit && !matched {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { matched = isMatch }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { matched = hit }
         }
         .onChange(of: ev) { value in
             cam.setExposureBias(Float(value))
@@ -1415,12 +1445,27 @@ struct HuntCameraView: View {
         return UIImage(cgImage: croppedCG)
     }
 
-    private func colorDistance(_ a: Int32, _ b: Int32) -> Double {
-        let av = UInt32(bitPattern: a), bv = UInt32(bitPattern: b)
-        let dr = Double(Int((av >> 16) & 0xFF) - Int((bv >> 16) & 0xFF))
-        let dg = Double(Int((av >> 8) & 0xFF) - Int((bv >> 8) & 0xFF))
-        let db = Double(Int(av & 0xFF) - Int(bv & 0xFF))
-        return (dr * dr + dg * dg + db * db).squareRoot()
+    /// Packed colour → hue (0..<360), saturation and value (0…1).
+    ///
+    /// Replaces the RGB distance this screen used to match on. Distance in RGB
+    /// treats "darker" and "a different colour" as the same kind of error, which
+    /// is exactly the wrong model for hunting: the bucket a colour belongs to is
+    /// decided by hue, and the meter should be too.
+    private func hsv(_ packed: Int32) -> (h: Double, s: Double, v: Double) {
+        let v32 = UInt32(bitPattern: packed)
+        let r = Double((v32 >> 16) & 0xFF) / 255
+        let g = Double((v32 >> 8) & 0xFF) / 255
+        let b = Double(v32 & 0xFF) / 255
+        let maxC = max(r, g, b), minC = min(r, g, b), d = maxC - minC
+        let s = maxC == 0 ? 0 : d / maxC
+        guard d > 0.0001 else { return (0, s, maxC) }
+        let h: Double
+        switch maxC {
+        case r: h = (g - b) / d + (g < b ? 6 : 0)
+        case g: h = (b - r) / d + 2
+        default: h = (r - g) / d + 4
+        }
+        return (h * 60, s, maxC)
     }
 }
 

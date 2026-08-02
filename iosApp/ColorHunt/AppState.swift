@@ -678,13 +678,72 @@ enum DominantColor {
         return Int(bitPattern: UInt(truncatingIfNeeded: h))
     }
 
+    /// Coarse RGB histogram (4 bits per channel) plus true colour sums per bin.
+    ///
+    /// Shared by the photo path and the camera's live read-out. The camera used
+    /// to take a plain mean of the centre square, which mixes the subject with
+    /// whatever is behind it and so always drifts darker and greyer than what
+    /// the user is pointing at — the same object then sorted one way as a photo
+    /// and read another way through the viewfinder. One histogram, one scoring
+    /// rule, one answer.
+    struct Histogram {
+        private var bins: [Int: (count: Int, r: Int, g: Int, b: Int)] = [:]
+
+        /// Spelled out because the synthesised memberwise init would inherit
+        /// `bins`'s private access and be unreachable from the camera.
+        init() {}
+
+        var isEmpty: Bool { bins.isEmpty }
+
+        mutating func add(r: Int, g: Int, b: Int) {
+            let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+            var e = bins[key] ?? (0, 0, 0, 0)
+            e = (e.count + 1, e.r + r, e.g + g, e.b + b)
+            bins[key] = e
+        }
+
+        /// The bin that wins on population × saturation × value-weight — the
+        /// subject's colour rather than the largest dark area.
+        var dominant: Int32? {
+            var bestScore = -1.0
+            var best: (r: Int, g: Int, b: Int)?
+            for (_, e) in bins {
+                let r = Double(e.r) / Double(e.count) / 255.0
+                let g = Double(e.g) / Double(e.count) / 255.0
+                let b = Double(e.b) / Double(e.count) / 255.0
+                let maxC = max(r, g, b), minC = min(r, g, b)
+                let value = maxC
+                let sat = maxC == 0 ? 0 : (maxC - minC) / maxC
+                // Same shape as Android's PaletteExtractor.scoreOf.
+                //
+                // Pastels used to be penalised twice — once for being bright and
+                // again for being low-saturation — so a small dark region beat a
+                // photo that was mostly pale yellow or pink. The bright penalty
+                // now only applies to near-white (a blown highlight, which is what
+                // it was for), and the saturation term has a higher floor and a
+                // gentler slope so a soft colour still competes with a vivid one.
+                let valueWeight: Double
+                if value < 0.12 { valueWeight = 0.2 }
+                else if value < 0.28 { valueWeight = 0.2 + 0.8 * (value - 0.12) / 0.16 }
+                else if value > 0.92 { valueWeight = sat < 0.10 ? 0.45 : 0.85 }
+                else { valueWeight = 1.0 }
+                let score = Double(e.count) * (0.45 + 0.75 * sat) * valueWeight
+                if score > bestScore {
+                    bestScore = score
+                    best = (e.r / e.count, e.g / e.count, e.b / e.count)
+                }
+            }
+            guard let c = best else { return nil }
+            return Int32(truncatingIfNeeded: (0xFF << 24) | (c.r << 16) | (c.g << 8) | c.b)
+        }
+    }
+
     static func extract(from image: UIImage) -> Int32? {
         let dim = 48
         let bytesPerRow = dim * 4
         guard let buffer = rgbaBuffer(from: image, dim: dim, bytesPerRow: bytesPerRow) else { return nil }
 
-        // Quantise to 4 bits/channel; accumulate population and true colour sums.
-        var population = [Int: (count: Int, r: Int, g: Int, b: Int)]()
+        var histogram = Histogram()
         for y in 0..<dim {
             let row = y * bytesPerRow
             for x in 0..<dim {
@@ -692,48 +751,11 @@ enum DominantColor {
                 // Buffer is RGBA8 (premultipliedLast); skip only fully transparent
                 // padding, keep every real pixel so the histogram is never empty.
                 if buffer[p + 3] < 8 { continue }
-                let r = Int(buffer[p])
-                let g = Int(buffer[p + 1])
-                let b = Int(buffer[p + 2])
-                let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
-                var e = population[key] ?? (0, 0, 0, 0)
-                e = (e.count + 1, e.r + r, e.g + g, e.b + b)
-                population[key] = e
+                histogram.add(r: Int(buffer[p]), g: Int(buffer[p + 1]), b: Int(buffer[p + 2]))
             }
         }
-        guard !population.isEmpty else { return nil }
-
-        var bestScore = -1.0
-        var best: (r: Int, g: Int, b: Int)? = nil
-        for (_, e) in population {
-            let r = Double(e.r) / Double(e.count) / 255.0
-            let g = Double(e.g) / Double(e.count) / 255.0
-            let b = Double(e.b) / Double(e.count) / 255.0
-            let maxC = max(r, g, b), minC = min(r, g, b)
-            let value = maxC
-            let sat = maxC == 0 ? 0 : (maxC - minC) / maxC
-            // Same shape as Android's PaletteExtractor.scoreOf.
-            //
-            // Pastels used to be penalised twice — once for being bright and
-            // again for being low-saturation — so a small dark region beat a
-            // photo that was mostly pale yellow or pink. The bright penalty
-            // now only applies to near-white (a blown highlight, which is what
-            // it was for), and the saturation term has a higher floor and a
-            // gentler slope so a soft colour still competes with a vivid one.
-            let valueWeight: Double
-            if value < 0.12 { valueWeight = 0.2 }
-            else if value < 0.28 { valueWeight = 0.2 + 0.8 * (value - 0.12) / 0.16 }
-            else if value > 0.92 { valueWeight = sat < 0.10 ? 0.45 : 0.85 }
-            else { valueWeight = 1.0 }
-            let score = Double(e.count) * (0.45 + 0.75 * sat) * valueWeight
-            if score > bestScore {
-                bestScore = score
-                best = (e.r / e.count, e.g / e.count, e.b / e.count)
-            }
-        }
-        guard let c = best else { return nil }
-        let packed = (0xFF << 24) | (c.r << 16) | (c.g << 8) | c.b
-        return Int32(truncatingIfNeeded: packed)
+        guard !histogram.isEmpty else { return nil }
+        return histogram.dominant
     }
 
     /// Draws [image] (orientation-corrected by UIKit) into an RGBA8 buffer we own,
