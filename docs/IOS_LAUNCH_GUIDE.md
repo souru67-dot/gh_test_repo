@@ -456,7 +456,7 @@ Memory Gauge の絶対値だけで見る場合の代替基準は **700MB**。こ
 | 素材 | 状態 | 場所 |
 |---|---|---|
 | アイコン 1024px（Light/Dark/Tinted） | ✅ 作成済み | `iosApp/AppIcon/` |
-| スクリーンショット 6枚 | ⏳ **要作業** | 手順は `OWNER_TASKS.md` §D |
+| スクリーンショット 7枚（日本語） | ✅ 作成済み | 見出しの4言語対訳は `OWNER_TASKS.md` §D |
 | App名/サブタイトル/キーワード（4言語） | ✅ 作成済み | `APP_STORE_LISTING.md` §1 |
 | プロモテキスト/説明文（4言語） | ✅ 作成済み | `APP_STORE_LISTING.md` §1 |
 | App プライバシーの回答 | ✅ 作成済み | `APP_STORE_LISTING.md` §2 |
