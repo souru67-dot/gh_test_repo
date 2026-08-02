@@ -180,7 +180,7 @@ v1.0 時点で認識している弱点です。詳細と理由は
 
 | 項目 | 内容 | 対応時期 |
 |---|---|---|
-| ~~写真の常駐メモリ~~ | **解消済み**。`HuntPhoto.thumb`（440px）だけが常駐し、原寸は `AppState.fullImage(for:)` が都度読む（NSCache・上限200MB）。実測 718MB → 約110MB | — |
+| ~~写真の常駐メモリ~~ | **解消済み**。`HuntPhoto.thumb`（440px）だけが常駐し、原寸は `AppState.fullImage(for:)` が都度読む（NSCache・上限200MB）。**実測 718MB → 204MB**（1枚3.59MB→1.02MB。footprint 約218MB で、iPhone 8 でも1.1GB以上の余裕） | — |
 | `CollageView.swift` 2058行 | プレビュー・編集・書き出し・課金UI・テンプレ定義・設定の保存が同居 | テンプレ定義の分離から |
 | Swift 側の自動テストが無い | 色分類は Kotlin 側に21件あるが、`AppState` は未テスト。文字列の整合だけは `tools/check_localization.py` が機械的に見る（キーの過不足・重複・壊れた行・未ローカライズ・書式指定子の型ずれ） | 重複排除と保存/読込から |
 | アクセシビリティは対応済み | アイコンボタン・スライダー・写真タイル・カラーホイール（`accessibilityAdjustableAction` で15°刻み）にラベルを入れ、コラージュのプレビューは1要素に畳んだ。**Dynamic Type 最大でも崩れなし（実機確認済み）** | — |
