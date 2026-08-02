@@ -257,29 +257,38 @@ https://souru67-dot.github.io/colorhunt-site/privacy.html
    import os
    ```
 
-3. 同じファイルの中で `.onChange(of: state.selectedTab) { tab in` で始まる
-   ブロックを探します。その**閉じカッコ `}` の次の行**に、以下を貼り付けます:
+3. 同じファイルの `final class AppDelegate: NSObject, UIApplicationDelegate {`
+   （22行目あたり）の**次の行**に、以下を貼り付けます:
 
    ```swift
-   .task {
-       while !Task.isCancelled {
-           let remain = Double(os_proc_available_memory()) / 1_048_576
-           print(String(format: "🧠 残り %.0f MB", remain))
-           try? await Task.sleep(nanoseconds: 2_000_000_000)
+       func application(_ application: UIApplication,
+                        didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+           let timer = Timer(timeInterval: 2, repeats: true) { _ in
+               let remain = Double(os_proc_available_memory()) / 1_048_576
+               print(String(format: "🧠 残り %.0f MB", remain))
+           }
+           RunLoop.main.add(timer, forMode: .common)
+           return true
        }
-   }
    ```
 
-   > **`#if DEBUG` で囲まないでください。** C-1 で Build Configuration を
-   > `Release` にしており、Release では `DEBUG` が定義されないので、囲むと
-   > コードごと消えてコンソールに何も出ません。C-4 で丸ごと削除する
-   > 一時コードなので、囲む必要もありません。
-   >
-   > **`Timer.publish(...).autoconnect()` も使えません。** あれは Combine の
-   > API で、`ColorHuntApp.swift` は Combine を import していないため
-   > `Instance method 'autoconnect()' is not available` でビルドが止まります
-   > （Xcode 26 の MemberImportVisibility。`AppState.swift` の冒頭コメント参照）。
-   > 上の `.task` は Swift 標準の機能だけなので、`import os` 以外の追加は不要です。
+   > **`.common` は必須です。** 既定のモードだとスクロール中にタイマーが
+   > 止まります。ハント画面を一番下までスクロールしている最中こそメモリが
+   > 一番厳しいので、そこで測れないと意味がありません。
+
+   ### なぜ SwiftUI 側ではなく AppDelegate に置くのか
+
+   ここは実機で2回失敗した箇所です。**同じ轍を踏まないでください。**
+
+   | 試した書き方 | 何が起きたか |
+   |---|---|
+   | `Timer.publish(...).autoconnect()` を `.onReceive` で | Combine の API で、`ColorHuntApp.swift` は Combine を import していないため `Instance method 'autoconnect()' is not available` でビルドが止まる（Xcode 26 の MemberImportVisibility。`AppState.swift` の冒頭コメント参照） |
+   | 上を `.task { while ... }` に置き換え | **新規インストールの初回起動でクラッシュ**。SwiftUI がビューツリーを組み立てる最中にスタックが溢れ、`EXC_BAD_ACCESS` で 5,500フレーム超（繰り返し単位に `_TaskModifier2` が含まれていた） |
+
+   AppDelegate のタイマーは SwiftUI のビューツリーに一切触れないので、
+   この種の副作用が起きません。**`#if DEBUG` で囲まないでください** —
+   C-1 で Build Configuration を `Release` にしており、Release では `DEBUG` が
+   定義されないため、囲むとコードごと消えて何も出力されません。
 
 **C-3. 測る**
 
@@ -313,7 +322,7 @@ https://souru67-dot.github.io/colorhunt-site/privacy.html
 
 **C-4. 後片付け（忘れると後で困ります）**
 
-1. C-2 で貼り付けた `.task { ... }` のブロックを**削除**します
+1. C-2 で貼り付けた `func application(_:didFinishLaunchingWithOptions:)` を**削除**します
 2. 追加した `import os` も削除します
 3. **Product → Scheme → Edit Scheme… → Run → Build Configuration を
    `Debug` に戻します**
