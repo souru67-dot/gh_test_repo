@@ -1017,7 +1017,7 @@ struct HuntCameraView: View {
             state.selectedTab = .hunt
         } label: {
             ZStack(alignment: .bottomTrailing) {
-                if let thumb = lastShot ?? state.photos.last?.image {
+                if let thumb = lastShot ?? state.photos.last?.thumb {
                     Image(uiImage: thumb).resizable().scaledToFill()
                         .frame(width: 52, height: 52)
                         .clipShape(RoundedRectangle(cornerRadius: 12))

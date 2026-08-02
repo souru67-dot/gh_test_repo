@@ -7,22 +7,39 @@ import PhotosUI
 import Photos
 import CoreLocation
 import StoreKit
+// Decoding straight to a target size (see downsampled) instead of decoding full
+// frames and shrinking them afterwards.
+import ImageIO
 import SharedColor
 
 // MARK: - Model
 
 /// A hunted photo on iOS — mirrors Android's `HuntPhoto`.
 struct HuntPhoto: Identifiable, Equatable {
+    /// Long edge of the resident copy. Sized for the largest Hunt tile a phone
+    /// can produce: the grid is `.adaptive(minimum: 104)`, so ~127pt on a Pro
+    /// Max, which is 381px at @3x.
+    static let thumbSide: CGFloat = 440
+
     let id: UUID
-    let image: UIImage
+    /// The **only** pixels that stay in memory — a ~440px copy for the Hunt
+    /// grid, the map and the camera's gallery button.
+    ///
+    /// Full resolution lives in `Documents/HuntStore/<id>.jpg` and is read back
+    /// on demand by `AppState.fullImage(for:)`. Keeping every photo decoded at
+    /// full size cost 3.6MB each — 718MB for 200 photos, measured — and photos
+    /// added through the picker were kept at their original size, which is four
+    /// times worse again once they come back from disk. At 440px the same 200
+    /// photos cost about 110MB.
+    let thumb: UIImage
     /// Packed 0xFFRRGGBB dominant colour, nil while analysing / on failure.
     var dominantColor: Int32?
     /// Stable bucket key from the shared classifier (e.g. "RED"), nil = unanalysed.
     var bucketKey: String?
 
-    init(id: UUID = UUID(), image: UIImage, dominantColor: Int32?, bucketKey: String?) {
+    init(id: UUID = UUID(), thumb: UIImage, dominantColor: Int32?, bucketKey: String?) {
         self.id = id
-        self.image = image
+        self.thumb = thumb
         self.dominantColor = dominantColor
         self.bucketKey = bucketKey
     }
@@ -60,6 +77,11 @@ final class AppState: ObservableObject {
     /// shape the camera guide showed (nil = keep the template's own layout).
     @Published var pendingCollageLayout: Int32?
 
+    /// Long edge for the Grid tab's own photos. They are only ever shown 3-up
+    /// (about 130pt, so 390px at @3x) and never exported, so there is nothing to
+    /// gain from holding them any larger.
+    static let gridSide: CGFloat = 600
+
     /// Photos the Grid tab picked independently (parity with Android's Grid).
     @Published var gridPhotos: [UIImage] = [] { didSet { scheduleGridSave(); scheduleSave() } }
 
@@ -78,7 +100,16 @@ final class AppState: ObservableObject {
     /// bundle's prefix (com.yk-dev.ColorHunt) to stay unambiguous.
     private let proID = "com.yk-dev.ColorHunt.pro"
 
+    /// Full-resolution photos read back from the store, kept only as long as
+    /// there is room. NSCache is the right container precisely because it drops
+    /// its contents under memory pressure — the JPEG on disk is the real copy,
+    /// and re-reading one is far cheaper than keeping 200 of them decoded.
+    private let fullCache = NSCache<NSUUID, UIImage>()
+
     init() {
+        // ~12 photos at 2400px. A collage rarely shows more, and going over
+        // simply evicts the least recently used one.
+        fullCache.totalCostLimit = 200 * 1024 * 1024
         // Restore entitlements and keep listening for purchases/renewals.
         Task { await startPro() }
         // Bring the hunt back from disk (images decode off-main).
@@ -102,6 +133,23 @@ final class AppState: ObservableObject {
 
     var unanalysed: [HuntPhoto] { photos.filter { $0.bucketKey == nil } }
 
+    /// The full-resolution photo, for the collage canvas and the crop editor —
+    /// the two places that must not work from the 440px resident copy, because
+    /// the collage renders the very same view at up to 2160px for export.
+    ///
+    /// Reads off the main thread; hits the cache on the way back.
+    func fullImage(for id: UUID) async -> UIImage? {
+        let key = id as NSUUID
+        if let hit = fullCache.object(forKey: key) { return hit }
+        let url = huntPhotoURL(id)
+        guard let image = await Task.detached(priority: .userInitiated) {
+            UIImage(contentsOfFile: url.path)
+        }.value else { return nil }
+        let pixels = image.size.width * image.size.height * image.scale * image.scale
+        fullCache.setObject(image, forKey: key, cost: Int(pixels) * 4)
+        return image
+    }
+
     // MARK: Intake & analysis
 
     /// Content hashes of every photo already in the hunt — re-picking or re-running
@@ -112,20 +160,61 @@ final class AppState: ObservableObject {
     private var assetIDs = Set<String>()
     private var assetIDByPhoto: [UUID: String] = [:]
 
-    /// [assetIDs] are PHAsset local identifiers, positionally matched to
-    /// [images], for photos that came from the library. They are what makes
-    /// de-duplication actually work across the two intake paths: auto-sort gets
-    /// a downscaled render from PHImageManager while the picker hands over the
-    /// original file, and no pixel hash can survive that — resampling shifts
-    /// enough channel values that the two never agree. The identifier is the
-    /// same string either way. The camera has no asset, so it still falls back
-    /// to the pixel hash, which is fine: a fresh capture is never a duplicate.
+    /// [assetID] is the PHAsset local identifier when the photo came from the
+    /// library. It is what makes de-duplication work across the two intake
+    /// paths: auto-sort gets a downscaled render from PHImageManager while the
+    /// picker hands over the original file, and no pixel hash survives that —
+    /// resampling shifts enough channel values that the two never agree. The
+    /// identifier is the same string either way. The camera has no asset, so it
+    /// falls back to the pixel hash, which is fine: a fresh capture is never a
+    /// duplicate.
     ///
-    /// [unreadable] counts assets the library could not hand over at all (an
-    /// iCloud download that failed, say). Passing it — even as 0 — is what
-    /// marks this as an auto-sort run and produces the summary toast; the
-    /// photo picker and the camera pass nil and stay silent.
-    func add(images: [UIImage], assetIDs: [String?]? = nil, unreadable: Int? = nil) {
+    /// Takes one photo all the way in — hash, thumbnail, JPEG — and only then
+    /// returns, so a caller looping over a picker selection never holds more
+    /// than one full frame at a time.
+    ///
+    /// The picker allows 50 images at once and hands back originals; collecting
+    /// those first and adding them in one go is hundreds of megabytes that exist
+    /// for no reason. Auto-sort has its own bounded path (see collectRecent).
+    func addOne(image: UIImage, assetID: String?) async {
+        if let assetID, assetIDs.contains(assetID) { return }
+        let full = image
+        let prepared = await Task.detached(priority: .userInitiated) { () -> (UIImage, Int)? in
+            guard let hash = DominantColor.quickHash(full) else { return nil }
+            return (thumbnail(of: full), hash)
+        }.value
+        guard let (thumb, hash) = prepared else { return }
+        if assetID == nil, photoHashes.contains(hash) { return }
+
+        let photo = HuntPhoto(thumb: thumb, dominantColor: nil, bucketKey: nil)
+        photoHashes.insert(hash)
+        hashByID[photo.id] = hash
+        if let assetID {
+            assetIDs.insert(assetID)
+            assetIDByPhoto[photo.id] = assetID
+        }
+        photos.append(photo)
+
+        // Awaited, so the full frame is released before the caller reads the
+        // next one off the picker.
+        let url = huntPhotoURL(photo.id)
+        await Task.detached(priority: .userInitiated) {
+            try? FileManager.default.createDirectory(at: huntStoreDir(), withIntermediateDirectories: true)
+            writeJPEG(full, to: url)
+        }.value
+
+        let id = photo.id
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let color = DominantColor.extract(from: thumb)
+            await self?.finishAnalysis(id: id, color: color)
+        }
+    }
+
+    /// Bulk intake for the camera, which hands over the shots it just took.
+    /// The library paths do not come through here — auto-sort has
+    /// `collectRecent` and the picker has `addOne`, both of which keep only one
+    /// full frame alive at a time.
+    func add(images: [UIImage], assetIDs: [String?]? = nil) {
         // Hash off-main (tiny 16×16 renders), then append only unseen images.
         Task.detached(priority: .userInitiated) { [weak self] in
             var pairs: [(image: UIImage, hash: Int, assetID: String?)] = []
@@ -134,16 +223,12 @@ final class AppState: ObservableObject {
                 pairs.append((image, h, assetIDs.flatMap { i < $0.count ? $0[i] : nil }))
             }
             let result = pairs
-            // An image that would not hash cannot be de-duplicated, so it is
-            // dropped here and counted with the unreadable ones.
-            let lost = unreadable.map { $0 + images.count - pairs.count }
-            await self?.appendUnique(result, unreadable: lost)
+            await self?.appendUnique(result)
         }
     }
 
-    private func appendUnique(_ pairs: [(image: UIImage, hash: Int, assetID: String?)],
-                              unreadable: Int? = nil) {
-        var fresh: [HuntPhoto] = []
+    private func appendUnique(_ pairs: [(image: UIImage, hash: Int, assetID: String?)]) {
+        var fresh: [(photo: HuntPhoto, full: UIImage)] = []
         for (image, hash, assetID) in pairs {
             // An identifier is authoritative when we have one; the pixel hash is
             // only consulted for photos with no asset behind them.
@@ -153,28 +238,27 @@ final class AppState: ObservableObject {
                 continue
             }
             photoHashes.insert(hash)
-            let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
+            // Only the thumbnail is kept; the full frame goes to disk below.
+            let photo = HuntPhoto(thumb: thumbnail(of: image), dominantColor: nil, bucketKey: nil)
             hashByID[photo.id] = hash
             if let assetID {
                 assetIDs.insert(assetID)
                 assetIDByPhoto[photo.id] = assetID
             }
-            fresh.append(photo)
+            fresh.append((photo, image))
         }
-        photos.append(contentsOf: fresh)
-        if let unreadable {
-            showImportSummary(ImportSummary(added: fresh.count,
-                                            duplicates: pairs.count - fresh.count,
-                                            unreadable: unreadable))
-        }
-        for photo in fresh {
-            persistPhotoFile(photo)
+        photos.append(contentsOf: fresh.map { $0.photo })
+        for (photo, full) in fresh {
+            persistPhotoFile(id: photo.id, full: full)
             Task.detached(priority: .userInitiated) { [weak self] in
-                let color = DominantColor.extract(from: photo.image)
+                // The thumbnail is enough: extract works from a 48×48 render, so
+                // the full frame would only be decoded to be thrown away.
+                let color = DominantColor.extract(from: photo.thumb)
                 await self?.finishAnalysis(id: photo.id, color: color)
             }
         }
     }
+
 
     /// Why an auto-sort of "the last 200" rarely adds 200: photos already in
     /// the hunt are skipped, and the library cannot always hand every asset
@@ -218,26 +302,26 @@ final class AppState: ObservableObject {
     /// exactly them in shooting order, queue the template and land on コラージュ.
     /// Fresh captures are unique, so this appends directly (no dedupe race).
     func startCollage(with images: [UIImage], templateID: String, layoutOrdinal: Int32? = nil) {
-        var fresh: [HuntPhoto] = []
+        var fresh: [(photo: HuntPhoto, full: UIImage)] = []
         for image in images {
-            let photo = HuntPhoto(image: image, dominantColor: nil, bucketKey: nil)
+            let photo = HuntPhoto(thumb: thumbnail(of: image), dominantColor: nil, bucketKey: nil)
             if let h = DominantColor.quickHash(image) {
                 photoHashes.insert(h)
                 hashByID[photo.id] = h
             }
-            fresh.append(photo)
+            fresh.append((photo, image))
         }
-        photos.append(contentsOf: fresh)
-        let ids = fresh.map { $0.id }
+        photos.append(contentsOf: fresh.map { $0.photo })
+        let ids = fresh.map { $0.photo.id }
         selection = Set(ids)
         collageOrder = ids
         pendingCollageTemplateID = templateID
         pendingCollageLayout = layoutOrdinal
         selectedTab = .collage
-        for photo in fresh {
-            persistPhotoFile(photo)
+        for (photo, full) in fresh {
+            persistPhotoFile(id: photo.id, full: full)
             Task.detached(priority: .userInitiated) { [weak self] in
-                let color = DominantColor.extract(from: photo.image)
+                let color = DominantColor.extract(from: photo.thumb)
                 await self?.finishAnalysis(id: photo.id, color: color)
             }
         }
@@ -277,6 +361,7 @@ final class AppState: ObservableObject {
         hashByID.removeAll()
         assetIDs.removeAll()
         assetIDByPhoto.removeAll()
+        fullCache.removeAllObjects()
         Task.detached(priority: .utility) {
             for id in ids {
                 try? FileManager.default.removeItem(at: huntPhotoURL(id))
@@ -345,12 +430,11 @@ final class AppState: ObservableObject {
 
     /// Writes one hunt photo's JPEG (downscaled to ~2400px — plenty for the
     /// 2160px Pro export) off the main thread.
-    private func persistPhotoFile(_ photo: HuntPhoto) {
-        let image = photo.image
-        let url = huntPhotoURL(photo.id)
+    private func persistPhotoFile(id: UUID, full: UIImage) {
+        let url = huntPhotoURL(id)
         Task.detached(priority: .utility) {
             try? FileManager.default.createDirectory(at: huntStoreDir(), withIntermediateDirectories: true)
-            writeJPEG(image, to: url)
+            writeJPEG(full, to: url)
         }
     }
 
@@ -385,20 +469,27 @@ final class AppState: ObservableObject {
 
         let stored = manifest.photos
         let gridCount = manifest.gridCount
+        // Thumbnails only, decoded straight to size. Reading the stored JPEGs at
+        // full resolution here was the other half of the memory problem: every
+        // photo came back as a bitmap of up to 2400px whether or not it was ever
+        // shown larger than a grid tile.
         let loadedPairs: [(StoredPhoto, UIImage)] = await Task.detached(priority: .userInitiated) {
             stored.compactMap { sp in
-                UIImage(contentsOfFile: huntPhotoURL(sp.id).path).map { (sp, $0) }
+                downsampled(contentsOf: huntPhotoURL(sp.id), maxSide: HuntPhoto.thumbSide)
+                    .map { (sp, $0) }
             }
         }.value
         let grid: [UIImage] = await Task.detached(priority: .userInitiated) {
             // max(_, 0): the count comes off disk, and a truncated or foreign
             // manifest decoding to a negative here would make 0..<n trap.
-            (0..<max(gridCount, 0)).compactMap { UIImage(contentsOfFile: huntGridURL($0).path) }
+            (0..<max(gridCount, 0)).compactMap {
+                downsampled(contentsOf: huntGridURL($0), maxSide: AppState.gridSide)
+            }
         }.value
 
         restoring = true
         photos = loadedPairs.map { sp, image in
-            HuntPhoto(id: sp.id, image: image, dominantColor: sp.color, bucketKey: sp.bucket)
+            HuntPhoto(id: sp.id, thumb: image, dominantColor: sp.color, bucketKey: sp.bucket)
         }
         for (sp, _) in loadedPairs {
             if let h = sp.hash {
@@ -420,7 +511,7 @@ final class AppState: ObservableObject {
         // Finish any analysis that was mid-flight when the app quit.
         for photo in photos where photo.bucketKey == nil {
             Task.detached(priority: .userInitiated) { [weak self] in
-                let color = DominantColor.extract(from: photo.image)
+                let color = DominantColor.extract(from: photo.thumb)
                 await self?.finishAnalysis(id: photo.id, color: color)
             }
         }
@@ -470,6 +561,15 @@ final class AppState: ObservableObject {
 
     /// Loads the most recent [limit] library photos and auto-sorts them by colour.
     /// Needs `NSPhotoLibraryUsageDescription` in Info.plist.
+    /// Everything the main actor needs from one imported asset. The full frame is
+    /// already written to disk and released by the time this crosses over.
+    private struct Intake {
+        let id: UUID
+        let thumb: UIImage
+        let hash: Int
+        let assetID: String
+    }
+
     func importRecentLibraryPhotos(limit: Int = 200) {
         guard !importing else { return }
         importing = true
@@ -478,45 +578,100 @@ final class AppState: ObservableObject {
                 Task { @MainActor in self?.importing = false }
                 return
             }
-            DispatchQueue.global(qos: .userInitiated).async {
-                let options = PHFetchOptions()
-                options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                options.fetchLimit = limit
-                let assets = PHAsset.fetchAssets(with: .image, options: options)
+            Task { @MainActor in
+                guard let self else { return }
+                let known = self.assetIDs
+                let result = await Task.detached(priority: .userInitiated) {
+                    Self.collectRecent(limit: limit, known: known)
+                }.value
+                self.accept(result.intakes,
+                            duplicates: result.duplicates,
+                            unreadable: result.unreadable)
+                self.importing = false
+            }
+        }
+    }
 
-                let manager = PHImageManager.default()
-                let req = PHImageRequestOptions()
-                req.deliveryMode = .highQualityFormat
-                req.isSynchronous = true
-                req.isNetworkAccessAllowed = true
-                req.resizeMode = .fast
+    /// Reads the library one photo at a time: request, hash, thumbnail, JPEG,
+    /// release. **One** full frame exists at any moment.
+    ///
+    /// This used to collect all 200 frames into an array before doing anything
+    /// with them — about 820MB at 1200px, which was the app's entire measured
+    /// memory peak, and it happened on every auto-sort.
+    nonisolated private static func collectRecent(limit: Int, known: Set<String>)
+        -> (intakes: [Intake], duplicates: Int, unreadable: Int) {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = limit
+        let assets = PHAsset.fetchAssets(with: .image, options: options)
 
-                var images: [UIImage] = []
-                var ids: [String?] = []
-                assets.enumerateObjects { asset, _, _ in
-                    manager.requestImage(
-                        for: asset,
-                        targetSize: CGSize(width: 1200, height: 1200),
-                        contentMode: .aspectFit,
-                        options: req
-                    ) { image, _ in
-                        guard let image else { return }
-                        images.append(image)
-                        // Kept alongside the pixels so the same photo picked by
-                        // hand later is recognised as one we already have.
-                        ids.append(asset.localIdentifier)
-                    }
-                }
-                // Snapshot into a let so the concurrent Task doesn't capture a var.
-                let collected = images
-                let collectedIDs = ids
-                // Assets the library never handed back — typically an iCloud
-                // original that could not be downloaded.
-                let missed = max(assets.count - collected.count, 0)
-                Task { @MainActor in
-                    self?.add(images: collected, assetIDs: collectedIDs, unreadable: missed)
-                    self?.importing = false
-                }
+        let manager = PHImageManager.default()
+        let req = PHImageRequestOptions()
+        req.deliveryMode = .highQualityFormat
+        req.isSynchronous = true
+        req.isNetworkAccessAllowed = true
+        req.resizeMode = .fast
+
+        try? FileManager.default.createDirectory(at: huntStoreDir(), withIntermediateDirectories: true)
+
+        var intakes: [Intake] = []
+        var duplicates = 0
+        var handedBack = 0
+        assets.enumerateObjects { asset, _, _ in
+            // Skipped before the pixels are ever requested, which is also why a
+            // repeated auto-sort is now nearly instant.
+            if known.contains(asset.localIdentifier) {
+                duplicates += 1
+                handedBack += 1
+                return
+            }
+            // The pool is what actually returns the frame's bytes each turn;
+            // without it they would pile up until the enumeration finished.
+            autoreleasepool {
+                var full: UIImage?
+                manager.requestImage(
+                    for: asset,
+                    targetSize: CGSize(width: 1200, height: 1200),
+                    contentMode: .aspectFit,
+                    options: req
+                ) { image, _ in full = image }
+                guard let full else { return }
+                handedBack += 1
+                guard let hash = DominantColor.quickHash(full) else { return }
+                let id = UUID()
+                writeJPEG(full, to: huntPhotoURL(id))
+                intakes.append(Intake(id: id,
+                                      thumb: thumbnail(of: full),
+                                      hash: hash,
+                                      assetID: asset.localIdentifier))
+            }
+        }
+        // Assets the library never handed back — typically an iCloud original
+        // that could not be downloaded.
+        return (intakes, duplicates, max(assets.count - handedBack, 0))
+    }
+
+    /// Files and thumbnails are already done; this only publishes them.
+    private func accept(_ intakes: [Intake], duplicates: Int, unreadable: Int) {
+        var fresh: [HuntPhoto] = []
+        for intake in intakes {
+            guard !assetIDs.contains(intake.assetID) else { continue }
+            let photo = HuntPhoto(id: intake.id, thumb: intake.thumb,
+                                  dominantColor: nil, bucketKey: nil)
+            photoHashes.insert(intake.hash)
+            hashByID[photo.id] = intake.hash
+            assetIDs.insert(intake.assetID)
+            assetIDByPhoto[photo.id] = intake.assetID
+            fresh.append(photo)
+        }
+        photos.append(contentsOf: fresh)
+        showImportSummary(ImportSummary(added: fresh.count,
+                                        duplicates: duplicates,
+                                        unreadable: unreadable))
+        for photo in fresh {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                let color = DominantColor.extract(from: photo.thumb)
+                await self?.finishAnalysis(id: photo.id, color: color)
             }
         }
     }
@@ -805,6 +960,53 @@ extension Color {
 
     init(packed: Int32) {
         self.init(argb: Int64(UInt32(bitPattern: packed)))
+    }
+}
+
+// MARK: - Downsampling
+
+/// Decodes an image **straight to the size we need**.
+///
+/// `UIImage(contentsOfFile:)` followed by a redraw decodes the whole frame
+/// first, so a 2400px photo briefly becomes a 17MB bitmap even when it is only
+/// ever shown 100pt wide. ImageIO reads the file's own scaled representation
+/// instead, so the big bitmap never exists. This is what makes 200 photos cost
+/// ~110MB rather than ~800MB.
+func downsampled(contentsOf url: URL, maxSide: CGFloat) -> UIImage? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    return downsampled(source: source, maxSide: maxSide)
+}
+
+func downsampled(data: Data, maxSide: CGFloat) -> UIImage? {
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+    return downsampled(source: source, maxSide: maxSide)
+}
+
+private func downsampled(source: CGImageSource, maxSide: CGFloat) -> UIImage? {
+    let options: [CFString: Any] = [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        // Honours EXIF orientation, so a portrait photo does not come back on
+        // its side the way a raw CGImage would.
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceShouldCacheImmediately: true,
+        kCGImageSourceThumbnailMaxPixelSize: maxSide,
+    ]
+    guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    else { return nil }
+    return UIImage(cgImage: cg)
+}
+
+/// Shrinks an in-memory image to the resident thumbnail size. Used for photos
+/// that arrive as `UIImage` (the camera) rather than as a file.
+func thumbnail(of image: UIImage, maxSide: CGFloat = HuntPhoto.thumbSide) -> UIImage {
+    let longest = max(image.size.width, image.size.height)
+    guard longest > maxSide, longest > 0 else { return image }
+    let s = maxSide / longest
+    let size = CGSize(width: image.size.width * s, height: image.size.height * s)
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+        image.draw(in: CGRect(origin: .zero, size: size))
     }
 }
 

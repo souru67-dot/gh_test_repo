@@ -356,7 +356,7 @@ struct HuntView: View {
         return Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                Image(uiImage: photo.image)
+                Image(uiImage: photo.thumb)
                     .resizable()
                     .scaledToFill()
             }
@@ -420,20 +420,18 @@ struct HuntView: View {
     }
 
     private func load(_ items: [PhotosPickerItem]) async {
-        var images: [UIImage] = []
-        var ids: [String?] = []
+        // One at a time, all the way in. The picker allows 50 originals, and
+        // holding them together was hundreds of megabytes that existed only to
+        // be handed over in one call. 2400px is what the store keeps anyway.
         for item in items {
-            if let data = try? await item.loadTransferable(type: Data.self),
-               let image = UIImage(data: data) {
-                images.append(image)
-                // Non-nil only for the in-process picker (see libraryAuthorized).
-                // It is what lets a photo already brought in by auto-sort be
-                // recognised here — the two paths decode different pixels, so a
-                // pixel hash can never match across them.
-                ids.append(item.itemIdentifier)
-            }
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let image = downsampled(data: data, maxSide: 2400) else { continue }
+            // Non-nil only for the in-process picker (see libraryAuthorized).
+            // It is what lets a photo already brought in by auto-sort be
+            // recognised here — the two paths decode different pixels, so a
+            // pixel hash can never match across them.
+            await state.addOne(image: image, assetID: item.itemIdentifier)
         }
-        if !images.isEmpty { state.add(images: images, assetIDs: ids) }
         pickerItems = []
     }
 }

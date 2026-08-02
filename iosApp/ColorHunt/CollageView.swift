@@ -35,6 +35,13 @@ struct CollageView: View {
     @State private var overlayWidthFrac: CGFloat = 0.16
     // Per-cell crop windows, keyed by photo id (parity with Android's focals map).
     @State private var focals: [UUID: CellFocal] = [:]
+    /// Full-resolution photos for the cells currently on screen.
+    ///
+    /// `HuntPhoto.thumb` is 440px — right for a Hunt tile, far too small for a
+    /// canvas that gets rendered at up to 2160px on export. Only the handful of
+    /// photos actually laid out as cells are read back, and the thumbnail stands
+    /// in until each arrives so the preview never blanks.
+    @State private var fulls: [UUID: UIImage] = [:]
     @State private var editTarget: EditTarget?
     // Long-press drag reorder state: picked-up cell and current drop target.
     @State private var dragCell: Int?
@@ -74,6 +81,31 @@ struct CollageView: View {
         _overlayWidthFrac = State(initialValue: saved.overlayWidthFrac)
         _appliedTemplateID = State(initialValue: saved.validTemplateID)
         _focals = State(initialValue: saved.focals)
+    }
+
+    /// The photos actually drawn as cells, in order — what `canvas(width:)`
+    /// takes a prefix of. Used as the task id so a reorder reloads nothing that
+    /// is already in hand.
+    private var cellPhotoIDs: [UUID] {
+        state.orderedSelectedPhotos.prefix(templateCellCap).map { $0.id }
+    }
+
+    /// Pulls in every cell photo that is not already loaded, and drops the ones
+    /// that have left the collage so a long session cannot accumulate them.
+    ///
+    /// Returns what it loaded as well as storing it: the export path renders
+    /// immediately afterwards and must use these exact images, not whatever a
+    /// re-read of `@State` happens to give back on this pass.
+    @discardableResult
+    @MainActor
+    private func loadFulls() async -> [UUID: UIImage] {
+        let wanted = cellPhotoIDs
+        var next = fulls.filter { wanted.contains($0.key) }
+        for id in wanted where next[id] == nil {
+            if let image = await state.fullImage(for: id) { next[id] = image }
+        }
+        fulls = next
+        return next
     }
 
     /// Everything the panel can change, gathered into one Equatable value so a
@@ -126,6 +158,9 @@ struct CollageView: View {
             .onChange(of: state.pendingCollageTemplateID) { _ in
                 applyPendingTemplate()
             }
+            // Read the cells' full-resolution photos whenever the set changes —
+            // a different selection, a reorder, or a preset that caps the count.
+            .task(id: cellPhotoIDs) { await loadFulls() }
             .onChange(of: settingsSnapshot) { snapshot in
                 var toSave = snapshot
                 // Crops are keyed by photo, and deleting a photo leaves its entry
@@ -141,7 +176,7 @@ struct CollageView: View {
         .sheet(item: $editTarget) { target in
             if let photo = state.photos.first(where: { $0.id == target.photoID }) {
                 CropEditorView(
-                    image: photo.image,
+                    image: fulls[photo.id] ?? photo.thumb,
                     cellRatio: target.ratio,
                     initial: focals[target.photoID] ?? CellFocal()
                 ) { newFocal in
@@ -762,7 +797,10 @@ struct CollageView: View {
     /// Draws the collage at [width] pts; the same view renders the on-screen
     /// preview and, at export scale, the shared image. Consumes the flat float
     /// layout from the shared module (no nested Kotlin types to bridge).
-    private func canvas(width: CGFloat) -> some View {
+    /// [images] overrides the loaded full-resolution set. The export passes the
+    /// dictionary it just awaited so a render can never quietly fall back to
+    /// 440px thumbnails.
+    private func canvas(width: CGFloat, images: [UUID: UIImage]? = nil) -> some View {
         // ハーフ is a two-frame negative and チェキ is a one-photo print, so
         // those presets render exactly that many cells however many photos are
         // selected — the format IS the point (previewHint says so on screen).
@@ -812,7 +850,7 @@ struct CollageView: View {
                 if index < layout.cells.count {
                     let r = layout.cells[index]
                     let focal = focals[photo.id] ?? CellFocal()
-                    cellView(photo.image, cell: r, focal: focal,
+                    cellView((images ?? fulls)[photo.id] ?? photo.thumb, cell: r, focal: focal,
                              corner: cornerRadius * scale, border: borderWidth * scale)
                         .overlay(alignment: .bottomLeading) {
                             if hexOverlay, let c = photo.dominantColor {
@@ -1261,10 +1299,11 @@ struct CollageView: View {
     }
 
     @MainActor
-    private func render() -> UIImage? {
+    private func render(using images: [UUID: UIImage]) -> UIImage? {
         // Pro exports at 2160px (crisper on retina feeds); free at 1080px.
         let width: CGFloat = state.isPro ? 2160 : 1080
-        let renderer = ImageRenderer(content: canvas(width: width).environmentObject(state))
+        let renderer = ImageRenderer(content: canvas(width: width, images: images)
+            .environmentObject(state))
         renderer.scale = 1
         return renderer.uiImage
     }
@@ -1276,7 +1315,12 @@ struct CollageView: View {
         }
         // Share assist parity: hashtag caption on the pasteboard, paste-and-go.
         UIPasteboard.general.string = "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt"
-        if let image = render() { sharePayload = SharePayload(image: image) }
+        Task {
+            // The preview may still be standing in with thumbnails; an export
+            // never may.
+            let images = await loadFulls()
+            if let image = render(using: images) { sharePayload = SharePayload(image: image) }
+        }
     }
 
     /// Save with real feedback: spinner while writing, success haptic + toast when
@@ -1286,8 +1330,21 @@ struct CollageView: View {
             showPaywall = true
             return
         }
-        guard !saving, let image = render() else { return }
+        guard !saving else { return }
         saving = true
+        Task {
+            let images = await loadFulls()
+            guard let image = render(using: images) else {
+                saving = false
+                return
+            }
+            writeToLibrary(image)
+        }
+    }
+
+    /// The library write itself, split out so `save()` can await the photos first
+    /// while the spinner is already up.
+    @MainActor private func writeToLibrary(_ image: UIImage) {
         PHPhotoLibrary.shared().performChanges({
             PHAssetChangeRequest.creationRequestForAsset(from: image)
         }) { success, _ in

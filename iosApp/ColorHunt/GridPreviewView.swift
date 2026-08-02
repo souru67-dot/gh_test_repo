@@ -186,8 +186,10 @@ struct GridPreviewView: View {
 
     private func load(_ items: [PhotosPickerItem]) async {
         for item in items {
+            // Same reason as the Hunt picker: the original file is far bigger
+            // than anything a 3-up tile can show. See AppState.gridSide.
             if let data = try? await item.loadTransferable(type: Data.self),
-               let image = UIImage(data: data) {
+               let image = downsampled(data: data, maxSide: AppState.gridSide) {
                 state.gridPhotos.append(image)
             }
         }
