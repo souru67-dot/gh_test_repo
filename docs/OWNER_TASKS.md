@@ -261,13 +261,25 @@ https://souru67-dot.github.io/colorhunt-site/privacy.html
    ブロックを探します。その**閉じカッコ `}` の次の行**に、以下を貼り付けます:
 
    ```swift
-   #if DEBUG
-   .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in
-       let remain = Double(os_proc_available_memory()) / 1_048_576
-       print(String(format: "🧠 残り %.0f MB", remain))
+   .task {
+       while !Task.isCancelled {
+           let remain = Double(os_proc_available_memory()) / 1_048_576
+           print(String(format: "🧠 残り %.0f MB", remain))
+           try? await Task.sleep(nanoseconds: 2_000_000_000)
+       }
    }
-   #endif
    ```
+
+   > **`#if DEBUG` で囲まないでください。** C-1 で Build Configuration を
+   > `Release` にしており、Release では `DEBUG` が定義されないので、囲むと
+   > コードごと消えてコンソールに何も出ません。C-4 で丸ごと削除する
+   > 一時コードなので、囲む必要もありません。
+   >
+   > **`Timer.publish(...).autoconnect()` も使えません。** あれは Combine の
+   > API で、`ColorHuntApp.swift` は Combine を import していないため
+   > `Instance method 'autoconnect()' is not available` でビルドが止まります
+   > （Xcode 26 の MemberImportVisibility。`AppState.swift` の冒頭コメント参照）。
+   > 上の `.task` は Swift 標準の機能だけなので、`import os` 以外の追加は不要です。
 
 **C-3. 測る**
 
@@ -301,7 +313,7 @@ https://souru67-dot.github.io/colorhunt-site/privacy.html
 
 **C-4. 後片付け（忘れると後で困ります）**
 
-1. C-2 で貼り付けた `#if DEBUG` のブロックを**削除**します
+1. C-2 で貼り付けた `.task { ... }` のブロックを**削除**します
 2. 追加した `import os` も削除します
 3. **Product → Scheme → Edit Scheme… → Run → Build Configuration を
    `Debug` に戻します**
