@@ -142,9 +142,13 @@ final class AppState: ObservableObject {
         let key = id as NSUUID
         if let hit = fullCache.object(forKey: key) { return hit }
         let url = huntPhotoURL(id)
-        guard let image = await Task.detached(priority: .userInitiated) {
+        // Hoisted out of the guard on purpose: Swift cannot parse a trailing
+        // closure inside a guard/if condition — the brace is ambiguous with the
+        // statement's own body.
+        let loaded = await Task.detached(priority: .userInitiated) {
             UIImage(contentsOfFile: url.path)
-        }.value else { return nil }
+        }.value
+        guard let image = loaded else { return nil }
         let pixels = image.size.width * image.size.height * image.scale * image.scale
         fullCache.setObject(image, forKey: key, cost: Int(pixels) * 4)
         return image
@@ -183,7 +187,8 @@ final class AppState: ObservableObject {
             guard let hash = DominantColor.quickHash(full) else { return nil }
             return (thumbnail(of: full), hash)
         }.value
-        guard let (thumb, hash) = prepared else { return }
+        guard let prepared else { return }
+        let (thumb, hash) = prepared
         if assetID == nil, photoHashes.contains(hash) { return }
 
         let photo = HuntPhoto(thumb: thumb, dominantColor: nil, bucketKey: nil)
@@ -582,7 +587,7 @@ final class AppState: ObservableObject {
                 guard let self else { return }
                 let known = self.assetIDs
                 let result = await Task.detached(priority: .userInitiated) {
-                    Self.collectRecent(limit: limit, known: known)
+                    AppState.collectRecent(limit: limit, known: known)
                 }.value
                 self.accept(result.intakes,
                             duplicates: result.duplicates,
@@ -598,7 +603,7 @@ final class AppState: ObservableObject {
     /// This used to collect all 200 frames into an array before doing anything
     /// with them — about 820MB at 1200px, which was the app's entire measured
     /// memory peak, and it happened on every auto-sort.
-    nonisolated private static func collectRecent(limit: Int, known: Set<String>)
+    private nonisolated static func collectRecent(limit: Int, known: Set<String>)
         -> (intakes: [Intake], duplicates: Int, unreadable: Int) {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
