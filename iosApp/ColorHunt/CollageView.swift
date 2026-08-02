@@ -1842,9 +1842,16 @@ struct TemplateSignatureDeco: View {
     }
 
     /// デイログ sticker date (localized weekday reads naturally per region).
+    ///
+    /// Built from a template rather than a fixed pattern. `"M/d EEE"` looked
+    /// right in English ("8/2 Sun") but Japanese renders the short weekday as a
+    /// bare 日/月/火, so a Sunday came out "8/2 日" — which reads as a mistyped
+    /// 8月2日, not as a date with its weekday. The template lets each locale
+    /// place and punctuate it its own way: 8/2(日) in Japanese, "Sun, 8/2" in
+    /// English, 8. 2. (일) in Korean.
     private static let daylogFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "M/d EEE"
+        f.setLocalizedDateFormatFromTemplate("MdEEE")
         return f
     }()
 
