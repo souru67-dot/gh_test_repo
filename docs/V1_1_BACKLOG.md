@@ -119,26 +119,20 @@ WidgetKit で、今日の色をホーム画面に出す。タップでカメラ�
 
 **効果: 中〜大 / 手間: 中**
 
-### 🔧 N-0. 共有キャプションが日本語でハードコードされている
+### ~~🔧 N-0. 共有キャプションが日本語でハードコードされている~~ → **v1.0 で対応済み**
 
-**v1.0 で直せるなら直したい。** `CollageView.swift:1317` の
+`CollageView.swift` の共有キャプションが `Localizable.strings` を通っておらず、
+英語・韓国語・簡体字のユーザーにも日本語のタグが出ていた。**2026-08-04 に4言語化**。
 
-```swift
-UIPasteboard.general.string = "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt"
-```
-
-が `Localizable.strings` を通っていないため、**英語・韓国語・簡体字のユーザーにも
-日本語のキャプションとハッシュタグが出ます**。SNS 拡散が成長エンジンである以上、
-4言語ぶん用意すべきところです。
-
-| | キャプション案 |
+| | キャプション |
 |---|---|
-| ja | `ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt`（現状） |
+| ja | `ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt` |
 | en | `Colour hunting with ColorHunt 🎨📸 #colorcollage #photodump #colorpalette #aesthetic` |
 | ko | `ColorHunt로 색 모으기 🎨📸 #컬러헌트 #색모으기 #네컷사진 #포토덤프` |
 | zh-Hans | `用 ColorHunt 收集颜色 🎨📸 #色彩收集 #拼贴 #照片墙 #调色板` |
 
-**効果: 中（4言語での拡散） / 手間: 小**
+> タグは育て方次第で変わるものなので、**反応を見て入れ替えてください**。
+> `Localizable.strings` の1行を書き換えるだけです（アプリの更新は必要）。
 
 ### 💰 N. 英語圏でのブランド衝突を再評価する
 

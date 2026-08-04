@@ -1314,7 +1314,12 @@ struct CollageView: View {
             return
         }
         // Share assist parity: hashtag caption on the pasteboard, paste-and-go.
-        UIPasteboard.general.string = "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt"
+        // Localised, not a fixed string: the tags are the growth engine, and a
+        // Japanese one reaches nobody on an English or Korean feed. Each locale
+        // carries the tags that are actually searched there.
+        UIPasteboard.general.string = NSLocalizedString(
+            "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt",
+            comment: "share caption copied to the pasteboard")
         Task {
             // The preview may still be standing in with thumbnails; an export
             // never may.

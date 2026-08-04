@@ -214,3 +214,6 @@
 "明るさ" = "Brightness";
 "シャッター" = "Shutter";
 "コラージュのプレビュー" = "Collage preview";
+
+/* 共有時にクリップボードへ載せるキャプション。地域ごとに通じるタグへ差し替える */
+"ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt" = "Colour hunting with ColorHunt 🎨📸 #colorcollage #photodump #colorpalette #aesthetic";
