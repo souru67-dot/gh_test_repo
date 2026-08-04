@@ -18,6 +18,7 @@
 | ドキュメント | いつ開くか |
 |---|---|
 | [APP_STORE_LISTING.md](APP_STORE_LISTING.md) | 掲載情報を入力するとき（Step 5）。4言語の文言をコピペする |
+| [V1_1_BACKLOG.md](V1_1_BACKLOG.md) | v1.1 でやりたいことリスト。思いついたら足していく |
 | [OWNER_TASKS.md](OWNER_TASKS.md) | 準備作業 A〜E の**記録**。撮り直し・測り直しのときだけ |
 | [IP_REVIEW.md](IP_REVIEW.md) | 商標・UI類似の確認記録（🔴3件とも対応済み） |
 | [REEL_SCRIPT.md](REEL_SCRIPT.md) | 紹介動画を作るとき。24秒・7カットの台本 |
