@@ -744,14 +744,17 @@ App Store Connect → **契約/税金/口座情報**（Agreements, Tax, and Bank
 | 10. % rate | `0` |
 | 10. 種類 | **Income from the sale of applications** |
 | 10. Explain the additional conditions | **空欄** |
-| Part III 上のチェック（Under penalties of perjury…） | **チェックする**（必須） |
-| Part III 下のチェック（I certify that I have the capacity to sign…） | **チェックしない** |
+| Part III 上のチェック（Under penalties of perjury…） | **チェックする** |
+| Part III 下のチェック（I certify that I have the capacity to sign…） | **チェックする** |
 
-**Part III の下のチェックを外す理由**
+**Part III は2つとも必須です**（下のチェックを入れないと送信ボタンが押せません）。
 
-これは「**line 1 の本人ではない人が代理で署名する場合**」の欄です。IRS と各金融機関の
-記入ガイドとも、委任状を持つ代理人が署名するときだけ入れると説明しています
-（チェックすると委任状の添付が前提になります）。本人が署名するなら空のままが正しい形です。
+下のチェックは「line 1 の人物のために署名する権限がある」という意味です。
+自分自身が line 1 の本人なら、自分のために署名する権限は当然あるので、そのまま真になります。
+
+> IRS の**紙のフォーム**の記入ガイドには「代理人が署名するときだけ入れる」とありますが、
+> Apple の電子フォームは署名者全員に必須としており、**署名権限の確認**として使っています
+> （画面に「この証明書に対する署名権限を持っているのは誰ですか？」のリンクが併記されます）。
 
 **間違えやすい3点**
 
