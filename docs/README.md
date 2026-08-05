@@ -9,16 +9,16 @@
 **読むのは [IOS_LAUNCH_GUIDE.md](IOS_LAUNCH_GUIDE.md) の1本だけです。**
 現在地・全工程・Step 0〜7 が全て入っています。
 
-**今の状況**: Apple Developer Program 承認済み（2026-08-04）。
-提出前の準備（A〜E）は**全て完了**。次にやることは
-**[IOS_LAUNCH_GUIDE.md](IOS_LAUNCH_GUIDE.md) §8 Step 0**（Small Business Program の申請）です。
+**今の状況**: Step 0〜5 完了、**Step 6（TestFlight）進行中**。
+アップロードと内部テストは済み、次は**外部テストの申請**
+（[IOS_LAUNCH_GUIDE.md](IOS_LAUNCH_GUIDE.md) §8 Step 6-4）です。
 
 必要になったときだけ開くもの:
 
 | ドキュメント | いつ開くか |
 |---|---|
 | [APP_STORE_LISTING.md](APP_STORE_LISTING.md) | 掲載情報を入力するとき（Step 5）。4言語の文言をコピペする |
-| [V1_1_BACKLOG.md](V1_1_BACKLOG.md) | v1.1 でやりたいことリスト。思いついたら足していく |
+| [V1_1_BACKLOG.md](V1_1_BACKLOG.md) | バックログ。思いついたら足す → Build 2 か v1.1 に振り分け |
 | [OWNER_TASKS.md](OWNER_TASKS.md) | 準備作業 A〜E の**記録**。撮り直し・測り直しのときだけ |
 | [IP_REVIEW.md](IP_REVIEW.md) | 商標・UI類似の確認記録（🔴3件とも対応済み） |
 | [REEL_SCRIPT.md](REEL_SCRIPT.md) | 紹介動画を作るとき。24秒・7カットの台本 |
