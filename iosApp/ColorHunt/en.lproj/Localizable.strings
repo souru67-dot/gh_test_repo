@@ -217,3 +217,7 @@
 
 /* 共有時にクリップボードへ載せるキャプション。地域ごとに通じるタグへ差し替える */
 "ColorHuntで色あつめ 🎨📸 #カラーハント #色集め #組写 #colorhunt" = "Colour hunting with ColorHunt 🎨📸 #colorcollage #photodump #colorpalette #aesthetic";
+
+/* ハントカメラのフレーム棚。2×2 と並ぶので数字表記のほうが読み取りやすい */
+"縦3" = "Stack 3";
+"2列6" = "2×3";

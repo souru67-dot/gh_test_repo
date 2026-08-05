@@ -8,7 +8,8 @@
   1. キーの過不足     … en を基準に ja/ko/zh-Hans を突き合わせ
   2. キーの重複       … 同じキーが2回あると後ろが勝ち、前の訳が消える
   3. 壊れた行         … 行末の ; 抜けなど（1行落ちると以降が全部無視される）
-  4. 未ローカライズ   … Swift の Text("日本語") のうち .strings に無いもの
+  4. 未ローカライズ   … Swift の Text("日本語") / label: "日本語" のうち
+                        .strings に無いもの
                         （英語圏のユーザーにだけ日本語が出る。実際に
                         「フィードプレビュー」がこれで漏れていた）
 
@@ -29,7 +30,12 @@ LOCALES = ["en", "ja", "ko", "zh-Hans"]
 KEY_LINE = re.compile(r'\s*"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
 JAPANESE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
 # Text("…") / LocalizedStringKey("…") / Label("…", systemImage:) の第1引数
-SWIFT_LITERAL = re.compile(r'(?:Text|LocalizedStringKey|Label)\(\s*"((?:\\.|[^"\\])*)"')
+# `label:` も見る。FrameStyle(label: "縦3") のように、いったん String として
+# 持ち回ってから LocalizedStringKey(...) に渡す書き方があり、呼び出し側だけを
+# 見ていると「.strings に無い日本語」が素通りする（実際に2件すり抜けた）。
+SWIFT_LITERAL = re.compile(
+    r'(?:Text|LocalizedStringKey|Label)\(\s*"((?:\\.|[^"\\])*)"'
+    r'|label:\s*"((?:\\.|[^"\\])*)"')
 
 problems: list[str] = []
 
@@ -141,7 +147,7 @@ def main() -> int:
     for swift in sorted(STRINGS_DIR.glob("*.swift")):
         src = swift.read_text(encoding="utf-8")
         for m in SWIFT_LITERAL.finditer(src):
-            literal = m.group(1)
+            literal = m.group(1) if m.group(1) is not None else m.group(2)
             if not JAPANESE.search(literal):
                 continue
             if literal in base_keys:
