@@ -100,6 +100,11 @@ struct TodayColorView: View {
                     reminderCard
                 }
                 .padding()
+                // 浮いているタブバーはこのスクロールの上に重なるので、その分を
+                // 空ける。無いと「この色をハントする」とリマインドカードが
+                // 最後までスクロールしてもバーの下に潜ったままになる。
+                // 16（.padding）+ 80 で HuntView の 96 と揃う。
+                .padding(.bottom, 80)
             }
             .background(Color(argb: 0xFF101014))
             .navigationTitle("今日の色")
