@@ -59,7 +59,7 @@
 >
 > - **1-2** Supported Destinations が **iPhone のみ**（iPad が残ると iPad用スクショが必須になる）
 > - **1-3** `ITSAppUsesNonExemptEncryption` = **NO**（毎回アップロードで暗号化を訊かれる）
-> - **1-4** Version = **1.0.0** / Build = **1**
+> - **1-4** Version = **1.0** / Build = **1**（App Store Connect 側と同じ文字列に）
 >
 > **Step 2 は待つだけです。** 「アクティブ」に変わったかは後日 App Store Connect の
 > 「契約/税金/口座情報」で確認してください。同意しただけでは終わらず、税務フォームや
@@ -620,7 +620,7 @@ SNSハッシュタグ（#colorhunt #色集め）をキャプション自動コ�
 
 **ビルド設定**（§8 Step 1-2〜1-4 で実施）
 
-- [ ] バージョン 1.0.0 / ビルド番号をインクリメントした
+- [ ] バージョンが Xcode と App Store Connect で**同じ文字列**（v1.0 は `1.0`）／ビルド番号をインクリメントした
 - [ ] Supported Destinations が **iPhone のみ**
 - [ ] `ITSAppUsesNonExemptEncryption` = NO を Info に設定した
 - [ ] デバッグ解除ボタンが Release ビルドに出ないこと（`#if DEBUG` 済み）
@@ -696,8 +696,16 @@ iPad を対象に含めると **iPad用スクリーンショットが必須**に
 
 **1-4. バージョン番号（5分）**
 
-- General → Identity → **Version = 1.0.0** / **Build = 1**
-- 以後アップロードのたびに Build を +1（1.0.0 のまま Build だけ上げる）
+- General → Identity → **Version = 1.0** / **Build = 1**
+- 以後アップロードのたびに Build を +1（Version はそのまま Build だけ上げる）
+
+> **⚠️ Xcode の Version と、App Store Connect のバージョン番号は同じ文字列にしてください。**
+> `1.0` と `1.0.0` は別の文字列として扱われます。v1.0 では Xcode 側が `1.0`、
+> App Store Connect 側が `1.0.0` になっていて、**配信ページのバージョン欄を `1.0` に
+> 直して揃えました**（2026-08-05）。
+>
+> 食い違いに気づいたときは、**App Store Connect の欄を書き換えるほうが安い**です。
+> Xcode 側を直すと Archive とアップロードのやり直しになります。
 
 **1-5. 課金プロダクトID（対応済み・目で確認するだけ）**
 
@@ -954,7 +962,7 @@ App Store のアプリ名は**全世界で一意**です。公開中のアプリ
 |---|---|
 | サポートURL | `https://souru67-dot.github.io/colorhunt-site/` |
 | マーケティングURL | **空欄でよい** |
-| バージョン | `1.0.0` |
+| バージョン | `1.0` ← **Xcode の Version と1文字違わず同じに**（Step 1-4） |
 | 著作権 | `2026 <あなたの氏名>` ← 年＋名義。記号（©）は不要 |
 
 **5-6. Appのプライバシー（5分）**
@@ -1135,7 +1143,7 @@ TestFlight アプリでスクリーンショットを撮る → 「送信」で�
 
 **6-6. 修正版を配る（ベータ期間中）**
 
-バグを直したら、**Xcode で Build 番号を +1**（1.0.0 のまま `2`, `3` …）して
+バグを直したら、**Xcode で Build 番号を +1**（Version は `1.0` のまま `2`, `3` …）して
 Archive → Upload するだけです。
 
 - 外部グループには**手動でビルドを追加**する必要があります（自動では入りません）
