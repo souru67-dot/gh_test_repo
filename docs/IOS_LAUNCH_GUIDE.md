@@ -1400,6 +1400,34 @@ goes into the final version.
 リンクスタンプは `Join the beta`。
 `Requires` より `Needs` のほうが口語的で、ストーリーズの空気に合います。
 
+**「Pro も試せる」を伝える追加の1枚**
+
+¥500 という数字を見た瞬間に閉じる人がいるので、先回りしておきます。
+
+```
+PRO版もお試しいただけます！
+アプリ内購入の画面が出ますが、
+ベータ版では実際には請求されないので
+ご安心ください。
+```
+
+```
+Pro is free to try too 🎨
+
+A purchase screen will pop up —
+don't worry, nothing is charged
+during the beta.
+```
+
+> **⚠️ 購入画面のスクショには Apple ID のメールアドレスが写ります。**
+> シートの下部に `アカウント: xxx@example.com` が出ます。**Apple ID は認証情報の
+> 半分**なので、公開するとフィッシングや不正ログインの入口になります。
+> ペンで塗るか、テキストブロックを重ねて**必ず隠してください**。
+>
+> 英語版の背景は、**端末を英語にして米国ストアフロントの Sandbox アカウント**で
+> ペイウォールを開くと、English UI ＋ `$2.99` ＋
+> `This is a test purchase. You will not be charged.` の画面が撮れます。
+
 **リリース日に、テスターへ必ず送ること**
 
 ```
