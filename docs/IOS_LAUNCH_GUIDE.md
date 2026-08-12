@@ -1379,6 +1379,27 @@ Archive → Upload するだけです。
 > **「TestFlight が必要」は先に書く。** 書かないとリンクを踏んでから離脱します。
 > 先に言えば、踏む人は覚悟して踏みます。
 
+> **⚠️ リンクスタンプの文言に「ダウンロード」と書かない。** 飛ぶ先は App Store では
+> なく TestFlight のベータ参加ページです。「ダウンロード」を期待して踏んだ人が
+> 「App Store じゃないの？」で止まります。**「ベータ版を試す」「テスターに参加する」**
+> のように、説明文と揃えてください。
+
+**英語版**
+
+```
+ColorHunt is finally ready to try 🎨
+
+・Free while in beta
+・iPhone only
+・Needs TestFlight (Apple's free app)
+
+Tell me anything you notice — it all
+goes into the final version.
+```
+
+リンクスタンプは `Join the beta`。
+`Requires` より `Needs` のほうが口語的で、ストーリーズの空気に合います。
+
 **リリース日に、テスターへ必ず送ること**
 
 ```
