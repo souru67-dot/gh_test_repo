@@ -221,3 +221,17 @@
 /* ハントカメラのフレーム棚。2×2 と並ぶので数字表記のほうが読み取りやすい */
 "縦3" = "Stack 3";
 "2列6" = "2×3";
+
+/* Build 2: 削除確認・選択の全解除・色の選び直し（スポイト） */
+"すべての写真を削除しますか？" = "Delete all photos?";
+"ColorHuntの一覧から消えるだけです。iPhoneの「写真」アプリの写真はそのまま残ります。" = "They are only removed from ColorHunt. The photos in your iPhone's Photos app are untouched.";
+"選択をすべて解除" = "Deselect all";
+"選択をすべて解除しますか？" = "Deselect all photos?";
+"写真は一覧に残ります。タップすればまた選べます。" = "The photos stay in your list. Tap any of them to select again.";
+"全解除" = "Deselect All";
+"選択を解除" = "Deselect";
+"写真から色を選ぶ…" = "Pick a colour from the photo…";
+"色を選び直す" = "Re-pick the Colour";
+"写真をなぞって、見せたい色を選べます。" = "Drag on the photo to pick the colour you meant.";
+"細かく調整" = "Fine-tune";
+"この色にする" = "Use This Colour";

@@ -358,9 +358,24 @@ final class AppState: ObservableObject {
     }
 
     /// Manual override — the hunter has the final say (parity with Android).
-    func rebucket(_ id: UUID, to key: String) {
+    ///
+    /// The colour is the source of truth: the HEX chip and the palette print
+    /// `dominantColor`, so changing only the bucket used to leave a photo
+    /// filed as 赤 while its printed HEX stayed white. Every override now goes
+    /// through here — the bucket is derived from the colour unless the caller
+    /// names one (the quick re-file menu passes its canned swatch's own key,
+    /// so filing can never disagree with the classifier's opinion of it).
+    func recolor(_ id: UUID, to color: Int32, bucket: String? = nil) {
         guard let idx = photos.firstIndex(where: { $0.id == id }) else { return }
-        photos[idx].bucketKey = key
+        photos[idx].dominantColor = color
+        photos[idx].bucketKey = bucket ?? ColorBridge.shared.classifyKey(colorInt: color)
+    }
+
+    /// One collage done → all selections released in one tap, instead of
+    /// hunting each photo down in the list to un-tick it.
+    func clearSelection() {
+        selection.removeAll()
+        collageOrder.removeAll()
     }
 
     func clearAll() {
@@ -853,7 +868,7 @@ enum DominantColor {
     /// and read another way through the viewfinder. One histogram, one scoring
     /// rule, one answer.
     struct Histogram {
-        private var bins: [Int: (count: Int, r: Int, g: Int, b: Int)] = [:]
+        private var bins: [Int: (weight: Double, count: Int, r: Int, g: Int, b: Int)] = [:]
 
         /// Spelled out because the synthesised memberwise init would inherit
         /// `bins`'s private access and be unreachable from the camera.
@@ -861,10 +876,10 @@ enum DominantColor {
 
         var isEmpty: Bool { bins.isEmpty }
 
-        mutating func add(r: Int, g: Int, b: Int) {
+        mutating func add(r: Int, g: Int, b: Int, weight: Double = 1) {
             let key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
-            var e = bins[key] ?? (0, 0, 0, 0)
-            e = (e.count + 1, e.r + r, e.g + g, e.b + b)
+            var e = bins[key] ?? (0, 0, 0, 0, 0)
+            e = (e.weight + weight, e.count + 1, e.r + r, e.g + g, e.b + b)
             bins[key] = e
         }
 
@@ -893,7 +908,14 @@ enum DominantColor {
                 else if value < 0.28 { valueWeight = 0.2 + 0.8 * (value - 0.12) / 0.16 }
                 else if value > 0.92 { valueWeight = sat < 0.10 ? 0.45 : 0.85 }
                 else { valueWeight = 1.0 }
-                let score = Double(e.count) * (0.45 + 0.75 * sat) * valueWeight
+                var score = e.weight * (0.45 + 0.75 * sat) * valueWeight
+                // A light near-neutral is almost always the backdrop — a white
+                // table, a pale wall — not what was photographed. Damp it so a
+                // centred subject can outscore a background four times its size.
+                // The 0.12 cut sits below pastel saturation (~0.15+), so the
+                // pale-yellow/pink tuning above is untouched, and a frame that
+                // is *only* white or grey still wins with nothing to beat it.
+                if sat < 0.12 && value > 0.5 { score *= 0.55 }
                 if score > bestScore {
                     bestScore = score
                     best = (e.r / e.count, e.g / e.count, e.b / e.count)
@@ -912,12 +934,24 @@ enum DominantColor {
         var histogram = Histogram()
         for y in 0..<dim {
             let row = y * bytesPerRow
+            let cy = (Double(y) + 0.5) / Double(dim) - 0.5
             for x in 0..<dim {
                 let p = row + x * 4
                 // Buffer is RGBA8 (premultipliedLast); skip only fully transparent
                 // padding, keep every real pixel so the histogram is never empty.
                 if buffer[p + 3] < 8 { continue }
-                histogram.add(r: Int(buffer[p]), g: Int(buffer[p + 1]), b: Int(buffer[p + 2]))
+                // Subject priority: people centre what they are photographing,
+                // and backdrops live at the edges. A red mug on a white table
+                // was judged 白 because the table simply had more pixels; radial
+                // weighting makes the middle count ~5× the corners. Photos that
+                // fill the frame with one colour are unaffected — every pixel
+                // shrinks together. The camera path adds no weight: its centre
+                // crop is already its own subject bias.
+                let cx = (Double(x) + 0.5) / Double(dim) - 0.5
+                let d = (cx * cx + cy * cy).squareRoot()
+                let w = max(1.55 - 1.8 * d, 0.3)
+                histogram.add(r: Int(buffer[p]), g: Int(buffer[p + 1]), b: Int(buffer[p + 2]),
+                              weight: w)
             }
         }
         guard !histogram.isEmpty else { return nil }

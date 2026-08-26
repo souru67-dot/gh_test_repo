@@ -9,6 +9,9 @@ struct HuntView: View {
     @EnvironmentObject private var state: AppState
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showGrid = false
+    @State private var showClearConfirm = false
+    @State private var showDeselectConfirm = false
+    @State private var recolorTarget: HuntPhoto?
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
@@ -101,6 +104,12 @@ struct HuntView: View {
                 Task { await load(items) }
             }
         }
+        .sheet(item: $recolorTarget) { photo in
+            RecolorSheet(photo: photo) { picked in
+                state.recolor(photo.id, to: picked)
+            }
+            .preferredColorScheme(.dark)
+        }
         .fullScreenCover(isPresented: $showGrid) {
             GridPreviewView()
                 .environmentObject(state)
@@ -143,8 +152,7 @@ struct HuntView: View {
                     .accessibilityLabel("グリッド")
                     if !state.photos.isEmpty {
                         Button(role: .destructive) {
-                            state.clearAll()
-                            state.huntFilter = nil
+                            showClearConfirm = true
                         } label: {
                             Image(systemName: "trash")
                                 .padding(10)
@@ -152,6 +160,19 @@ struct HuntView: View {
                                 .foregroundStyle(.white)
                         }
                         .accessibilityLabel("すべて削除")
+                        // Confirm before wiping — it fired instantly, and beta
+                        // testers assumed it also deletes from the photo library.
+                        .confirmationDialog("すべての写真を削除しますか？",
+                                            isPresented: $showClearConfirm,
+                                            titleVisibility: .visible) {
+                            Button("すべて削除", role: .destructive) {
+                                state.clearAll()
+                                state.huntFilter = nil
+                            }
+                            Button("キャンセル", role: .cancel) {}
+                        } message: {
+                            Text("ColorHuntの一覧から消えるだけです。iPhoneの「写真」アプリの写真はそのまま残ります。")
+                        }
                     }
                 }
             }
@@ -386,9 +407,20 @@ struct HuntView: View {
             .accessibilityValue(photo.dominantColor.map { Text(hexString($0)) } ?? Text(verbatim: ""))
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             .contextMenu {
+                Button {
+                    recolorTarget = photo
+                } label: {
+                    Label("写真から色を選ぶ…", systemImage: "eyedropper")
+                }
+                Divider()
+                // Quick re-file: the canned swatch becomes the photo's colour
+                // too, so the HEX chip and the palette agree with the bucket
+                // (they used to keep the old extracted colour).
                 ForEach(ColorBridge.shared.bucketKeys(), id: \.self) { key in
                     Button {
-                        state.rebucket(photo.id, to: key)
+                        state.recolor(photo.id,
+                                      to: Int32(truncatingIfNeeded: ColorBridge.shared.swatchOf(key: key)),
+                                      bucket: key)
                     } label: {
                         Label(bucketLabel(key),
                               systemImage: photo.bucketKey == key ? "checkmark.circle" : "circle")
@@ -400,17 +432,43 @@ struct HuntView: View {
     private var makeCollageBar: some View {
         Group {
             if !state.selection.isEmpty {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .collage }
-                } label: {
-                    Label("コラージュを作成 (\(state.selection.count))", systemImage: "checkmark.circle.fill")
-                        .font(.system(.callout, design: .rounded).bold())
-                        .padding(.horizontal, 24).padding(.vertical, 15)
-                        .background(Brand.gradient, in: Capsule())
-                        .foregroundStyle(.white)
-                        .shadow(color: Brand.purple.opacity(0.55), radius: 16, y: 6)
+                HStack(spacing: 10) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .collage }
+                    } label: {
+                        Label("コラージュを作成 (\(state.selection.count))", systemImage: "checkmark.circle.fill")
+                            .font(.system(.callout, design: .rounded).bold())
+                            .padding(.horizontal, 24).padding(.vertical, 15)
+                            .background(Brand.gradient, in: Capsule())
+                            .foregroundStyle(.white)
+                            .shadow(color: Brand.purple.opacity(0.55), radius: 16, y: 6)
+                    }
+                    .buttonStyle(PopButtonStyle())
+                    // Testers asked how to start over without un-ticking each
+                    // photo one by one — this releases the whole selection.
+                    Button {
+                        showDeselectConfirm = true
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.callout.weight(.bold))
+                            .padding(15)
+                            .background(.white.opacity(0.16), in: Circle())
+                            .overlay(Circle().stroke(.white.opacity(0.22), lineWidth: 1))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(PopButtonStyle())
+                    .accessibilityLabel("選択をすべて解除")
+                    .confirmationDialog("選択をすべて解除しますか？",
+                                        isPresented: $showDeselectConfirm,
+                                        titleVisibility: .visible) {
+                        Button("全解除", role: .destructive) {
+                            withAnimation(.easeInOut(duration: 0.25)) { state.clearSelection() }
+                        }
+                        Button("キャンセル", role: .cancel) {}
+                    } message: {
+                        Text("写真は一覧に残ります。タップすればまた選べます。")
+                    }
                 }
-                .buttonStyle(PopButtonStyle())
                 // Clear of the raised camera button, which pokes above the tab
                 // bar right where this CTA sits.
                 .padding(.bottom, 34)
@@ -439,5 +497,181 @@ struct HuntView: View {
 /// Capsule shape shorthand used by the hero buttons.
 enum RoundedCornerStyle {
     static let pill = Capsule()
+}
+
+/// 色の選び直し — drag on the photo itself to pick the colour you meant.
+///
+/// The extractor guesses the subject, but only the photographer knows which
+/// colour the shot was *about* — so the override points at the photo, not at
+/// an abstract wheel. Applying updates `dominantColor` (the printed HEX) and
+/// derives the bucket from it, so chip, palette and filing always agree.
+/// Lives in this file because the Xcode project is not in the repo — a new
+/// .swift file would need a manual project edit on the Mac.
+private struct RecolorSheet: View {
+    let photo: HuntPhoto
+    let onApply: (Int32) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var picked: Int32
+
+    init(photo: HuntPhoto, onApply: @escaping (Int32) -> Void) {
+        self.photo = photo
+        self.onApply = onApply
+        _picked = State(initialValue: photo.dominantColor ?? Int32(truncatingIfNeeded: 0xFF808080))
+    }
+
+    private var derivedBucket: String {
+        ColorBridge.shared.classifyKey(colorInt: picked)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("写真をなぞって、見せたい色を選べます。")
+                    .font(.subheadline).foregroundStyle(.secondary)
+
+                samplableImage
+
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(Color(packed: picked))
+                        .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                        .frame(width: 34, height: 34)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(hexString(picked))
+                            .font(.system(.body, design: .monospaced).bold())
+                        Text(bucketLabel(derivedBucket))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ColorPicker("細かく調整", selection: pickerBinding, supportsOpacity: false)
+                        .labelsHidden()
+                        .accessibilityLabel("細かく調整")
+                }
+                .padding(.horizontal, 4)
+
+                // The 12 canned swatches, for a fast "just file it as 赤".
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 40), spacing: 10)], spacing: 10) {
+                    ForEach(ColorBridge.shared.bucketKeys(), id: \.self) { key in
+                        let swatch = Int32(truncatingIfNeeded: ColorBridge.shared.swatchOf(key: key))
+                        Button {
+                            picked = swatch
+                        } label: {
+                            Circle()
+                                .fill(Color(packed: swatch))
+                                .overlay(Circle().stroke(
+                                    picked == swatch ? Color.white : .white.opacity(0.25),
+                                    lineWidth: picked == swatch ? 2.5 : 1))
+                                .frame(width: 40, height: 40)
+                        }
+                        .accessibilityLabel(Text(bucketLabel(key)))
+                    }
+                }
+
+                Button {
+                    onApply(picked)
+                    dismiss()
+                } label: {
+                    Text("この色にする")
+                        .font(.system(.callout, design: .rounded).bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Brand.gradient, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(PopButtonStyle())
+            }
+            .padding()
+            .background(Color(argb: 0xFF101014))
+            .navigationTitle("色を選び直す")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    /// The photo with a drag-to-sample gesture. The image is `scaledToFit`, so
+    /// the touch point has to be mapped through the fitted rect before it can
+    /// index a pixel — touches on the letterbox clamp to the nearest edge.
+    private var samplableImage: some View {
+        GeometryReader { geo in
+            let fitted = fittedRect(for: photo.thumb.size, in: geo.size)
+            Image(uiImage: photo.thumb)
+                .resizable()
+                .scaledToFit()
+                .frame(width: geo.size.width, height: geo.size.height)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { g in
+                            let nx = min(max((g.location.x - fitted.minX) / fitted.width, 0), 1)
+                            let ny = min(max((g.location.y - fitted.minY) / fitted.height, 0), 1)
+                            if let c = pixelColor(of: photo.thumb, atNormalized: CGPoint(x: nx, y: ny)) {
+                                picked = c
+                            }
+                        }
+                )
+        }
+        .frame(maxHeight: 340)
+    }
+
+    private func fittedRect(for image: CGSize, in container: CGSize) -> CGRect {
+        guard image.width > 0, image.height > 0,
+              container.width > 0, container.height > 0 else { return .zero }
+        let scale = min(container.width / image.width, container.height / image.height)
+        let size = CGSize(width: image.width * scale, height: image.height * scale)
+        return CGRect(x: (container.width - size.width) / 2,
+                      y: (container.height - size.height) / 2,
+                      width: size.width, height: size.height)
+    }
+
+    private var pickerBinding: Binding<Color> {
+        Binding(
+            get: { Color(packed: picked) },
+            set: { newValue in
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                UIColor(newValue).getRed(&r, green: &g, blue: &b, alpha: &a)
+                let clamp = { (v: CGFloat) in Int(min(max(v, 0), 1) * 255) }
+                let packed = (0xFF << 24) | (clamp(r) << 16) | (clamp(g) << 8) | clamp(b)
+                picked = Int32(truncatingIfNeeded: packed)
+            }
+        )
+    }
+}
+
+/// Reads one pixel of [image] at a normalized (0…1, top-left origin) point by
+/// drawing that single source pixel into a 1×1 RGBA8 context we own — the same
+/// "repaint into a known format" trick as DominantColor.rgbaBuffer, so it works
+/// for any source colour space or bit depth.
+private func pixelColor(of image: UIImage, atNormalized p: CGPoint) -> Int32? {
+    guard let cg = image.cgImage else { return nil }
+    let w = cg.width, h = cg.height
+    guard w > 0, h > 0 else { return nil }
+    let x = min(max(Int(p.x * CGFloat(w)), 0), w - 1)
+    let y = min(max(Int(p.y * CGFloat(h)), 0), h - 1)
+    var pixel = [UInt8](repeating: 0, count: 4)
+    let ok = pixel.withUnsafeMutableBytes { raw -> Bool in
+        guard let ctx = CGContext(
+            data: raw.baseAddress,
+            width: 1, height: 1,
+            bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return false }
+        ctx.interpolationQuality = .none
+        // CGContext is bottom-left origin: shift the image so the wanted pixel
+        // (top-left coords) lands on the context's single cell.
+        ctx.draw(cg, in: CGRect(x: -CGFloat(x),
+                                y: CGFloat(y) - CGFloat(h) + 1,
+                                width: CGFloat(w), height: CGFloat(h)))
+        return true
+    }
+    guard ok else { return nil }
+    let packed = (0xFF << 24) | (Int(pixel[0]) << 16) | (Int(pixel[1]) << 8) | Int(pixel[2])
+    return Int32(truncatingIfNeeded: packed)
 }
 

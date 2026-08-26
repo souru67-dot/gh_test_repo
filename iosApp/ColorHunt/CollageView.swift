@@ -58,6 +58,7 @@ struct CollageView: View {
     @State private var showPaywall = false
     @State private var saving = false
     @State private var saveDone = false
+    @State private var showDeselectConfirm = false
 
     /// @State does not survive the process, so every setting above used to come
     /// back at its default after the app was killed — the collage the user had
@@ -149,6 +150,29 @@ struct CollageView: View {
             }
             .background(Color(argb: 0xFF101014))
             .navigationTitle("コラージュ")
+            // One collage done → release the whole selection right here,
+            // instead of going back to ハント and un-ticking photo by photo.
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !state.orderedSelectedPhotos.isEmpty {
+                        Button {
+                            showDeselectConfirm = true
+                        } label: {
+                            Label("選択を解除", systemImage: "xmark.circle")
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("選択をすべて解除しますか？",
+                                isPresented: $showDeselectConfirm,
+                                titleVisibility: .visible) {
+                Button("全解除", role: .destructive) {
+                    withAnimation(.easeInOut(duration: 0.25)) { state.clearSelection() }
+                }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text("写真は一覧に残ります。タップすればまた選べます。")
+            }
             .overlay(alignment: .top) {
                 if saveDone {
                     SaveToast()
