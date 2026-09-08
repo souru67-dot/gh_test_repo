@@ -43,7 +43,7 @@
 | **4** | **課金アイテム作成＋Sandbox で購入テスト** | 1〜2時間 | 👈 **次はここ**（アイテムは作成済み・テストが未了） |
 | 5 | 掲載情報を入力 | 2〜3時間 | ✅ **完了**（2026-08-05・日英2言語） |
 | **6** | **Archive → アップロード → TestFlight** | 半日＋**ベータ2週間** | 🔸 **ベータ稼働中** — 公開リンクで募集開始（2026-08-12）。**Build 2 の締め 8/22 / 提出目標 8/26** |
-| 7 | 審査に提出 | 30分＋審査1〜3日 | — |
+| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **審査中** — 1.0(3) 提出、2.1(b) Information Needed に返信対応（2026-09-04） |
 
 **残りの順番**
 
@@ -1545,6 +1545,42 @@ ColorHunt、本日リリースしました！
 | 毎回暗号化を質問される | `ITSAppUsesNonExemptEncryption` 未設定（Step 1-3） |
 | 「同じビルドが既にある」 | Build 番号を上げ忘れ（Step 1-4） |
 | 手数料が30%のまま | Small Business Program 未申請（Step 0）。**自動適用されません** |
+
+**実際に来た審査メッセージと返信（記録）**
+
+**Guideline 2.1(b) — Information Needed**（2026-09-04・1.0(3)・審査機は iPad Air）:
+「アプリ内で In-App Purchase (ColorHunt Pro) を見つけられない」。
+
+原因: 課金への導線が**すべてコラージュ編集画面の中**にあり、写真を選んでいないと
+コラージュタブは空画面で入口がゼロ。審査員は写真を取り込まずに探していた。
+
+これは**リジェクトではなく質問**なので、**同じメッセージ画面から返信すれば審査が
+再開**されます（ビルドの出し直しは不要）。送った返信は下のとおり。次回以降も
+2.1(b) が来たらこの形で返す:
+
+```
+Thank you for reviewing ColorHunt.
+
+The In-App Purchase "ColorHunt Pro" (non-consumable) is offered from the
+Collage editor, so one or more photos must be selected first. Steps:
+
+1. Launch the app and tap "Get Started".
+2. In the "Hunt" tab, tap "Auto-Sort" and allow photo library access.
+   Recent photos are imported and grouped by colour. (If the device's photo
+   library is empty, tap the round camera button in the centre of the tab
+   bar and take any photo first — it is added to the Hunt list.)
+3. Tap one or more photos to select them, then tap the "Make Collage"
+   button that appears at the bottom.
+4. In the Collage editor, any of the following opens the purchase screen:
+   - the "Upgrade to Pro (remove watermark)" banner at the top, or
+   - any template marked with a crown badge (e.g. "Half", "Instant"), or
+   - "Save" / "Share" while a crown-marked template is selected.
+5. The "ColorHunt Pro" paywall appears, showing the price with "Purchase"
+   and "Restore Purchase" buttons.
+
+The Paid Applications Agreement is accepted and active, and we do not
+restrict the In-App Purchase by storefront, region, or device.
+```
 
 **リジェクトされた場合**: Apple からの文面をそのまま共有してください。
 理由の解釈と、必要なコード修正まで対応します。初回は
