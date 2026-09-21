@@ -43,7 +43,7 @@
 | **4** | **課金アイテム作成＋Sandbox で購入テスト** | 1〜2時間 | 👈 **次はここ**（アイテムは作成済み・テストが未了） |
 | 5 | 掲載情報を入力 | 2〜3時間 | ✅ **完了**（2026-08-05・日英2言語） |
 | **6** | **Archive → アップロード → TestFlight** | 半日＋**ベータ2週間** | 🔸 **ベータ稼働中** — 公開リンクで募集開始（2026-08-12）。**Build 2 の締め 8/22 / 提出目標 8/26** |
-| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **審査中** — 1.0(3) 提出、2.1(b) Information Needed に返信対応（2026-09-04） |
+| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **対応中** — 2.1(b) は返信で解決。**Guideline 4（iPadでレイアウト崩れ）でリジェクト**（2026-09-13）→ iPad を外して再ビルド |
 
 **残りの順番**
 
@@ -707,6 +707,11 @@ iPad を対象に含めると **iPad用スクリーンショットが必須**に
 
 - Xcode → TARGETS → General → **Supported Destinations** から
   iPad / Apple Vision を削除し、**iPhone だけ**にする
+
+> **⚠️ v1.0 はここを飛ばして Guideline 4 でリジェクトされました**（2026-09-13）。
+> iPad が残っていると**審査機が iPad になり**、iPhone 用に作ったUIが広い画面で
+> 崩れて「操作しづらい」と判定されます。**ビルドを作り直すことになるので、
+> Archive の前に必ず確認してください。**
 
 **1-3. 輸出コンプライアンスの申告を省略する（5分）**
 
@@ -1580,6 +1585,38 @@ Collage editor, so one or more photos must be selected first. Steps:
 
 The Paid Applications Agreement is accepted and active, and we do not
 restrict the In-App Purchase by storefront, region, or device.
+```
+
+**Guideline 4 — Design**（2026-09-13・1.0(3)・iPad Air 11-inch / iPadOS 27.0）:
+「UIが詰まっていて操作しづらい」。
+
+**原因: Supported Destinations に iPad が残っていた**（Step 1-2 の未実施）。
+本アプリのUIは縦持ち iPhone 専用で、iPad 用のコードは1行も無い
+（`horizontalSizeClass` / `UIDevice` / `idiom` の使用ゼロ）。iPad の広い
+キャンバスにそのまま出れば必ず崩れます。2.1(b) の審査機も iPad Air でした。
+
+**2.1(b) と違い、これは返信では解決しません。新しいビルドが要ります。**
+
+1. Xcode → TARGETS → General → **Supported Destinations** から
+   **iPad / Mac (Designed for iPad) / Apple Vision を削除**し、**iPhone だけ**にする
+2. **Build 番号を +1**（Version は `1.0` のまま）
+3. Archive → Upload
+4. App Store Connect でそのビルドを選び直して**再提出**
+5. 返信欄に「何を直したか」を1〜2行書く（下の文例）
+
+> **iPad ユーザーを失うわけではありません。** iPhone 専用アプリも iPad には
+> 互換モードで入ります。Apple が問題にしたのは「iPad 対応を宣言しているのに
+> iPad 向けの作りになっていない」点です。
+
+```
+Thank you for the review.
+
+We have removed iPad (and Mac / Apple Vision) from Supported Destinations,
+so the app is now iPhone-only. ColorHunt is designed as a portrait,
+single-hand camera app, and we are not shipping an iPad-optimised layout
+in this version.
+
+Build 1.0 (4) has been uploaded with this change.
 ```
 
 **リジェクトされた場合**: Apple からの文面をそのまま共有してください。
