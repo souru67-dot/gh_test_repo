@@ -1608,6 +1608,26 @@ restrict the In-App Purchase by storefront, region, or device.
 > 互換モードで入ります。Apple が問題にしたのは「iPad 対応を宣言しているのに
 > iPad 向けの作りになっていない」点です。
 
+**⚠️ iPad を外しても、App Store Connect の iPad スクショ欄は消えません**
+
+App Store Connect は**ビルドが対応していなくても iPad の欄を表示し続けます**。
+欄が見えること自体は「iPad 対応が残っている」証拠になりません。判定は
+**「iPad の欄が空のまま提出できるか」**です。
+
+要件は**選択中のビルド**に従うので、まずバージョンページの「ビルド」を
+新しいほう（例 `1.0 (4)`）に**差し替えてから**提出を試します。
+
+それでも「iPad用スクリーンショットが必要です」と出る場合:
+
+| 確認 | 場所 |
+|---|---|
+| **Targeted Device Families** が `iPhone`（値 1）だけか | Build Settings → `targeted device` で検索 |
+| Info.plist に `UIDeviceFamily` が直書きされていないか | Info タブ（**直書きがあると General の設定より優先されます**） |
+| Supported Destinations を変えたのが **Archive より前**だったか | 後なら、そのビルドに変更は入っていません |
+
+過去に iPad 用スクリーンショットをアップロードしていたら**削除**してください。
+残っていると審査員が iPad で開く根拠になりかねません。
+
 ```
 Thank you for the review.
 
