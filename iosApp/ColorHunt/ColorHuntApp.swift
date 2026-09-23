@@ -145,7 +145,14 @@ struct RootTabView: View {
                     .tabItem { cameraTabItem }
                     .tag(AppTab.camera)
                 TodayColorView()
-                    .tabItem { Label("今日の色", systemImage: "sparkles") }
+                    // Its own key, short on purpose. The raised camera button is
+                    // sized to sit inside the empty centre slot, and the bar
+                    // gives a long label more room — English "Today's Colour"
+                    // (14 chars against 3-7 for its neighbours) squeezed that
+                    // slot until the button overlapped this tab's selection
+                    // capsule. The screen keeps the full title; only the tab is
+                    // abbreviated, which is the tab-bar convention anyway.
+                    .tabItem { Label("今日の色タブ", systemImage: "sparkles") }
                     .tag(AppTab.today)
                 HuntMapView()
                     .tabItem { Label("マップ", systemImage: "map") }
