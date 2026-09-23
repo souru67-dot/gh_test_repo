@@ -386,33 +386,67 @@ Target Membership に `ColorHunt` をチェック）。Copy Bundle Resources に
 
 ## 4. 審査メモ（App Review Information → Notes）
 
+**英語で書きます。** Apple とのやり取りはすべて英語で来るため、日本語のメモは
+読まれない可能性があります。
+
+> **⚠️ 課金の場所は「写真を選んだ後」であることを必ず書く。**
+> v1.0(3) の審査で **Guideline 2.1(b)（IAP が見つからない）** を食らった原因が
+> ここでした。旧メモは「コラージュタブ → Proテンプレートをタップ」としか書いて
+> おらず、**写真を選ぶまでコラージュタブが空画面である**ことが伝わっていません。
+> 審査員は写真を取り込まずに探して、入口がゼロの画面を見ていました。
+
 そのまま貼り付けてください。
 
 ```
-ColorHunt は、写真を主役の色で分類し、コラージュを作成するアプリです。
-サーバーとの通信を一切行わず、すべての処理は端末内で完結します。
-ログインは不要のため、テスト用アカウントはありません。
+ColorHunt sorts your photos by their dominant colour and turns them into
+collages. All processing happens on device — the app makes no network
+requests. No account or login is required, so there is no demo account.
 
-【動作確認の手順】
-1. 起動 → オンボーディング →「はじめる」
-2. ハントタブ →「自動で仕分け」→ 写真へのアクセスを許可
-   → 直近の写真が色ごとのグループに分類されます
-   （シミュレータの初期写真でも動作しますが、実機のほうが分かりやすいです）
-3. 中央のカメラボタン → フレームを選んで撮影 → コラージュが自動生成されます
-4. コラージュタブ → 写真を選択 → テンプレートを選ぶ → 保存
+The app is iPhone-only (portrait). It is not designed for iPad.
 
-【アプリ内課金について】
-・製品ID: com.ykdev.ColorHunt.pro
-・非消耗型の買い切りです（サブスクリプションではありません）
-・購入導線: コラージュタブ → Proテンプレートまたは透かし表示部分をタップ
-・「購入を復元」ボタンをペイウォール内に実装しています
-・無料のままでも、5種類のテンプレートで書き出し（透かし付き）まで利用できます
+--- How to try the app ---
 
-【権限について】
-・カメラ: 撮影機能のため
-・写真ライブラリ: 色による分類と、Exifの撮影地を地図に表示するため
-・通知: 「今日の色」の任意のリマインダーのため（オフでも全機能が使えます）
-・位置情報の許可は求めていません（写真に記録済みの情報を端末内で読むのみ）
+1. Launch and tap "Get Started".
+2. In the "Hunt" tab, tap "Auto-Sort" and allow photo library access.
+   Recent photos are imported and grouped by colour.
+   (If the device's photo library is empty, tap the round camera button in
+    the centre of the tab bar and take any photo first — it is added to the
+    Hunt list.)
+3. Tap one or more photos to select them, then tap the "Make Collage"
+   button that appears at the bottom.
+4. Pick a template, then tap "Save".
+
+--- In-App Purchase: "ColorHunt Pro" (com.ykdev.ColorHunt.pro) ---
+
+Non-consumable, one-time purchase. Not a subscription.
+
+IMPORTANT: the purchase screen lives inside the Collage editor, so at least
+one photo must be selected first (steps 2-3 above). The Collage tab is an
+empty placeholder until then.
+
+From the Collage editor, any of these opens the purchase screen:
+  - the "Upgrade to Pro (remove watermark)" banner at the top, or
+  - any template marked with a crown badge (e.g. "Half", "Instant"), or
+  - "Save" / "Share" while a crown-marked template is selected.
+
+The paywall shows the price with "Purchase" and "Restore Purchase" buttons.
+
+We do not restrict the In-App Purchase by storefront, region or device
+configuration. The Paid Applications Agreement is accepted and active.
+
+The app remains fully usable without purchasing: five templates are free
+and export normally, with a small watermark.
+
+--- Permissions ---
+
+- Camera: to take photos.
+- Photo Library: to classify photos by colour, and to read the Exif location
+  already embedded in the photos for the map. Read on device only; nothing
+  is uploaded.
+- Notifications: optional daily reminder for "Today's Colour". Every feature
+  works with notifications off.
+- Location: never requested. The map only reads Exif data already stored in
+  the user's photos.
 ```
 
 ---
