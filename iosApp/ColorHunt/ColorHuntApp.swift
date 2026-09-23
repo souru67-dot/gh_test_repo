@@ -73,6 +73,30 @@ struct RootTabView: View {
     @EnvironmentObject private var state: AppState
     @AppStorage("onboarded_v1") private var onboarded = false
     @State private var showCamera = false
+    @Environment(\.horizontalSizeClass) private var hSize
+
+    /// The raised centre button is placed by `.overlay(alignment: .bottom)`,
+    /// i.e. on the *container's* midpoint. That only lands on the empty middle
+    /// slot while the bar is five equal slots spanning the full width — an
+    /// iPhone in portrait, which is all this app ships for.
+    ///
+    /// Where the system draws a floating, content-sized bar instead (a wide or
+    /// resizable window), the empty placeholder collapses, the four real tabs
+    /// close ranks, and the container's midpoint lands on a *label*: App Review
+    /// saw the button sitting on top of "Today's Colour" and called it a cut-off
+    /// button (Guideline 4, 1.0(4)). There is no way to read the system bar's
+    /// item frames to correct for it, so outside compact width the centre slot
+    /// becomes an ordinary tab and the overlay is dropped.
+    private var usesRaisedCameraButton: Bool { hSize == .compact }
+
+    /// Empty on compact — the raised button covers this slot and its tap area.
+    @ViewBuilder private var cameraTabItem: some View {
+        if usesRaisedCameraButton {
+            Text(verbatim: "")
+        } else {
+            Label("カメラ", systemImage: "camera.viewfinder")
+        }
+    }
 
     /// Tab selection with the centre slot intercepted: picking the camera
     /// placeholder opens the full-screen camera and keeps the current tab.
@@ -118,7 +142,7 @@ struct RootTabView: View {
                 // makes the TabView renegotiate its own layout, and the raised
                 // button used to be anchored to that layout.
                 Brand.base
-                    .tabItem { Text(verbatim: "") }
+                    .tabItem { cameraTabItem }
                     .tag(AppTab.camera)
                 TodayColorView()
                     .tabItem { Label("今日の色", systemImage: "sparkles") }
@@ -135,7 +159,9 @@ struct RootTabView: View {
             // the bottom edge alone for the same reason.
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            .overlay(alignment: .bottom) { cameraButton }
+            .overlay(alignment: .bottom) {
+                if usesRaisedCameraButton { cameraButton }
+            }
 
             if !onboarded {
                 OnboardingView {

@@ -235,3 +235,6 @@
 "写真をなぞって、見せたい色を選べます。" = "Drag on the photo to pick the colour you meant.";
 "細かく調整" = "Fine-tune";
 "この色にする" = "Use This Colour";
+
+/* 広い画面でのカメラタブのラベル（iPhone では空スロット＋浮き出しボタン） */
+"カメラ" = "Camera";
