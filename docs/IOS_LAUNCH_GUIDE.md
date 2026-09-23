@@ -43,7 +43,7 @@
 | **4** | **課金アイテム作成＋Sandbox で購入テスト** | 1〜2時間 | 👈 **次はここ**（アイテムは作成済み・テストが未了） |
 | 5 | 掲載情報を入力 | 2〜3時間 | ✅ **完了**（2026-08-05・日英2言語） |
 | **6** | **Archive → アップロード → TestFlight** | 半日＋**ベータ2週間** | 🔸 **ベータ稼働中** — 公開リンクで募集開始（2026-08-12）。**Build 2 の締め 8/22 / 提出目標 8/26** |
-| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **対応中** — 2.1(b) は返信で解決。**Guideline 4 で2回リジェクト**（1.0(3) 09-13 / 1.0(4) 09-22）。**1.0(4) も審査機が iPad = 外れていなかった** |
+| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **審査待ち** — **Build 5 を提出済み（2026-09-23）**。2.1(b) は返信で解決。Guideline 4 は2回リジェクト（1.0(3) 09-13 / 1.0(4) 09-22）後、見切れ3件を修正して再提出 |
 
 **残りの順番**
 
@@ -1693,6 +1693,46 @@ in this version.
 
 Build 1.0 (4) has been uploaded with this change.
 ```
+
+**✅ 3回目の提出 — Build 5（2026-09-23）**
+
+Guideline 4 の「some buttons were cut off」に対して、**実際に見切れていた3箇所**
+をすべて直して提出しました。Apple の指摘は1文でしたが、原因は別々です。
+
+| # | 何が見切れていたか | 原因 | コミット |
+|---|---|---|---|
+| 1 | コラージュのツール行 `Preset/Layout/Palette/Finish/Size` | 固定幅66pt×5が画面幅を超えていた。iPhone 16 で「Size」が53%、SE で80%隠れていた（**iPhone でも壊れていた**） | `fe7420e` |
+| 2 | タブのラベルにカメラボタンが乗る（iPad） | `.overlay(alignment: .bottom)` はコンテナ中央に置く。等幅5スロットが全幅に並ぶ縦持ち iPhone 以外では中央がラベルの上に来る | `42a830a` |
+| 3 | タブのラベルにカメラボタンが乗る（**英語の iPhone**） | ボタンの大きさを**日本語のラベル幅**で調整していた。英語は Today's Colour が14文字で、バーが長いラベルに幅を割き、中央の空スロットが潰れる | `0231f11` |
+
+> **#3 は日本語では再現しません。** 審査は英語環境で行われるので、
+> **スクリーンショット確認は必ず端末を英語にして**行ってください。
+
+提出時の返信文:
+
+```
+Thank you for the review.
+
+We have fixed the clipped controls reported in the previous review:
+
+1. The collage tool row (Preset / Layout / Palette / Finish / Size) used a
+   fixed item width that overflowed the screen; the last items were cut off.
+   It now distributes the available width evenly.
+2. The raised camera button could overlap the adjacent tab label when the
+   tab bar was not laid out as five equal full-width slots.
+3. The tab label for "Today's Colour" has been shortened to "Today" so the
+   centre slot keeps its width in English.
+
+iPad, Mac (Designed for iPad) and Apple Vision remain removed from
+Supported Destinations. ColorHunt is an iPhone-only portrait camera app.
+```
+
+**審査メモ（IMPORTANT の一文）を入れ直したか確認してください** —
+`APP_STORE_LISTING.md` §4 の英語版。課金画面はコラージュ編集の中にあり、
+**写真を1枚以上選択しないと開けません**。これが 2.1(b) の再発防止です。
+
+**結果が来たら**: 承認なら Step 7-6（手動リリース）へ。
+リジェクトなら文面をそのまま共有してください。
 
 **リジェクトされた場合**: Apple からの文面をそのまま共有してください。
 理由の解釈と、必要なコード修正まで対応します。初回は
