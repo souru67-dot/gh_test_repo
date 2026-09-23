@@ -1634,6 +1634,24 @@ General の Supported Destinations は `TARGETED_DEVICE_FAMILY` に書き込ま�
 | 3 | Info タブの `UIDeviceFamily` | `1` のみ（**直書きがあれば最優先で勝ちます**） |
 | 4 | Supported Destinations を変えたのは **Archive より前か** | 後なら、そのビルドに変更は入っていません |
 
+**実際に見えた壊れ方**（2026-09-23・実機の画面で確認）
+
+浮き出しカメラボタンが **「Today's Colour」の上に乗って**「oday's Colour」に
+なっていました。**これが "some buttons were cut off" の本体**です。
+
+カメラボタンは `.overlay(alignment: .bottom)` で**コンテナの中央**に置かれます。
+これが空の中央スロットと一致するのは、タブバーが**全幅の等幅5スロット**である間
+だけ（＝縦持ち iPhone）。システムが**内容幅の浮いたバー**を描く環境では、空の
+プレースホルダが潰れて4つの実タブが詰まり、中央がラベルの上に来ます。
+
+→ `horizontalSizeClass` が `.compact` 以外のとき、中央スロットを**通常のタブ**に
+して overlay を外す形に修正（`fe7420e` の次のコミット）。iPhone は常に `.compact`
+なので見た目は変わりません。
+
+あわせて、コラージュのツール行（`Preset/Layout/Palette/Finish/Size`）が
+**iPhone でも固定幅66ptで見切れていた**のも修正済み。iPhone 16 で「Size」が
+53%、SE で80%隠れており、440pt の Pro Max でしか収まっていませんでした。
+
 **なぜ iPad だと壊れるのか**（iPhone 専用で通すべき根拠）
 
 `ColorHuntApp.swift` のタブバーは、標準 `TabView` にカメラボタンを
