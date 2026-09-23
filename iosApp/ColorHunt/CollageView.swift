@@ -422,8 +422,22 @@ struct CollageView: View {
         }
     }
 
+    /// Five tools, always visible — no horizontal scrolling.
+    ///
+    /// This used to be a horizontal ScrollView whose buttons were a fixed 66pt
+    /// wide: 5 × 66 + 4 × 8 = 364pt of content against 329pt of room on an
+    /// iPhone 16 (393pt screen − 16pt editor padding − 16pt panel padding, both
+    /// sides). The last tool ("サイズ") was therefore clipped by default —
+    /// 53% hidden there, 80% on an SE — and only fit on a 440pt Pro Max, which
+    /// is why it survived testing. App Review called it out as "some buttons
+    /// were cut off" (Guideline 4, 1.0(4)).
+    ///
+    /// The count is capped at 5 by `CollageTool.allCases`, so the row never
+    /// needs to scroll: let the buttons divide whatever width there is instead.
+    /// That also keeps it intact at any window size, which is what the
+    /// guideline is actually asking for.
     private var toolRail: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        Group {
             HStack(spacing: 8) {
                 ForEach(tools(formatLocked: formatLocked), id: \.self) { item in
                     Button {
@@ -438,7 +452,7 @@ struct CollageView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
-                        .frame(width: 66, height: 54)
+                        .frame(maxWidth: .infinity, minHeight: 54)
                         .foregroundStyle(tool == item ? .white : .white.opacity(0.55))
                         .background {
                             ZStack {
