@@ -43,7 +43,7 @@
 | **4** | **課金アイテム作成＋Sandbox で購入テスト** | 1〜2時間 | 👈 **次はここ**（アイテムは作成済み・テストが未了） |
 | 5 | 掲載情報を入力 | 2〜3時間 | ✅ **完了**（2026-08-05・日英2言語） |
 | **6** | **Archive → アップロード → TestFlight** | 半日＋**ベータ2週間** | 🔸 **ベータ稼働中** — 公開リンクで募集開始（2026-08-12）。**Build 2 の締め 8/22 / 提出目標 8/26** |
-| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **対応中** — Guideline 4 で**3回リジェクト**（1.0(3) 09-13 / 1.0(4) 09-22 / **1.0(5) 09-24**）。iPad 対応は外れた。1.0(5) の指摘は「**課金がタブバーの陰に隠れている**」→ **Build 6 で課金の入口を2つ追加** |
+| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **審査待ち** — **1.0(7) を提出（2026-09-26）**。Guideline 4 は3回リジェクト（1.0(3) 09-13 / 1.0(4) 09-22 / 1.0(5) 09-24）。iPad 対応は外れ済み。課金の入口を3箇所に増やし、マップと写真アクセスの不具合も同梱 |
 
 **残りの順番**
 
@@ -1799,6 +1799,69 @@ The in-editor banner has also been moved above the preview, and the scroll
 content now reserves space so that nothing sits underneath the tab bar.
 
 ```
+
+**✅ 5回目の提出 — 1.0(7)・2026-09-26**
+
+1.0(6) を作った後に見つかった不具合をまとめて入れたので、提出は (7) に
+なりました。**返信文のビルド番号は 1.0 (7) に直してください**（下に
+差し替え済みの文面があります）。
+
+| 何を直したか | なぜ |
+|---|---|
+| 課金の入口をハントのヘッダーとコラージュのナビゲーションバーに追加 | **これが 1.0(5) のリジェクト理由**。写真ゼロでも押せる |
+| 編集内の Pro バナーをプレビューの上へ／スクロールに下余白 | 浮くタブバーの下敷き |
+| ハントの見出しが「ColorHun / t」と折り返す | 「Pro」を足した分、タイトルの取り分が減った |
+| マップが一覧0枚でもライブラリから位置情報を取り込む | マップがハントの一覧を見ていなかった |
+| マップにピンが1つも立たない | ローカル識別子の表記ゆれ（`<UUID>` と `<UUID>/L0/001`） |
+| 「写真を選ぶ」でアクセス許可を聞かない | 未許可のままだと位置情報も重複排除も効かない |
+
+返信文（**課金の場所を必ず先に書く**）:
+
+```
+Thank you for the review, and for the screenshot — it showed the problem
+exactly.
+
+You are right that the purchase was difficult to notice. Previously the only
+entry point to the paywall was a banner inside the Collage editor, which
+requires photos to be selected first, and which could be overlapped by the
+floating tab bar.
+
+Build 1.0 (7) adds two entry points that are visible immediately and are
+never covered by the tab bar:
+
+1. "Hunt" tab (the screen shown on launch) — a "Pro" button with a crown
+   icon at the TOP RIGHT of the purple header card. It is on screen the
+   moment the app opens, and requires nothing to be imported or selected.
+
+2. "Collage" tab — a crown button in the navigation bar (top left). It is
+   present on the empty state as well, so it works before any photo is
+   selected.
+
+Both open the purchase screen, which shows the price with "Purchase" and
+"Restore Purchase" buttons.
+
+To verify in a few seconds, without importing any photos:
+  Launch the app → tap "Get Started" → tap the "Pro" crown button at the
+  top right of the header.
+
+Regarding the review device: ColorHunt is an iPhone-only portrait app.
+iPad, Mac (Designed for iPad) and Apple Vision have been removed from
+Supported Destinations, so the build runs in iPhone compatibility mode on
+iPad.
+```
+
+> **審査中もベータ配信は止まりません。** 1.0(7) を TestFlight の外部
+> グループにも配って、下の「審査中に確認すること」を消化してください。
+
+**審査中に確認すること**（実機・静的解析しかしていない変更）
+
+| # | 手順 | 落ちたらどうなるか |
+|---|---|---|
+| 1 | アプリを削除→再インストール→「写真を選ぶ」→**許可ダイアログが出る**→許可→ピッカーが開く | 出ない／開かないと**写真が取り込めない**。最優先 |
+| 2 | 同上で**「許可しない」**を選ぶ→それでもピッカーが開いて取り込める | 断った人がアプリを使えなくなる |
+| 3 | 位置情報つきの写真を「写真を選ぶ」で取り込む→マップにピンが立つ | 表記ゆれの修正が効いているかの確認 |
+| 4 | 端末を**英語**にして、コラージュ編集の `Preset/Layout/Palette/Finish/Size` が5つとも見える | 前回の指摘そのもの |
+| 5 | 端末を**英語**にして、カメラボタンが「Today」に触れていない | 日本語では再現しない |
 
 **リジェクトされた場合**: Apple からの文面をそのまま共有してください。
 理由の解釈と、必要なコード修正まで対応します。初回は
