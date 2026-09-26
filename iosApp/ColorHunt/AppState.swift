@@ -91,6 +91,10 @@ final class AppState: ObservableObject {
     /// Geotagged photos for the colour map (recovered from PHAsset locations).
     @Published var mapPhotos: [MapPin] = []
     @Published var mapLoading = false
+    /// True once a load has actually run to completion. Without it an empty map
+    /// cannot tell "not read yet" from "read, and nothing here carries a
+    /// location" — and the second one looked like the button doing nothing.
+    @Published var mapScanned = false
 
     // MARK: Pro (StoreKit 2) — free tier shows the collage watermark.
     @Published var isPro: Bool = UserDefaults.standard.bool(forKey: "isPro")
@@ -385,6 +389,7 @@ final class AppState: ObservableObject {
         // pins up after 「すべて削除」 showed locations for photos the app no
         // longer had.
         mapPhotos.removeAll()
+        mapScanned = false
         selection.removeAll()
         collageOrder.removeAll()
         photoHashes.removeAll()
@@ -730,6 +735,7 @@ final class AppState: ObservableObject {
         let assetIDsToLocate = photos.compactMap { assetIDByPhoto[$0.id] }
         guard !assetIDsToLocate.isEmpty else {
             mapPhotos = []
+            mapScanned = true
             return
         }
         mapLoading = true
@@ -743,7 +749,7 @@ final class AppState: ObservableObject {
                 var coordinateByAsset: [String: CLLocationCoordinate2D] = [:]
                 assets.enumerateObjects { asset, _, _ in
                     if let loc = asset.location {
-                        coordinateByAsset[asset.localIdentifier] = loc.coordinate
+                        coordinateByAsset[AppState.assetKey(asset.localIdentifier)] = loc.coordinate
                     }
                 }
                 let located = coordinateByAsset
@@ -758,16 +764,30 @@ final class AppState: ObservableObject {
                         // would drop a black dot on the map and read as a real
                         // reading. It picks the pin up on the next visit.
                         guard let assetID = self.assetIDByPhoto[photo.id],
-                              let coordinate = located[assetID],
+                              let coordinate = located[AppState.assetKey(assetID)],
                               let color = photo.dominantColor else { return nil }
                         return MapPin(coordinate: coordinate,
                                       color: color,
                                       thumbnail: photo.thumb)
                     }
                     self.mapLoading = false
+                    self.mapScanned = true
                 }
             }
         }
+    }
+
+    /// The comparable part of a photo-library local identifier.
+    ///
+    /// The two intake paths do not spell it the same way. Auto-sort stores
+    /// `PHAsset.localIdentifier`, which is `<UUID>/L0/001`; the picker stores
+    /// `PhotosPickerItem.itemIdentifier`, documented only as "the asset's local
+    /// identifier" and seen as the bare UUID. `fetchAssets(withLocalIdentifiers:)`
+    /// accepts either, but the assets it hands back always spell it the long
+    /// way — so matching the two with `==` found nothing at all for photos that
+    /// came in through the picker, and the map stayed empty with no error.
+    private static func assetKey(_ identifier: String) -> String {
+        String(identifier.prefix { $0 != "/" })
     }
 }
 

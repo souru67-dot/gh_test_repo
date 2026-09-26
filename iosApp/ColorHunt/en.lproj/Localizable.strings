@@ -249,3 +249,8 @@
 "「ハント」タブで写真を追加すると、位置情報を持つものがここに並びます。" = "Add photos in the Hunt tab and the ones with a location appear here.";
 "ハントの写真の位置情報をマップに表示します。" = "Shows where your Hunt photos were taken.";
 "位置情報を持たない写真は表示されません。" = "Photos without a location are not shown.";
+
+/* マップ — 探したが見つからなかった場合。黙って何も起きないと、ボタンが壊れて見える */
+"位置情報を読み取れる写真がありませんでした。" = "No photo with a readable location.";
+"アプリ内のカメラで撮った写真や、写真へのアクセスを許可する前に取り込んだ写真には位置情報が付きません。「自動で仕分け」で取り込むと確実です。" = "Photos taken with the in-app camera, and photos added before photo library access was granted, carry no location. Auto-Sort always keeps it.";
+"もう一度読み込む" = "Load again";

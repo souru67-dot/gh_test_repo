@@ -220,10 +220,34 @@ struct HuntMapView: View {
             .padding(16)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .padding(.bottom, 14)
+        } else if state.mapPhotos.isEmpty, state.mapScanned {
+            // We looked and found nothing. Saying so — and saying which intake
+            // path keeps the location — is the difference between a bug and a
+            // limitation. Silence here read as "the button does nothing".
+            VStack(spacing: 10) {
+                Text("位置情報を読み取れる写真がありませんでした。")
+                    .font(.system(.callout, design: .rounded).bold())
+                    .multilineTextAlignment(.center)
+                Text("アプリ内のカメラで撮った写真や、写真へのアクセスを許可する前に取り込んだ写真には位置情報が付きません。「自動で仕分け」で取り込むと確実です。")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    state.loadMapPhotos()
+                } label: {
+                    Label("もう一度読み込む", systemImage: "arrow.clockwise")
+                        .font(.system(.callout, design: .rounded).bold())
+                        .padding(.horizontal, 20).padding(.vertical, 11)
+                        .foregroundStyle(.white)
+                        .background(Brand.gradient, in: Capsule())
+                        .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
+                }
+                .buttonStyle(PopButtonStyle())
+            }
+            .frame(maxWidth: 320)
+            .padding(16)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .padding(.bottom, 14)
         } else if state.mapPhotos.isEmpty {
-            // Photos exist but none of them is placed yet — either not read
-            // back from the library yet, or simply not geotagged. Say both, so
-            // "I pressed it and nothing happened" has an explanation.
             VStack(spacing: 10) {
                 Text("ハントの写真の位置情報をマップに表示します。")
                     .font(.caption).multilineTextAlignment(.center)
@@ -242,6 +266,7 @@ struct HuntMapView: View {
                     .font(.caption2).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
+            .frame(maxWidth: 320)
             .padding(16)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .padding(.bottom, 14)
