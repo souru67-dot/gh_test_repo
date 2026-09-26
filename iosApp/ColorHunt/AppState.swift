@@ -753,10 +753,15 @@ final class AppState: ObservableObject {
                     // the library round-trip is slow enough for the list to have
                     // changed under it.
                     self.mapPhotos = self.photos.compactMap { photo in
+                        // `dominantColor` is nil until the photo has been
+                        // analysed. No colour, no pin — filling in a default
+                        // would drop a black dot on the map and read as a real
+                        // reading. It picks the pin up on the next visit.
                         guard let assetID = self.assetIDByPhoto[photo.id],
-                              let coordinate = located[assetID] else { return nil }
+                              let coordinate = located[assetID],
+                              let color = photo.dominantColor else { return nil }
                         return MapPin(coordinate: coordinate,
-                                      color: photo.dominantColor,
+                                      color: color,
                                       thumbnail: photo.thumb)
                     }
                     self.mapLoading = false
