@@ -215,16 +215,11 @@ struct HuntMapView: View {
                 .buttonStyle(PopButtonStyle())
             }
         } else if state.mapPhotos.isEmpty, state.mapScanned {
-            // We looked and found nothing. Saying so — and saying which intake
-            // path keeps the location — is the difference between a bug and a
-            // limitation. Silence here read as "the button does nothing".
+            // We looked and found nothing. Saying so is the whole point of
+            // this state: staying silent read as the button doing nothing.
             messageBox {
                 Text("位置情報つきの写真がありません。")
                     .font(.system(.callout, design: .rounded).bold())
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("「自動で仕分け」で取り込むと位置情報が残ります。")
-                    .font(.caption2).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Button {

@@ -250,5 +250,4 @@
 /* マップ — 探したが見つからなかった場合。黙って何も起きないと、ボタンが壊れて見える */
 "もう一度読み込む" = "Load again";
 "位置情報つきの写真がありません。" = "No photos with a location.";
-"「自動で仕分け」で取り込むと位置情報が残ります。" = "Auto-Sort keeps the location.";
 "位置情報を読み込む" = "Load locations";
