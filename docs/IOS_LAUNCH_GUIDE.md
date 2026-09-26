@@ -1112,6 +1112,20 @@ App Store のアプリ名は**全世界で一意**です。公開中のアプリ
 3. Organizer が開く → **Distribute App** → **App Store Connect** → **Upload**
 4. 15〜30分ほどで App Store Connect の TestFlight に現れます
 
+> **実行先が Any iOS Device でなくても大丈夫な場合があります。**
+>
+> | 実行先 | Archive |
+> |---|---|
+> | **Any iOS Device (arm64)** | ○ 標準。これを選んでおけば間違いない |
+> | **接続した実機（自分の iPhone）** | ○ 同じものができる。Release ビルドは `ONLY_ACTIVE_ARCH = NO` なので arm64 で作られる |
+> | **シミュレータ** | ✗ Archive がグレーアウトするか、アップロードできない別物ができる |
+>
+> **できたものが正しいかは Organizer で分かります。** 種別が
+> **「iOS App Archive」**なら正解。**「Generic Xcode Archive」**だと
+> シミュレータ向けで、**Distribute App に App Store Connect が出てきません**。
+>
+> つまり、**アップロードできた時点で実行先は問題なかった**ということです。
+
 **6-3. 内部テスト（今日できる・審査なし・30分）**
 
 自分の実機に、**製品版とまったく同じビルド**を入れて確認します。審査は不要で、
