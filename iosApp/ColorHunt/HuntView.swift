@@ -140,15 +140,32 @@ struct HuntView: View {
 
     private var heroHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
+            // The title and the buttons share one row, so whatever the buttons
+            // take, the title loses. That row has to hold on a 375pt SE with
+            // the largest Dynamic Type and all three buttons showing — adding
+            // the 「Pro」 pill broke it and wrapped "ColorHunt" onto two lines.
+            // The title yields first (it shrinks, never wraps) and the buttons
+            // keep their intrinsic size, so the row cannot overflow.
+            HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ColorHunt")
+                    Text(verbatim: "ColorHunt")
                         .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                         .foregroundStyle(.white)
+                        .lineLimit(1)
+                        // 0.45, not "just enough". Worst case is a 375pt SE
+                        // (the narrowest screen iOS 16 still runs on) at the
+                        // largest accessibility size with all three buttons
+                        // out: the row leaves the title ~151pt against a
+                        // natural ~276pt, i.e. 0.55. Anything tuned to that
+                        // number breaks on the next label we add here.
+                        .minimumScaleFactor(0.45)
+                        .allowsTightening(true)
                     Text("好きな色を、集めよう。")
                         .font(.subheadline).foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 HStack(spacing: 8) {
                     // The app's front door to the purchase. Until now the only
                     // way in was a banner inside the collage editor — which
@@ -166,7 +183,7 @@ struct HuntView: View {
                                 Text(verbatim: "Pro")
                                     .font(.caption.weight(.bold))
                             }
-                            .padding(.horizontal, 11)
+                            .padding(.horizontal, 10)
                             .padding(.vertical, 9)
                             .background(.white.opacity(0.22), in: Capsule())
                             .overlay(Capsule().stroke(.white.opacity(0.5), lineWidth: 1))
@@ -178,7 +195,7 @@ struct HuntView: View {
                         showGrid = true
                     } label: {
                         Image(systemName: "square.grid.3x3")
-                            .padding(10)
+                            .padding(9)
                             .background(.white.opacity(0.18), in: Circle())
                             .foregroundStyle(.white)
                     }
@@ -188,7 +205,7 @@ struct HuntView: View {
                             showClearConfirm = true
                         } label: {
                             Image(systemName: "trash")
-                                .padding(10)
+                                .padding(9)
                                 .background(.white.opacity(0.18), in: Circle())
                                 .foregroundStyle(.white)
                         }
@@ -208,6 +225,15 @@ struct HuntView: View {
                         }
                     }
                 }
+                // Keep its intrinsic width and win the row: without this the
+                // title holds its size and the buttons get squeezed (or the
+                // title wraps). Capping Dynamic Type here stops three icon
+                // buttons from eating the whole row at accessibility sizes —
+                // the title above still scales, and every one of these has a
+                // VoiceOver label, so nothing is lost by not enlarging them.
+                .fixedSize()
+                .layoutPriority(1)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             }
 
             if !state.photos.isEmpty {
