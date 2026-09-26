@@ -381,6 +381,10 @@ final class AppState: ObservableObject {
     func clearAll() {
         let ids = photos.map { $0.id }
         photos.removeAll()
+        // The map is a view of this list, so it empties with it. Leaving the
+        // pins up after 「すべて削除」 showed locations for photos the app no
+        // longer had.
+        mapPhotos.removeAll()
         selection.removeAll()
         collageOrder.removeAll()
         photoHashes.removeAll()
@@ -704,11 +708,30 @@ final class AppState: ObservableObject {
 
     // MARK: Colour map (parity with Android's Exif-GPS map)
 
-    /// Fetches recent geotagged library photos, classifies each colour and drops a
-    /// colour pin at its location. PhotosPicker strips GPS, so — like Android's
-    /// media-store path — we read PHAsset.location directly.
-    func loadMapPhotos(limit: Int = 300) {
+    /// Drops a colour pin for each photo **in the Hunt list** that the library
+    /// still knows a location for.
+    ///
+    /// This used to scan the library itself — 300 recent assets, chosen with no
+    /// reference to the Hunt list — so 「すべて削除」 could leave the list at 0
+    /// photos while this button kept producing pins from photos the user had
+    /// never brought into the app. The map is the collection on a map; it holds
+    /// exactly what ハント holds, and a deletion there empties it here too.
+    ///
+    /// PhotosPicker strips GPS from what it hands back, so the coordinate still
+    /// has to be read off the PHAsset. What no longer comes from the library is
+    /// *which* photos to show, and their pixels and colours — those are already
+    /// in `photos`, which also means a colour corrected by hand (`recolor`)
+    /// moves the pin's colour with it.
+    func loadMapPhotos() {
         guard !mapLoading else { return }
+        // Photos that came in without library permission carry no asset id, so
+        // there is nothing to look a location up by. None at all → no pins, and
+        // no authorization prompt for a scan that could not show anything.
+        let assetIDsToLocate = photos.compactMap { assetIDByPhoto[$0.id] }
+        guard !assetIDsToLocate.isEmpty else {
+            mapPhotos = []
+            return
+        }
         mapLoading = true
         PHPhotoLibrary.requestAuthorization(for: .readWrite) { [weak self] status in
             guard status == .authorized || status == .limited else {
@@ -716,34 +739,27 @@ final class AppState: ObservableObject {
                 return
             }
             DispatchQueue.global(qos: .userInitiated).async {
-                let options = PHFetchOptions()
-                options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                options.fetchLimit = limit
-                let assets = PHAsset.fetchAssets(with: .image, options: options)
-
-                let manager = PHImageManager.default()
-                let req = PHImageRequestOptions()
-                req.deliveryMode = .fastFormat
-                req.isSynchronous = true
-                req.resizeMode = .fast
-
-                var pins: [MapPin] = []
+                let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIDsToLocate, options: nil)
+                var coordinateByAsset: [String: CLLocationCoordinate2D] = [:]
                 assets.enumerateObjects { asset, _, _ in
-                    guard let loc = asset.location else { return }
-                    manager.requestImage(
-                        for: asset,
-                        targetSize: CGSize(width: 240, height: 240),
-                        contentMode: .aspectFill,
-                        options: req
-                    ) { image, _ in
-                        guard let image, let color = DominantColor.extract(from: image) else { return }
-                        pins.append(MapPin(coordinate: loc.coordinate, color: color, thumbnail: image))
+                    if let loc = asset.location {
+                        coordinateByAsset[asset.localIdentifier] = loc.coordinate
                     }
                 }
-                let collected = pins
+                let located = coordinateByAsset
                 Task { @MainActor in
-                    self?.mapPhotos = collected
-                    self?.mapLoading = false
+                    guard let self else { return }
+                    // Re-read `photos` here rather than closing over a snapshot:
+                    // the library round-trip is slow enough for the list to have
+                    // changed under it.
+                    self.mapPhotos = self.photos.compactMap { photo in
+                        guard let assetID = self.assetIDByPhoto[photo.id],
+                              let coordinate = located[assetID] else { return nil }
+                        return MapPin(coordinate: coordinate,
+                                      color: photo.dominantColor,
+                                      thumbnail: photo.thumb)
+                    }
+                    self.mapLoading = false
                 }
             }
         }

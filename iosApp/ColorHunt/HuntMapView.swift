@@ -50,6 +50,16 @@ struct HuntMapView: View {
                     state.loadMapPhotos()
                 }
             }
+            // Pins are derived from the Hunt list, so they go stale as soon as
+            // it changes. Re-deriving when the tab is opened keeps the two in
+            // step without the user needing to know about the refresh button —
+            // and without firing on `photos.count`, which an auto-sort moves
+            // hundreds of times. 「すべて削除」 empties the pins in `clearAll`,
+            // so that case does not wait for the next visit.
+            .onChange(of: state.selectedTab) { tab in
+                guard tab == .map, !state.mapLoading, libraryAuthorized else { return }
+                state.loadMapPhotos()
+            }
             .onChange(of: state.mapPhotos.count) { _ in
                 if let fitted = fittedRegion(state.mapPhotos) {
                     withAnimation { region = fitted }
@@ -84,8 +94,8 @@ struct HuntMapView: View {
                         .padding(10)
                         .background(.ultraThinMaterial, in: Circle())
                 }
-                .accessibilityLabel("写真から読み込む")
-                .disabled(state.mapLoading)
+                .accessibilityLabel("ハントの写真から位置情報を読み込む")
+                .disabled(state.mapLoading || state.photos.isEmpty)
             }
 
             if pinBuckets.count > 1 {
@@ -185,14 +195,20 @@ struct HuntMapView: View {
             .padding(12)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
             .padding(.bottom, 14)
-        } else if state.mapPhotos.isEmpty {
+        } else if state.photos.isEmpty {
+            // Two different empty states, because they need different answers.
+            // This one is "there is nothing to map" — offering a 読み込む button
+            // here is what made the map look like it had its own photo source.
             VStack(spacing: 10) {
-                Text("位置情報つきの写真をマップに表示します。")
+                Text("ハントに写真がありません。")
+                    .font(.system(.callout, design: .rounded).bold())
+                Text("「ハント」タブで写真を追加すると、位置情報を持つものがここに並びます。")
                     .font(.caption).multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
                 Button {
-                    state.loadMapPhotos()
+                    withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .hunt }
                 } label: {
-                    Label("写真から読み込む", systemImage: "photo.on.rectangle")
+                    Label("ハントへ", systemImage: "camera.viewfinder")
                         .font(.system(.callout, design: .rounded).bold())
                         .padding(.horizontal, 20).padding(.vertical, 11)
                         .foregroundStyle(.white)
@@ -200,6 +216,31 @@ struct HuntMapView: View {
                         .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
                 }
                 .buttonStyle(PopButtonStyle())
+            }
+            .padding(16)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .padding(.bottom, 14)
+        } else if state.mapPhotos.isEmpty {
+            // Photos exist but none of them is placed yet — either not read
+            // back from the library yet, or simply not geotagged. Say both, so
+            // "I pressed it and nothing happened" has an explanation.
+            VStack(spacing: 10) {
+                Text("ハントの写真の位置情報をマップに表示します。")
+                    .font(.caption).multilineTextAlignment(.center)
+                Button {
+                    state.loadMapPhotos()
+                } label: {
+                    Label("ハントの写真から位置情報を読み込む", systemImage: "photo.on.rectangle")
+                        .font(.system(.callout, design: .rounded).bold())
+                        .padding(.horizontal, 20).padding(.vertical, 11)
+                        .foregroundStyle(.white)
+                        .background(Brand.gradient, in: Capsule())
+                        .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
+                }
+                .buttonStyle(PopButtonStyle())
+                Text("位置情報を持たない写真は表示されません。")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
             .padding(16)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
