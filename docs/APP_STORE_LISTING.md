@@ -389,11 +389,16 @@ Target Membership に `ColorHunt` をチェック）。Copy Bundle Resources に
 **英語で書きます。** Apple とのやり取りはすべて英語で来るため、日本語のメモは
 読まれない可能性があります。
 
-> **⚠️ 課金の場所は「写真を選んだ後」であることを必ず書く。**
-> v1.0(3) の審査で **Guideline 2.1(b)（IAP が見つからない）** を食らった原因が
-> ここでした。旧メモは「コラージュタブ → Proテンプレートをタップ」としか書いて
-> おらず、**写真を選ぶまでコラージュタブが空画面である**ことが伝わっていません。
-> 審査員は写真を取り込まずに探して、入口がゼロの画面を見ていました。
+> **⚠️ 課金の入口は「最初の画面の右上」。ここを最初に書く。**
+> 1.0(3) は **Guideline 2.1(b)（IAP が見つからない）**、1.0(5) は
+> **Guideline 4「the in-app purchase was hidden behind the bottom menu tab」**
+> でした。原因は同じで、**課金の入口がコラージュ編集画面の中にしか無かった**
+> ことです（写真を選ぶまで開けず、しかもバナーが浮くタブバーの下敷きになる）。
+>
+> Build 6 で入口を2つ増やしました。メモもそれに合わせて書き換えてあります。
+>
+> - **ハント（最初の画面）の右上「👑 Pro」** — 写真ゼロでも押せる
+> - **コラージュのナビゲーションバーの王冠** — 空画面でも押せる
 
 そのまま貼り付けてください。
 
@@ -420,12 +425,18 @@ The app is iPhone-only (portrait). It is not designed for iPad.
 
 Non-consumable, one-time purchase. Not a subscription.
 
-IMPORTANT: the purchase screen lives inside the Collage editor, so at least
-one photo must be selected first (steps 2-3 above). The Collage tab is an
-empty placeholder until then.
+IMPORTANT - where to find it, without importing any photo:
 
-From the Collage editor, any of these opens the purchase screen:
-  - the "Upgrade to Pro (remove watermark)" banner at the top, or
+  On the very first screen ("Hunt"), tap the "Pro" button with the crown
+  icon at the TOP RIGHT of the purple header card. It is visible as soon as
+  the app launches and needs nothing selected.
+
+  The Collage tab also has a crown button in its navigation bar (top left),
+  which works on the empty state too.
+
+Once photos are selected, the Collage editor additionally offers:
+  - the "Upgrade to Pro (remove watermark)" banner directly above the
+    preview, or
   - any template marked with a crown badge (e.g. "Half", "Instant"), or
   - "Save" / "Share" while a crown-marked template is selected.
 

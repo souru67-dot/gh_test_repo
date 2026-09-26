@@ -153,6 +153,24 @@ struct CollageView: View {
             // One collage done → release the whole selection right here,
             // instead of going back to ハント and un-ticking photo by photo.
             .toolbar {
+                // In the navigation bar, not in the scroll view. App Review
+                // rejected 1.0(5) with "the in-app purchase was hidden behind
+                // the bottom menu tab": from iOS 26 the tab bar is a floating
+                // pill drawn OVER the content, and the only way in to the
+                // paywall was a banner far enough down the page to land under
+                // it. The bar is the one strip nothing floats over — and this
+                // item sits on the empty state too, so the purchase is
+                // reachable before a single photo is selected.
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !state.isPro {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            Label("Proにアップグレード", systemImage: "crown.fill")
+                        }
+                        .tint(Color(argb: 0xFFFFC107))
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !state.orderedSelectedPhotos.isEmpty {
                         Button {
@@ -278,6 +296,15 @@ struct CollageView: View {
     private var editor: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // First thing on the page, above the preview — it used to sit
+                // between the hint and the controls, which on a tall preview put
+                // it at the very bottom of the screen, under the floating tab
+                // bar. Anything that has to be noticed goes where nothing can be
+                // drawn over it.
+                if !state.isPro {
+                    proBanner
+                }
+
                 // Cap the preview height so tall ratios (9:16) shrink in width and
                 // stay in line with the other sizes instead of filling the screen.
                 canvas(width: min(340, 440 * aspect))
@@ -320,10 +347,6 @@ struct CollageView: View {
 
                 previewHint
 
-                if !state.isPro {
-                    proBanner
-                }
-
                 controls
 
                 HStack(spacing: 12) {
@@ -359,6 +382,10 @@ struct CollageView: View {
                 }
             }
             .padding()
+            // The tab bar floats over the bottom of the scroll view from iOS 26,
+            // so the last row needs clearance the safe area does not give it —
+            // the same 96pt ハント already reserves for its 「コラージュを作成」 bar.
+            .padding(.bottom, 96)
         }
     }
 

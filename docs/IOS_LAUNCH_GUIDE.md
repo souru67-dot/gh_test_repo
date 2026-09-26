@@ -43,7 +43,7 @@
 | **4** | **課金アイテム作成＋Sandbox で購入テスト** | 1〜2時間 | 👈 **次はここ**（アイテムは作成済み・テストが未了） |
 | 5 | 掲載情報を入力 | 2〜3時間 | ✅ **完了**（2026-08-05・日英2言語） |
 | **6** | **Archive → アップロード → TestFlight** | 半日＋**ベータ2週間** | 🔸 **ベータ稼働中** — 公開リンクで募集開始（2026-08-12）。**Build 2 の締め 8/22 / 提出目標 8/26** |
-| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **審査待ち** — **Build 5 を提出済み（2026-09-23）**。2.1(b) は返信で解決。Guideline 4 は2回リジェクト（1.0(3) 09-13 / 1.0(4) 09-22）後、見切れ3件を修正して再提出 |
+| 7 | 審査に提出 | 30分＋審査1〜3日 | 🔸 **対応中** — Guideline 4 で**3回リジェクト**（1.0(3) 09-13 / 1.0(4) 09-22 / **1.0(5) 09-24**）。iPad 対応は外れた。1.0(5) の指摘は「**課金がタブバーの陰に隠れている**」→ **Build 6 で課金の入口を2つ追加** |
 
 **残りの順番**
 
@@ -1733,6 +1733,72 @@ Supported Destinations. ColorHunt is an iPhone-only portrait camera app.
 
 **結果が来たら**: 承認なら Step 7-6（手動リリース）へ。
 リジェクトなら文面をそのまま共有してください。
+
+**❌ 4回目 — 1.0(5)・2026-09-24・Guideline 4（課金がタブバーの陰）**
+
+> Specifically, the in-app purchase was hidden behind the bottom menu tab
+> and made it difficult to notice or purchase.
+
+**iPad 対応は外れました。** 送られてきたスクショは左右に黒帯があり、右下に
+互換モードの拡大縮小ボタンが出ています ＝ **iPhone 互換モードで動いている**
+証拠です。審査機が iPad なのは、iPhone 専用アプリも iPad に入るため。ここは
+もう指摘されていません。
+
+**今回の指摘は別物で、こちらの構造的な問題でした。**
+
+`grep -n "showPaywall" iosApp/ColorHunt/*.swift` の結果が答えです。
+**課金画面への入口はアプリ全体で `CollageView` の中にしか無く**、しかも
+コラージュ編集画面は**写真を選ぶまで開きません**。2.1(b)（「IAP が見つからない」）
+と今回の Guideline 4 は、**同じ1つの原因の別の症状**でした。
+
+さらに **iOS 26 以降、タブバーは内容の上に浮くガラスのピル**になりました。
+`proBanner` はスクロール内の「プレビューの下」に置いてあったので、プレビューが
+縦長だとバナーが画面最下部に来て、**浮くタブバーの下敷き**になります。
+スクショの「👑 (remove wate…rk)」が切れているのがそれです。
+
+**Build 6 の修正 — 入口を「浮くバーが掛からない場所」に3つ**
+
+| 場所 | 写真ゼロで押せるか | ファイル |
+|---|---|---|
+| **ハント（最初の画面）ヘッダー右上「👑 Pro」** | ✅ 押せる | `HuntView.swift` |
+| **コラージュのナビゲーションバーの王冠**（空画面にも出る） | ✅ 押せる | `CollageView.swift` |
+| コラージュ編集の Pro バナー（**プレビューの下→上へ移動**） | 写真が要る | `CollageView.swift` |
+
+あわせて、コラージュ編集のスクロールに `.padding(.bottom, 96)` を追加。
+浮くタブバーの下に最後の行が潜り込まないようにしました（ハントが
+「コラージュを作成」バー用に確保しているのと同じ値）。
+
+> **教訓**: セーフエリアは**浮くタブバーの分を確保してくれません**。
+> スクロールの末尾に置いたものは iOS 26 以降で隠れると考えてください。
+
+**審査メモを必ず差し替えてください。** `APP_STORE_LISTING.md` §4 の
+「IMPORTANT - where to find it, without importing any photo」の段落が
+新しくなっています。旧メモは「写真を1枚以上選ぶ必要がある」と書いてあり、
+そのまま出すと審査員をまた同じ袋小路へ案内します。
+
+提出時の返信文:
+
+```
+Thank you for the review.
+
+You are right that the purchase was too hard to reach. Previously the only
+entry point to the paywall was a banner inside the Collage editor, which
+requires photos to be selected first, and which could be overlapped by the
+floating tab bar.
+
+Build 1.0 (6) adds two entry points that are always visible and are never
+covered by the tab bar:
+
+1. A "Pro" button with a crown icon at the top right of the header on the
+   very first screen ("Hunt"). It is visible immediately on launch and
+   requires nothing to be selected.
+2. A crown button in the Collage tab's navigation bar, which is present on
+   the empty state as well.
+
+The in-editor banner has also been moved above the preview, and the scroll
+content now reserves space so that nothing sits underneath the tab bar.
+
+```
 
 **リジェクトされた場合**: Apple からの文面をそのまま共有してください。
 理由の解釈と、必要なコード修正まで対応します。初回は

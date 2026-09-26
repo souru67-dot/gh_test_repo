@@ -10,6 +10,7 @@ struct HuntView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showGrid = false
     @State private var showClearConfirm = false
+    @State private var showPaywall = false
     @State private var showDeselectConfirm = false
     @State private var recolorTarget: HuntPhoto?
 
@@ -104,6 +105,14 @@ struct HuntView: View {
                 Task { await load(items) }
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(
+                product: state.proProduct,
+                onPurchase: { Task { await state.purchasePro(); if state.isPro { showPaywall = false } } },
+                onRestore: { Task { await state.restorePro(); if state.isPro { showPaywall = false } } },
+                onDebugUnlock: { state.debugUnlockPro(); showPaywall = false }
+            )
+        }
         .sheet(item: $recolorTarget) { photo in
             RecolorSheet(photo: photo) { picked in
                 state.recolor(photo.id, to: picked)
@@ -141,6 +150,30 @@ struct HuntView: View {
                 }
                 Spacer()
                 HStack(spacing: 8) {
+                    // The app's front door to the purchase. Until now the only
+                    // way in was a banner inside the collage editor — which
+                    // needs photos selected first, and which the floating tab
+                    // bar drew over; App Review called the purchase "hidden
+                    // behind the bottom menu tab". This one is on the first
+                    // screen, above the fold, and needs nothing selected.
+                    if !state.isPro {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                    .font(.caption.weight(.bold))
+                                Text(verbatim: "Pro")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 9)
+                            .background(.white.opacity(0.22), in: Capsule())
+                            .overlay(Capsule().stroke(.white.opacity(0.5), lineWidth: 1))
+                            .foregroundStyle(.white)
+                        }
+                        .accessibilityLabel("Proにアップグレード")
+                    }
                     Button {
                         showGrid = true
                     } label: {
