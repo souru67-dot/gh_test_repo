@@ -94,7 +94,7 @@ struct HuntMapView: View {
                         .padding(10)
                         .background(.ultraThinMaterial, in: Circle())
                 }
-                .accessibilityLabel("ハントの写真から位置情報を読み込む")
+                .accessibilityLabel("位置情報を読み込む")
                 .disabled(state.mapLoading || state.photos.isEmpty)
             }
 
@@ -199,12 +199,9 @@ struct HuntMapView: View {
             // Two different empty states, because they need different answers.
             // This one is "there is nothing to map" — offering a 読み込む button
             // here is what made the map look like it had its own photo source.
-            VStack(spacing: 10) {
+            messageBox {
                 Text("ハントに写真がありません。")
                     .font(.system(.callout, design: .rounded).bold())
-                Text("「ハント」タブで写真を追加すると、位置情報を持つものがここに並びます。")
-                    .font(.caption).multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) { state.selectedTab = .hunt }
                 } label: {
@@ -217,20 +214,19 @@ struct HuntMapView: View {
                 }
                 .buttonStyle(PopButtonStyle())
             }
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-            .padding(.bottom, 14)
         } else if state.mapPhotos.isEmpty, state.mapScanned {
             // We looked and found nothing. Saying so — and saying which intake
             // path keeps the location — is the difference between a bug and a
             // limitation. Silence here read as "the button does nothing".
-            VStack(spacing: 10) {
-                Text("位置情報を読み取れる写真がありませんでした。")
+            messageBox {
+                Text("位置情報つきの写真がありません。")
                     .font(.system(.callout, design: .rounded).bold())
                     .multilineTextAlignment(.center)
-                Text("アプリ内のカメラで撮った写真や、写真へのアクセスを許可する前に取り込んだ写真には位置情報が付きません。「自動で仕分け」で取り込むと確実です。")
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("「自動で仕分け」で取り込むと位置情報が残ります。")
                     .font(.caption2).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button {
                     state.loadMapPhotos()
                 } label: {
@@ -243,18 +239,15 @@ struct HuntMapView: View {
                 }
                 .buttonStyle(PopButtonStyle())
             }
-            .frame(maxWidth: 320)
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-            .padding(.bottom, 14)
         } else if state.mapPhotos.isEmpty {
-            VStack(spacing: 10) {
+            messageBox {
                 Text("ハントの写真の位置情報をマップに表示します。")
                     .font(.caption).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button {
                     state.loadMapPhotos()
                 } label: {
-                    Label("ハントの写真から位置情報を読み込む", systemImage: "photo.on.rectangle")
+                    Label("位置情報を読み込む", systemImage: "photo.on.rectangle")
                         .font(.system(.callout, design: .rounded).bold())
                         .padding(.horizontal, 20).padding(.vertical, 11)
                         .foregroundStyle(.white)
@@ -262,14 +255,7 @@ struct HuntMapView: View {
                         .shadow(color: Brand.purple.opacity(0.5), radius: 10, y: 4)
                 }
                 .buttonStyle(PopButtonStyle())
-                Text("位置情報を持たない写真は表示されません。")
-                    .font(.caption2).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: 320)
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-            .padding(.bottom, 14)
         } else {
             HStack(spacing: 10) {
                 Text("\(filteredPins.count)枚")
@@ -301,6 +287,22 @@ struct HuntMapView: View {
             .padding(.horizontal, 14)
             .padding(.bottom, 14)
         }
+    }
+
+    /// One card for every message the map shows over itself.
+    ///
+    /// The width is pinned rather than left to the content: this sits in an
+    /// `.overlay`, which offers the full screen and lets a long sentence run
+    /// past both edges. 340 + 16pt of margin each side fits the narrowest
+    /// screen iOS 16 runs on (375pt) with room to spare, and `fixedSize` on the
+    /// text makes it grow downwards instead of truncating.
+    private func messageBox<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(spacing: 10) { content() }
+            .padding(16)
+            .frame(maxWidth: 340)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
     }
 
     private func pinDetail(_ pin: MapPin) -> some View {

@@ -13,14 +13,45 @@ struct HuntView: View {
     @State private var showPaywall = false
     @State private var showDeselectConfirm = false
     @State private var recolorTarget: HuntPhoto?
+    @State private var showPicker = false
+    /// Held in state, not read fresh each time: the view has to re-render once
+    /// the prompt is answered, and a computed read of the framework value does
+    /// not tell SwiftUI anything changed.
+    @State private var libraryStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
-    /// Read once per body evaluation; the picker below needs it to decide
-    /// whether it may bind to the shared library.
+    /// Whether the picker may bind to the shared library — the only binding
+    /// that returns asset identifiers.
     private var libraryAuthorized: Bool {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        return status == .authorized || status == .limited
+        libraryStatus == .authorized || libraryStatus == .limited
+    }
+
+    /// Ask on the tap that needs it, then open the picker either way.
+    ///
+    /// This used to pick between two PhotosPickers by the *current* status,
+    /// and while that status was `.notDetermined` it chose the out-of-process
+    /// picker — which never asks for anything. Someone who only ever used
+    /// 「写真を選ぶ」 therefore stayed unauthorised for good, and everything
+    /// that needs an asset identifier quietly never worked: no location for the
+    /// map, and no de-duplication against 「自動で仕分け」.
+    ///
+    /// A refusal is fine; it just falls back to the out-of-process picker.
+    private func pickPhotos() {
+        guard libraryStatus == .notDetermined else {
+            showPicker = true
+            return
+        }
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+            DispatchQueue.main.async {
+                libraryStatus = status
+                // A turn later, on purpose. The answer swaps which of the two
+                // picker overloads is mounted, and flipping the presentation in
+                // the same pass would hand `isPresented` to a modifier that is
+                // being torn down.
+                DispatchQueue.main.async { showPicker = true }
+            }
+        }
     }
 
     private var pickPhotosLabel: some View {
@@ -103,6 +134,11 @@ struct HuntView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: state.importSummary)
             .onChange(of: pickerItems) { items in
                 Task { await load(items) }
+            }
+            // 自動で仕分け runs its own authorization request, so the answer to
+            // that one has to be picked up here too.
+            .onChange(of: state.importing) { _ in
+                libraryStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
             }
         }
         .sheet(isPresented: $showPaywall) {
@@ -244,22 +280,14 @@ struct HuntView: View {
             }
 
             HStack(spacing: 10) {
-                // Bound to the shared library when we are allowed to, because
-                // that is the only way the picker returns asset identifiers —
-                // and those are what stop a photo from landing twice once
-                // auto-sort has already brought it in. Without permission the
-                // picker still works out-of-process, just without identifiers.
-                if libraryAuthorized {
-                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 50,
-                                 matching: .images, photoLibrary: .shared()) {
-                        pickPhotosLabel
-                    }
-                } else {
-                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 50,
-                                 matching: .images) {
-                        pickPhotosLabel
-                    }
+                Button {
+                    pickPhotos()
+                } label: {
+                    pickPhotosLabel
                 }
+                .modifier(PhotoPickerPresenter(isPresented: $showPicker,
+                                               selection: $pickerItems,
+                                               sharedLibrary: libraryAuthorized))
                 Button {
                     state.importRecentLibraryPhotos()
                 } label: {
@@ -550,6 +578,31 @@ struct HuntView: View {
             await state.addOne(image: image, assetID: item.itemIdentifier)
         }
         pickerItems = []
+    }
+}
+
+/// Presents the photo picker, bound to the shared library whenever we are
+/// allowed to bind to it.
+///
+/// `photosPicker(isPresented:…)` has two overloads, and the one taking a
+/// `photoLibrary` cannot be selected with a ternary — so the whole modifier
+/// branches. Only the shared-library binding returns asset identifiers, which
+/// are the app's only handle on where a photo was taken.
+private struct PhotoPickerPresenter: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var selection: [PhotosPickerItem]
+    let sharedLibrary: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if sharedLibrary {
+            content.photosPicker(isPresented: $isPresented, selection: $selection,
+                                 maxSelectionCount: 50, matching: .images,
+                                 photoLibrary: .shared())
+        } else {
+            content.photosPicker(isPresented: $isPresented, selection: $selection,
+                                 maxSelectionCount: 50, matching: .images)
+        }
     }
 }
 
