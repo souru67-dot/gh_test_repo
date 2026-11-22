@@ -551,56 +551,59 @@ class CalendarRepository(private val context: Context) {
         android.content.ContentResolver.requestSync(null, CalendarContract.AUTHORITY, extras)
     }
 
-    /** Drag & drop copy: duplicates an event, shifted by [days] whole days. */
-    suspend fun duplicateEventTo(eventId: Long, days: Long): Boolean =
-        duplicateEventToReturningId(eventId, days) != null
-
-    /** Like [duplicateEventTo] but returns the new event id (for batch undo). */
-    suspend fun duplicateEventToReturningId(eventId: Long, days: Long): Long? {
-        val newId = duplicateEvent(eventId) ?: return null
-        if (days != 0L && !moveEventByDays(newId, days)) {
-            deleteEvent(newId)
-            return null
-        }
-        return newId
+    /**
+     * Copies ONE occurrence ([instance]) shifted by [days] whole days and
+     * returns the new event id. The copy never repeats. Times come from the
+     * instance, not the series row: for a recurring event the row's DTSTART
+     * is the FIRST occurrence, so copying from it put copies of e.g. the
+     * 10th weekly meeting months away from where they were dropped.
+     */
+    suspend fun duplicateInstance(instance: EventInstance, days: Long): Long? {
+        val source = loadEventDetails(instance.eventId) ?: return null
+        return createEvent(source.draftFor(instance, days))
     }
 
-    /** Copies an event (single copy at the same time; the copy does not repeat). */
-    suspend fun duplicateEvent(eventId: Long): Long? {
-        val source = loadEventDetails(eventId) ?: return null
-        val endUtc = source.dtEnd
-            ?: (source.dtStart + parseDurationMillis(source.duration, source.allDay))
-        val draft = if (source.allDay) {
-            val zone = ZoneId.systemDefault()
-            val startDay = Instant.ofEpochMilli(source.dtStart).atZone(ZoneOffset.UTC).toLocalDate()
-            // DTEND is the exclusive UTC midnight; the last covered day is one before it.
-            val lastDay = Instant.ofEpochMilli(endUtc).atZone(ZoneOffset.UTC)
-                .toLocalDate().minusDays(1)
-            EventDraft(
-                calendarId = source.calendarId,
-                title = source.title,
-                allDay = true,
-                startMillis = startDay.atStartOfDay(zone).toInstant().toEpochMilli(),
-                endMillis = maxOf(startDay, lastDay).atStartOfDay(zone).toInstant().toEpochMilli(),
-                location = source.location.orEmpty(),
-                description = source.description.orEmpty(),
-                reminderMinutes = source.reminderMinutes,
-                eventColor = source.pickedColor(),
-            )
+    /**
+     * Drag & drop move of ONE occurrence. A plain event is shifted in place;
+     * an occurrence of a recurring series becomes an exception at the new
+     * date, so the rest of the series stays where it was.
+     */
+    suspend fun moveInstanceByDays(instance: EventInstance, days: Long): Boolean {
+        if (days == 0L) return true
+        val source = loadEventDetails(instance.eventId) ?: return false
+        return if (source.rrule.isNullOrBlank()) {
+            moveEventByDays(instance.eventId, days)
         } else {
-            EventDraft(
-                calendarId = source.calendarId,
-                title = source.title,
-                allDay = false,
-                startMillis = source.dtStart,
-                endMillis = endUtc,
-                location = source.location.orEmpty(),
-                description = source.description.orEmpty(),
-                reminderMinutes = source.reminderMinutes,
-                eventColor = source.pickedColor(),
-            )
+            updateEventInstance(instance.eventId, instance.begin, source.draftFor(instance, days))
         }
-        return createEvent(draft)
+    }
+
+    /** A non-repeating draft with [instance]'s times shifted by [days]. */
+    private fun EventDetails.draftFor(instance: EventInstance, days: Long): EventDraft {
+        val zone = ZoneId.systemDefault()
+        val (startMs, endMs) = if (instance.allDay) {
+            // Instance dates are already resolved from the UTC-midnight convention;
+            // the draft wants local midnights of the first and LAST covered day.
+            val start = instance.startDate.plusDays(days)
+            val last = maxOf(instance.startDate, instance.endDate).plusDays(days)
+            start.atStartOfDay(zone).toInstant().toEpochMilli() to
+                last.atStartOfDay(zone).toInstant().toEpochMilli()
+        } else {
+            fun shift(millis: Long): Long = Instant.ofEpochMilli(millis).atZone(zone)
+                .plusDays(days).toInstant().toEpochMilli()
+            shift(instance.begin) to shift(maxOf(instance.begin, instance.end))
+        }
+        return EventDraft(
+            calendarId = calendarId,
+            title = title,
+            allDay = instance.allDay,
+            startMillis = startMs,
+            endMillis = endMs,
+            location = location.orEmpty(),
+            description = description.orEmpty(),
+            reminderMinutes = reminderMinutes,
+            eventColor = pickedColor(),
+        )
     }
 
     // ---------- ICS import / export ----------

@@ -248,19 +248,18 @@ class MonthViewModel(
         }
     }
 
-    fun duplicateEvent(eventId: Long) {
-        viewModelScope.launch { calendarRepository.duplicateEvent(eventId) }
-    }
-
-    /** Month-view drag & drop: shift an event by whole days. */
-    fun moveEvent(eventId: Long, days: Long) {
+    /** Month-view drag & drop: shift one occurrence by whole days. */
+    fun moveEvent(event: EventInstance, days: Long) {
         if (days == 0L) return
-        viewModelScope.launch { calendarRepository.moveEventByDays(eventId, days) }
+        viewModelScope.launch { calendarRepository.moveInstanceByDays(event, days) }
     }
 
-    /** Month-view drag & drop: copy an event onto another day. */
-    fun duplicateEventTo(eventId: Long, days: Long) {
-        viewModelScope.launch { calendarRepository.duplicateEventTo(eventId, days) }
+    /** 複製 / drag & drop copy: copy one occurrence onto another day. */
+    fun duplicateEventTo(event: EventInstance, days: Long) {
+        viewModelScope.launch {
+            val created = calendarRepository.duplicateInstance(event, days)
+            if (created == null) _templateApplied.send(false)
+        }
     }
 
     // ---- 複数日への一括複製 ----
@@ -277,8 +276,7 @@ class MonthViewModel(
             val ids = mutableListOf<Long>()
             for (target in targets) {
                 val days = ChronoUnit.DAYS.between(event.startDate, target)
-                calendarRepository.duplicateEventToReturningId(event.eventId, days)
-                    ?.let { ids += it }
+                calendarRepository.duplicateInstance(event, days)?.let { ids += it }
             }
             batchUndoIds = ids
             _batchCopied.send(ids.size)

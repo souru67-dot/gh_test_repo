@@ -397,11 +397,18 @@ fun MonthScreen(
                 onOpenTemplates = { premiumOr { showTemplatePicker = true } },
                 onDeleteRequest = { event ->
                     // `detail` belongs to the event shown in the sheet, so its
-                    // RRULE tells us whether this is a recurring series.
-                    pendingDelete = PendingDelete(
-                        event = event,
-                        isRecurring = !detail?.rrule.isNullOrBlank(),
-                    )
+                    // RRULE tells us whether this is a recurring series. If it
+                    // hasn't loaded yet, load it first — guessing "not
+                    // recurring" would offer a plain delete that wipes the
+                    // whole series.
+                    scope.launch {
+                        val loaded = detail?.takeIf { it.id == event.eventId }
+                            ?: viewModel.loadDetails(event.eventId)
+                        pendingDelete = PendingDelete(
+                            event = event,
+                            isRecurring = !loaded?.rrule.isNullOrBlank(),
+                        )
+                    }
                 },
                 onAddTask = { title -> viewModel.addTask(title, selectedDate) },
                 onToggleTask = { task -> viewModel.setTaskDone(task.id, !task.done) },
@@ -550,7 +557,7 @@ fun MonthScreen(
                     val target = Instant.ofEpochMilli(millis)
                         .atZone(ZoneOffset.UTC).toLocalDate()
                     viewModel.duplicateEventTo(
-                        source.eventId,
+                        source,
                         ChronoUnit.DAYS.between(source.startDate, target),
                     )
                 }
@@ -647,13 +654,13 @@ fun MonthScreen(
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(
                         onClick = {
-                            viewModel.moveEvent(drop.event.eventId, drop.days)
+                            viewModel.moveEvent(drop.event, drop.days)
                             pendingDrop = null
                         },
                     ) { Text(stringResource(R.string.drop_move)) }
                     TextButton(
                         onClick = {
-                            viewModel.duplicateEventTo(drop.event.eventId, drop.days)
+                            viewModel.duplicateEventTo(drop.event, drop.days)
                             pendingDrop = null
                         },
                     ) { Text(stringResource(R.string.drop_copy)) }
