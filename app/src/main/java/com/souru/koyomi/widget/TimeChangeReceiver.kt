@@ -18,6 +18,7 @@ class TimeChangeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val actions = setOf(
+            ACTION_MIDNIGHT,
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
@@ -34,5 +35,10 @@ class TimeChangeReceiver : BroadcastReceiver() {
                 result.finish()
             }
         }
+    }
+
+    companion object {
+        /** Our own midnight alarm (see WidgetUpdateWorker.scheduleMidnightAlarm). */
+        const val ACTION_MIDNIGHT = "com.souru.koyomi.action.MIDNIGHT"
     }
 }
