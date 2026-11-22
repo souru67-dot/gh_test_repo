@@ -115,9 +115,13 @@ class ReminderReceiver : BroadcastReceiver() {
             putExtra(MainActivity.EXTRA_EPOCH_DAY, start.toLocalDate().toEpochDay())
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        val notificationId = (eventId xor begin).toInt()
+        // Keyed like the notification: keying by event id alone made two
+        // occurrences of a recurring event share one intent, so tapping the
+        // older notification opened the newer occurrence's day.
         val pendingIntent = PendingIntent.getActivity(
             context,
-            eventId.toInt(),
+            notificationId,
             tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -134,7 +138,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         runCatching {
             NotificationManagerCompat.from(context)
-                .notify((eventId xor begin).toInt(), notification)
+                .notify(notificationId, notification)
         }
     }
 
