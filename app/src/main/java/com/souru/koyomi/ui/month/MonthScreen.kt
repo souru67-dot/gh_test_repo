@@ -349,7 +349,8 @@ fun MonthScreen(
                     .map { anniversary ->
                         val years = anniversary.yearsOn(selectedDate)
                         if (anniversary.repeatYearly && years > 0) {
-                            "${anniversary.title}(${years}年目)"
+                            anniversary.title + " · " +
+                                stringResource(R.string.anniversary_nth_year, years)
                         } else {
                             anniversary.title
                         }
@@ -365,9 +366,16 @@ fun MonthScreen(
                 },
                 moonAge = if (showMoonAge) {
                     com.souru.koyomi.data.rokuyo.Kyureki.moonAgeFor(selectedDate)?.let { age ->
-                        val name = com.souru.koyomi.data.rokuyo.Kyureki.moonPhaseName(age)
-                        val rounded = (kotlin.math.round(age * 10) / 10.0)
-                        if (name != null) "月齢$rounded・$name" else "月齢$rounded"
+                        val phase = when (com.souru.koyomi.data.rokuyo.Kyureki.moonPhaseName(age)) {
+                            "新月" -> R.string.moon_new
+                            "上弦" -> R.string.moon_first_quarter
+                            "満月" -> R.string.moon_full
+                            "下弦" -> R.string.moon_last_quarter
+                            else -> null
+                        }
+                        val rounded = String.format(Locale.getDefault(), "%.1f", age)
+                        val label = stringResource(R.string.moon_age_label, rounded)
+                        if (phase != null) "$label · ${stringResource(phase)}" else label
                     }
                 } else {
                     null
@@ -1221,6 +1229,7 @@ private fun TemplatePickerDialog(
     onPick: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
     onDelete: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
 ) {
+    val timeFormatter = com.souru.koyomi.util.rememberDeviceTimeFormatter()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.templates_title)) },
@@ -1252,10 +1261,9 @@ private fun TemplatePickerDialog(
                                     text = if (template.allDay) {
                                         stringResource(R.string.all_day)
                                     } else {
-                                        "%02d:%02d".format(
-                                            template.startMinutes / 60,
-                                            template.startMinutes % 60,
-                                        )
+                                        java.time.LocalTime
+                                            .of(template.startMinutes / 60, template.startMinutes % 60)
+                                            .format(timeFormatter)
                                     },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

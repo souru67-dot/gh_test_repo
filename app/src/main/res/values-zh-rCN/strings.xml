@@ -271,4 +271,12 @@
     <string name="billing_pending">付款处理中。完成后将解锁高级版。</string>
     <string name="billing_purchased">已解锁高级版。谢谢!</string>
     <string name="billing_error">无法完成购买,请重试。</string>
+    <string name="year_title">%1$d年</string>
+    <string name="year_title_with_era">%1$d年(%2$s)</string>
+    <string name="anniversary_nth_year">第%1$d年</string>
+    <string name="moon_age_label">月龄%1$s</string>
+    <string name="moon_new">新月</string>
+    <string name="moon_first_quarter">上弦月</string>
+    <string name="moon_full">满月</string>
+    <string name="moon_last_quarter">下弦月</string>
 </resources>

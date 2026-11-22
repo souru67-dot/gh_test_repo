@@ -271,4 +271,12 @@
     <string name="billing_pending">결제 대기 중입니다. 결제가 완료되면 프리미엄이 활성화됩니다.</string>
     <string name="billing_purchased">프리미엄이 활성화되었습니다. 감사합니다!</string>
     <string name="billing_error">구매를 완료할 수 없습니다. 다시 시도해 주세요.</string>
+    <string name="year_title">%1$d년</string>
+    <string name="year_title_with_era">%1$d년 (%2$s)</string>
+    <string name="anniversary_nth_year">%1$d년째</string>
+    <string name="moon_age_label">월령 %1$s</string>
+    <string name="moon_new">삭</string>
+    <string name="moon_first_quarter">상현</string>
+    <string name="moon_full">보름달</string>
+    <string name="moon_last_quarter">하현</string>
 </resources>

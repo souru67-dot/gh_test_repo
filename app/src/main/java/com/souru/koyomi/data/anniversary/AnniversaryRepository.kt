@@ -24,7 +24,9 @@ data class Anniversary(
 ) {
     /** The next occurrence on/after [today] (yearly wraps; Feb 29 → Feb 28). */
     fun nextOccurrence(today: LocalDate): LocalDate {
-        if (!repeatYearly) return date
+        // One-shots, and yearly ones whose first date is still ahead (an
+        // upcoming wedding), count down to the date itself.
+        if (!repeatYearly || today <= date) return date
         fun inYear(year: Int): LocalDate = if (date.monthValue == 2 && date.dayOfMonth == 29) {
             if (java.time.Year.isLeap(year.toLong())) {
                 LocalDate.of(year, 2, 29)
@@ -44,8 +46,8 @@ data class Anniversary(
 
     /** Whether [day] is this anniversary's day (same month/day for yearly). */
     fun fallsOn(day: LocalDate): Boolean = if (repeatYearly) {
-        nextOccurrence(day) == day || (day.monthValue == date.monthValue &&
-            day.dayOfMonth == date.dayOfMonth)
+        // Never before the first occurrence itself.
+        day >= date && nextOccurrence(day) == day
     } else {
         date == day
     }

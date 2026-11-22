@@ -271,4 +271,12 @@
     <string name="billing_pending">Payment is pending. Premium unlocks once it completes.</string>
     <string name="billing_purchased">Premium unlocked. Thank you!</string>
     <string name="billing_error">The purchase couldn\'t be completed. Please try again.</string>
+    <string name="year_title">%1$d</string>
+    <string name="year_title_with_era">%1$d (%2$s)</string>
+    <string name="anniversary_nth_year">Year %1$d</string>
+    <string name="moon_age_label">Moon age %1$s</string>
+    <string name="moon_new">New moon</string>
+    <string name="moon_first_quarter">First quarter</string>
+    <string name="moon_full">Full moon</string>
+    <string name="moon_last_quarter">Last quarter</string>
 </resources>

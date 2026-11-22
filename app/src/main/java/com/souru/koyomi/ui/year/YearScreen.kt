@@ -66,9 +66,9 @@ fun YearScreen(
 
     var year by remember { mutableIntStateOf(LocalDate.now().year) }
     val yearLabel = if (useJapaneseEra) {
-        "${year}年(${JapaneseEraFormat.yearLabel(year)})"
+        stringResource(R.string.year_title_with_era, year, JapaneseEraFormat.yearLabel(year))
     } else {
-        "${year}年"
+        stringResource(R.string.year_title, year)
     }
 
     Scaffold(

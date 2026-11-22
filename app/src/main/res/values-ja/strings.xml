@@ -270,4 +270,12 @@
     <string name="billing_pending">お支払いの完了待ちです。完了するとプレミアムが有効になります。</string>
     <string name="billing_purchased">プレミアムが有効になりました。ありがとうございます!</string>
     <string name="billing_error">購入を完了できませんでした。もう一度お試しください。</string>
+    <string name="year_title">%1$d年</string>
+    <string name="year_title_with_era">%1$d年(%2$s)</string>
+    <string name="anniversary_nth_year">%1$d年目</string>
+    <string name="moon_age_label">月齢%1$s</string>
+    <string name="moon_new">新月</string>
+    <string name="moon_first_quarter">上弦</string>
+    <string name="moon_full">満月</string>
+    <string name="moon_last_quarter">下弦</string>
 </resources>

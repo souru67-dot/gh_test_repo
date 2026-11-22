@@ -145,6 +145,8 @@ private fun AnniversaryRow(
     val formatter = remember(pattern) {
         DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun nthYear(years: Int): String = context.getString(R.string.anniversary_nth_year, years)
     val days = anniversary.daysUntil(today)
     val countdown = when {
         days == 0L -> stringResource(R.string.anniversary_today)
@@ -169,7 +171,7 @@ private fun AnniversaryRow(
                 append(anniversary.nextOccurrence(today).format(formatter))
                 if (anniversary.repeatYearly) {
                     val years = anniversary.yearsOn(anniversary.nextOccurrence(today))
-                    if (years > 0) append("  ${years}年目")
+                    if (years > 0) append("  " + nthYear(years))
                 }
             }
             Text(
