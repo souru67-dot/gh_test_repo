@@ -265,4 +265,10 @@
     <string name="onboarding_body">Koyomi는 이 기기에 이미 있는 캘린더(Google 캘린더, Exchange 등)를 읽고 써서 모든 것을 동기화합니다. 일정을 표시하고 만들려면 캘린더 접근을 허용하세요.</string>
     <string name="onboarding_grant">접근 허용</string>
     <string name="onboarding_skip">나중에</string>
+    <string name="billing_unavailable">Google Play에 연결할 수 없습니다. 네트워크를 확인한 후 다시 시도해 주세요.</string>
+    <string name="billing_restored">프리미엄이 복원되었습니다. 감사합니다!</string>
+    <string name="billing_nothing_to_restore">이 Google 계정의 구매 내역을 찾을 수 없습니다.</string>
+    <string name="billing_pending">결제 대기 중입니다. 결제가 완료되면 프리미엄이 활성화됩니다.</string>
+    <string name="billing_purchased">프리미엄이 활성화되었습니다. 감사합니다!</string>
+    <string name="billing_error">구매를 완료할 수 없습니다. 다시 시도해 주세요.</string>
 </resources>

@@ -264,4 +264,10 @@
     <string name="onboarding_body">こよみは、GoogleカレンダーやExchangeなど端末に登録済みのカレンダーをそのまま読み書きします。予定の表示と作成のために、カレンダーへのアクセスを許可してください。</string>
     <string name="onboarding_grant">アクセスを許可</string>
     <string name="onboarding_skip">あとで</string>
+    <string name="billing_unavailable">Google Playに接続できませんでした。通信環境を確認して、もう一度お試しください。</string>
+    <string name="billing_restored">プレミアムを復元しました。ありがとうございます!</string>
+    <string name="billing_nothing_to_restore">このGoogleアカウントでの購入履歴が見つかりませんでした。</string>
+    <string name="billing_pending">お支払いの完了待ちです。完了するとプレミアムが有効になります。</string>
+    <string name="billing_purchased">プレミアムが有効になりました。ありがとうございます!</string>
+    <string name="billing_error">購入を完了できませんでした。もう一度お試しください。</string>
 </resources>

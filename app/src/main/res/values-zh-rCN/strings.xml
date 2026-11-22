@@ -265,4 +265,10 @@
     <string name="onboarding_body">Koyomi 读写此设备上已有的日历 —— Google 日历、Exchange 等 —— 保持一切同步。为显示和创建日程，请允许访问你的日历。</string>
     <string name="onboarding_grant">允许访问</string>
     <string name="onboarding_skip">暂不</string>
+    <string name="billing_unavailable">无法连接 Google Play。请检查网络后重试。</string>
+    <string name="billing_restored">已恢复高级版。谢谢!</string>
+    <string name="billing_nothing_to_restore">未找到此 Google 账号的购买记录。</string>
+    <string name="billing_pending">付款处理中。完成后将解锁高级版。</string>
+    <string name="billing_purchased">已解锁高级版。谢谢!</string>
+    <string name="billing_error">无法完成购买,请重试。</string>
 </resources>

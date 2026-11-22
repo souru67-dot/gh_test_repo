@@ -265,4 +265,10 @@
     <string name="onboarding_body">Koyomi reads and writes the calendars already on this device — Google Calendar, Exchange and others — so everything stays in sync. To show and create events, allow access to your calendar.</string>
     <string name="onboarding_grant">Allow access</string>
     <string name="onboarding_skip">Not now</string>
+    <string name="billing_unavailable">Couldn\'t reach Google Play. Check your connection and try again.</string>
+    <string name="billing_restored">Premium restored. Thank you!</string>
+    <string name="billing_nothing_to_restore">No previous purchase was found for this Google account.</string>
+    <string name="billing_pending">Payment is pending. Premium unlocks once it completes.</string>
+    <string name="billing_purchased">Premium unlocked. Thank you!</string>
+    <string name="billing_error">The purchase couldn\'t be completed. Please try again.</string>
 </resources>

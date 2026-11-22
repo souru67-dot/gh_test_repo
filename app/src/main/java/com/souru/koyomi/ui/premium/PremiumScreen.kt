@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.souru.koyomi.BuildConfig
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.R
+import com.souru.koyomi.data.billing.BillingEvent
 import kotlinx.coroutines.launch
 
 /**
@@ -49,8 +50,24 @@ fun PremiumScreen(onBack: () -> Unit) {
     val isPremium by billing.isPremium.collectAsStateWithLifecycle(initialValue = false)
     val details by billing.productDetails.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    // Purchase / restore outcomes — every tap now gets an answer.
+    androidx.compose.runtime.LaunchedEffect(billing) {
+        billing.events.collect { event ->
+            val message = when (event) {
+                BillingEvent.UNAVAILABLE -> R.string.billing_unavailable
+                BillingEvent.RESTORED -> R.string.billing_restored
+                BillingEvent.NOTHING_TO_RESTORE -> R.string.billing_nothing_to_restore
+                BillingEvent.PENDING -> R.string.billing_pending
+                BillingEvent.PURCHASED -> R.string.billing_purchased
+                BillingEvent.ERROR -> R.string.billing_error
+            }
+            snackbarHostState.showSnackbar(context.getString(message))
+        }
+    }
 
     Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.premium_title)) },
@@ -123,7 +140,7 @@ fun PremiumScreen(onBack: () -> Unit) {
                     )
                 }
                 TextButton(
-                    onClick = { billing.refresh() },
+                    onClick = { billing.refresh(userInitiated = true) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.premium_restore))
@@ -143,7 +160,7 @@ fun PremiumScreen(onBack: () -> Unit) {
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("(デバッグ) プレミアム切替: 現在 ${if (isPremium) "ON" else "OFF"}")
+                    Text("[Debug] Premium: ${if (isPremium) "ON" else "OFF"}")
                 }
             }
         }
