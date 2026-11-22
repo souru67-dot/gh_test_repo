@@ -92,6 +92,16 @@ class EventEditViewModel(
     /** BEGIN of the instance being edited; identifies the exception occurrence. */
     private var originalInstanceBegin: Long = -1L
 
+    /**
+     * Recurring events: the editor shows the TAPPED occurrence, but the row's
+     * DTSTART is the series' first occurrence. A save to the whole series
+     * applies the user's change as a shift relative to the occurrence, so
+     * editing the 10th meeting no longer moves the series start to it (which
+     * erased every earlier occurrence).
+     */
+    private var seriesStart: LocalDateTime? = null
+    private var occurrenceStart: LocalDateTime? = null
+
     init {
         viewModelScope.launch { load() }
     }
@@ -131,9 +141,12 @@ class EventEditViewModel(
                 val start: LocalDateTime
                 val end: LocalDateTime
                 if (details.allDay) {
-                    val startDay =
-                        Instant.ofEpochMilli(details.dtStart).atZone(ZoneOffset.UTC).toLocalDate()
-                    val endExclusive = details.dtEnd
+                    // Prefer the tapped instance (UTC midnights) so a recurring
+                    // all-day event opens on the occurrence, with its real span
+                    // (recurring rows carry DURATION, not DTEND).
+                    val b = if (beginMs >= 0) beginMs else details.dtStart
+                    val startDay = Instant.ofEpochMilli(b).atZone(ZoneOffset.UTC).toLocalDate()
+                    val endExclusive = (if (endMs > b) endMs else details.dtEnd)
                         ?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
                         ?: startDay.plusDays(1)
                     start = startDay.atStartOfDay()
@@ -146,6 +159,15 @@ class EventEditViewModel(
                     end = Instant.ofEpochMilli(e).atZone(zone).toLocalDateTime()
                 }
                 originalInstanceBegin = if (beginMs >= 0) beginMs else details.dtStart
+                if (!details.rrule.isNullOrBlank()) {
+                    occurrenceStart = start
+                    seriesStart = if (details.allDay) {
+                        Instant.ofEpochMilli(details.dtStart).atZone(ZoneOffset.UTC)
+                            .toLocalDate().atStartOfDay()
+                    } else {
+                        Instant.ofEpochMilli(details.dtStart).atZone(zone).toLocalDateTime()
+                    }
+                }
 
                 val palette = loadPalette(
                     allCalendars.find { it.id == details.calendarId },
@@ -184,7 +206,9 @@ class EventEditViewModel(
         // New event.
         val date = if (dateEpochDay >= 0) LocalDate.ofEpochDay(dateEpochDay) else LocalDate.now()
         val startTime = if (date == LocalDate.now()) {
-            LocalTime.now().plusHours(1).withMinute(0)
+            // Next full hour — but never wrap past midnight onto 0:00 today.
+            val now = LocalTime.now()
+            if (now.hour >= 23) LocalTime.of(23, 0) else now.plusHours(1).withMinute(0)
         } else {
             LocalTime.of(9, 0)
         }
@@ -214,14 +238,24 @@ class EventEditViewModel(
     }
 
     /** Switch between event and task (new items only). */
-    fun setMode(mode: EditorMode) = _uiState.update { state ->
-        if (state.modeLocked) state
-        else state.copy(
-            mode = mode,
-            // Tasks use the standalone palette; events use the calendar's.
-            eventColors = if (mode == EditorMode.TASK) FALLBACK_EVENT_COLORS else state.eventColors,
-            eventColor = null,
-        )
+    fun setMode(mode: EditorMode) {
+        if (_uiState.value.modeLocked) return
+        _uiState.update { state ->
+            state.copy(
+                mode = mode,
+                // Tasks use the standalone palette; events use the calendar's.
+                eventColors = FALLBACK_EVENT_COLORS,
+                eventColor = null,
+            )
+        }
+        if (mode == EditorMode.EVENT) {
+            // Switching back from a task: restore the calendar's own palette.
+            viewModelScope.launch {
+                val state = _uiState.value
+                val palette = loadPalette(state.calendars.find { it.id == state.calendarId })
+                _uiState.update { it.copy(eventColors = palette) }
+            }
+        }
     }
 
     fun setTaskTime(time: LocalTime?) = _uiState.update { it.copy(taskTime = time) }
@@ -304,21 +338,36 @@ class EventEditViewModel(
 
         val zone = ZoneId.systemDefault()
         val thisOnly = scope == SaveScope.THIS_ONLY && state.isRecurring && eventId >= 0
+        // Whole-series save: shift the series start by however far the user
+        // moved this occurrence, keeping the edited length.
+        val (start, end) = run {
+            val series = seriesStart
+            val occurrence = occurrenceStart
+            // (If the user dropped the repeat, the single event stays where
+            // they see it rather than jumping back to the series start.)
+            val stillRepeats = state.repeat.toRRule() != null
+            if (!thisOnly && stillRepeats && series != null && occurrence != null) {
+                val shifted = series.plus(Duration.between(occurrence, state.start))
+                shifted to shifted.plus(Duration.between(state.start, state.end))
+            } else {
+                state.start to state.end
+            }
+        }
         val draft = EventDraft(
             id = if (eventId >= 0) eventId else null,
             calendarId = calendarId,
             title = state.title.trim(),
             allDay = state.allDay,
             startMillis = if (state.allDay) {
-                state.start.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+                start.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
             } else {
-                state.start.atZone(zone).toInstant().toEpochMilli()
+                start.atZone(zone).toInstant().toEpochMilli()
             },
             endMillis = if (state.allDay) {
-                maxOf(state.start.toLocalDate(), state.end.toLocalDate())
+                maxOf(start.toLocalDate(), end.toLocalDate())
                     .atStartOfDay(zone).toInstant().toEpochMilli()
             } else {
-                state.end.atZone(zone).toInstant().toEpochMilli()
+                end.atZone(zone).toInstant().toEpochMilli()
             },
             location = state.location.trim(),
             description = state.description.trim(),
