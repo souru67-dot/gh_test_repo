@@ -399,7 +399,7 @@ fun MonthScreen(
                 onDuplicate = { event -> pendingDuplicate = event },
                 onBatchDuplicate = { event -> premiumOr { pendingBatchCopy = event } },
                 onSaveTemplate = { event ->
-                    premiumOr { viewModel.saveTemplateFromEvent(event.eventId) }
+                    premiumOr { viewModel.saveTemplateFromEvent(event) }
                 },
                 hasTemplates = templates.isNotEmpty(),
                 onOpenTemplates = { premiumOr { showTemplatePicker = true } },

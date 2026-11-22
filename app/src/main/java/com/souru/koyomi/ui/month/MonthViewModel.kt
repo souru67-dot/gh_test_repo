@@ -300,10 +300,14 @@ class MonthViewModel(
         kotlinx.coroutines.channels.Channel<Boolean>(kotlinx.coroutines.channels.Channel.BUFFERED)
     val templateSaved = _templateSaved.receiveAsFlow()
 
-    /** Saves the given event as a reusable template. */
-    fun saveTemplateFromEvent(eventId: Long) {
+    /**
+     * Saves the given occurrence as a reusable template. Time of day and
+     * length come from the occurrence itself — a recurring row has no DTEND
+     * (only DURATION), which used to collapse every such template to 1 hour.
+     */
+    fun saveTemplateFromEvent(event: EventInstance) {
         viewModelScope.launch {
-            val details = calendarRepository.loadEventDetails(eventId)
+            val details = calendarRepository.loadEventDetails(event.eventId)
             if (details == null) {
                 _templateSaved.send(false)
                 return@launch
@@ -312,14 +316,13 @@ class MonthViewModel(
             val startMinutes = if (details.allDay) {
                 DEFAULT_TEMPLATE_START
             } else {
-                val t = java.time.Instant.ofEpochMilli(details.dtStart).atZone(zone).toLocalTime()
+                val t = java.time.Instant.ofEpochMilli(event.begin).atZone(zone).toLocalTime()
                 t.hour * 60 + t.minute
             }
             val durationMinutes = if (details.allDay) {
                 24 * 60
             } else {
-                val end = details.dtEnd ?: (details.dtStart + 60 * 60_000L)
-                ((end - details.dtStart) / 60_000L).toInt().coerceAtLeast(15)
+                ((event.end - event.begin) / 60_000L).toInt().coerceIn(15, 24 * 60)
             }
             templateRepository.save(
                 com.souru.koyomi.data.template.EventTemplate(
