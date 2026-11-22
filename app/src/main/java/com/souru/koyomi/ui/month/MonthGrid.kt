@@ -657,6 +657,13 @@ private fun DraggableEventChip(
     dropTargetOf: (Offset) -> LocalDate?,
 ) {
     var chipCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    // pointerInput is keyed on the event only, so read the callbacks through
+    // updated state — otherwise a drop ran a stale lambda (e.g. one that still
+    // thought the user was on the free tier right after unlocking premium).
+    val currentOnDrop by androidx.compose.runtime.rememberUpdatedState(onDrop)
+    val currentDropTargetOf by androidx.compose.runtime.rememberUpdatedState(dropTargetOf)
+    val currentOnDragMoved by androidx.compose.runtime.rememberUpdatedState(onDragMoved)
+    val currentCellDate by androidx.compose.runtime.rememberUpdatedState(cellDate)
     val beingDragged = dragState.event?.let {
         it.eventId == event.eventId && dragState.sourceDate == cellDate
     } ?: false
@@ -672,24 +679,24 @@ private fun DraggableEventChip(
                         val chip = chipCoords
                         if (chip != null && chip.isAttached) {
                             dragState.event = event
-                            dragState.sourceDate = cellDate
+                            dragState.sourceDate = currentCellDate
                             dragState.position = chip.localToWindow(startOffset)
-                            onDragMoved(dragState.position)
+                            currentOnDragMoved(dragState.position)
                         }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
                         if (dragState.event != null) {
                             dragState.position += dragAmount
-                            onDragMoved(dragState.position)
+                            currentOnDragMoved(dragState.position)
                         }
                     },
                     onDragEnd = {
                         val dragged = dragState.event
                         val source = dragState.sourceDate
-                        val target = dropTargetOf(dragState.position)
+                        val target = currentDropTargetOf(dragState.position)
                         if (dragged != null && source != null && target != null) {
-                            onDrop(dragged, source, target)
+                            currentOnDrop(dragged, source, target)
                         }
                         dragState.clear()
                     },
