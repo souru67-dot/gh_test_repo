@@ -184,7 +184,10 @@ class BackupManager(
         // them used to hide or preselect arbitrary calendars.
         context.dataStore.edit { prefs ->
             val kept = prefs.asMap().filterKeys { key ->
-                key.name in EXCLUDED_SETTING_KEYS || isDeviceLocal(key.name)
+                // The weather cache belongs to the current place, which the
+                // backup may change — drop it so the next resume refetches.
+                (key.name in EXCLUDED_SETTING_KEYS || isDeviceLocal(key.name)) &&
+                    !key.name.startsWith("weather_cache")
             }
             prefs.clear()
             @Suppress("UNCHECKED_CAST")

@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -86,9 +88,14 @@ class WeatherRepository(private val context: Context) {
 
     /** Cached forecast by date; empty until a place is set and fetched. */
     val forecastByDay: Flow<Map<LocalDate, DailyWeather>> =
-        context.dataStore.data.map { prefs ->
-            parseForecast(prefs[Keys.CACHE_JSON] ?: return@map emptyMap())
-        }
+        context.dataStore.data
+            .map { prefs -> prefs[Keys.CACHE_JSON] }
+            // The store emits on every settings change; only re-parse when
+            // the cached payload itself changed, off the main thread, and
+            // never let a malformed cache take the month screen down.
+            .distinctUntilChanged()
+            .map { json -> json?.let { runCatching { parseForecast(it) }.getOrNull() }.orEmpty() }
+            .flowOn(Dispatchers.Default)
 
     /** Re-fetches when the cache is older than [maxAgeMillis]. Silent on failure. */
     suspend fun refreshIfStale(maxAgeMillis: Long = 3 * 60 * 60 * 1000L) {
