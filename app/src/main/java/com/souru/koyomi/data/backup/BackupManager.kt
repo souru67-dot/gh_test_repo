@@ -41,7 +41,7 @@ class BackupManager(
             // Never let the premium entitlement travel in a backup — otherwise
             // a purchased user's file would unlock premium on any device that
             // imports it. Billing (Google Play) is the sole source of truth.
-            if (key.name in EXCLUDED_SETTING_KEYS) continue
+            if (key.name in EXCLUDED_SETTING_KEYS || isDeviceLocal(key.name)) continue
             val entry = JSONObject().put("k", key.name)
             when (value) {
                 is Boolean -> entry.put("t", "bool").put("v", value.toString())
@@ -178,12 +178,21 @@ class BackupManager(
         // Parsed clean — now restore. Preserve the premium entitlement across
         // the wipe so a restore can never grant or revoke premium; only
         // Google Play may change it (re-synced on next app start regardless).
+        // Device-local keys (calendar / widget ids, the onboarding flag, the
+        // weather cache) are kept as they are on THIS device: calendar ids
+        // from another phone point at different calendars here, so restoring
+        // them used to hide or preselect arbitrary calendars.
         context.dataStore.edit { prefs ->
-            val premium = prefs[EXCLUDED_PREMIUM_KEY]
+            val kept = prefs.asMap().filterKeys { key ->
+                key.name in EXCLUDED_SETTING_KEYS || isDeviceLocal(key.name)
+            }
             prefs.clear()
-            premium?.let { prefs[EXCLUDED_PREMIUM_KEY] = it }
+            @Suppress("UNCHECKED_CAST")
+            for ((key, value) in kept) {
+                prefs[key as androidx.datastore.preferences.core.Preferences.Key<Any>] = value
+            }
             for (setting in settings) {
-                if (setting.key in EXCLUDED_SETTING_KEYS) continue
+                if (setting.key in EXCLUDED_SETTING_KEYS || isDeviceLocal(setting.key)) continue
                 when (setting.type) {
                     "bool" -> prefs[booleanPreferencesKey(setting.key)] =
                         setting.value.toBoolean()
@@ -212,5 +221,21 @@ class BackupManager(
         /** Premium entitlement key (mirrors BillingRepository). Never backed up. */
         val EXCLUDED_PREMIUM_KEY = booleanPreferencesKey("premium_unlocked")
         val EXCLUDED_SETTING_KEYS = setOf(EXCLUDED_PREMIUM_KEY.name)
+
+        private val DEVICE_LOCAL_KEYS = setOf(
+            "hidden_calendar_ids",
+            "last_used_calendar_id",
+            "task_calendar_id",
+            "default_calendar_id",
+            "onboarding_done",
+            "weather_cache_json",
+            "weather_cached_at",
+        )
+
+        /** Settings that only make sense on the device that wrote them. */
+        fun isDeviceLocal(name: String): Boolean =
+            name in DEVICE_LOCAL_KEYS ||
+                name.startsWith("widget_theme_") ||
+                name.startsWith("widget_opacity_") && name != "widget_opacity_percent"
     }
 }
