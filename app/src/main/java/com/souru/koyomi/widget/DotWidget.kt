@@ -75,13 +75,12 @@ enum class DotColor(val dark: Int, val light: Int, val discDark: Int, val discLi
 
 /**
  * ドット (4x2): an LED dot-matrix board — a big round-dot clock with its
- * unlit dots glowing faintly, the date with the day's weather, a live
- * countdown to the next event, today's events and to-dos, and a dot-matrix
- * month. Orange on black by default; the LED color is per widget.
+ * unlit dots glowing faintly, the date with the day's weather, today's
+ * events and to-dos, and a dot-matrix month. Orange on black by default; the LED color is per widget.
  *
- * The clock is a TextClock and the countdown a Chronometer (both tick in
- * the launcher without widget redraws); the rest refreshes with the other
- * widgets (calendar changes, event start/end, midnight). Event/to-do titles
+ * The clock is a TextClock (ticks in the launcher without widget redraws);
+ * the rest refreshes with the other widgets (calendar changes, event end,
+ * midnight). Event/to-do titles
  * stay in the system font because the Doto face only covers Latin.
  */
 class DotWidget : GlanceAppWidget() {
@@ -89,7 +88,6 @@ class DotWidget : GlanceAppWidget() {
     private class Snapshot(
         val month: MonthGridData,
         val events: List<EventInstance>,
-        val next: EventInstance?,
         val tasks: List<Task>,
         val weather: DailyWeather?,
         val color: DotColor,
@@ -101,7 +99,6 @@ class DotWidget : GlanceAppWidget() {
         val app = context.applicationContext as KoyomiApplication
         val today = LocalDate.now()
         val now = LocalTime.now()
-        val nowMs = System.currentTimeMillis()
         val tasks = runCatching {
             app.container.taskRepository
                 .loadTasksByDay(today, today.plusDays(1))[today]
@@ -109,12 +106,6 @@ class DotWidget : GlanceAppWidget() {
                 // Open to-dos; timed ones drop off once their time has passed.
                 .filter { !it.done && (it.time?.isAfter(now) ?: true) }
         }.getOrDefault(emptyList())
-        val sections = loadDaySections(context, days = 2)
-        // Next timed event that hasn't started, within 12 hours (rolls over
-        // to tomorrow morning once today's are done).
-        val next = sections.flatMap { it.events }
-            .filter { !it.allDay && it.begin > nowMs && it.begin - nowMs <= 12 * 3_600_000L }
-            .minByOrNull { it.begin }
         val weather = runCatching {
             app.container.weatherRepository.forecastByDay.first()[today]
         }.getOrNull()
@@ -124,9 +115,7 @@ class DotWidget : GlanceAppWidget() {
         )
         return Snapshot(
             month = loadMonthGridData(context),
-            // The next event already has its own countdown line.
-            events = sections.first().events.filter { it != next },
-            next = next,
+            events = loadDaySections(context, days = 1).first().events,
             tasks = tasks,
             weather = weather,
             color = color,
@@ -175,10 +164,6 @@ class DotWidget : GlanceAppWidget() {
                 Spacer(modifier = GlanceModifier.height(4.dp))
                 AndroidRemoteViews(dateViews(context, today, s.weather, lit))
                 Spacer(modifier = GlanceModifier.height(6.dp))
-                s.next?.let { next ->
-                    AndroidRemoteViews(nextViews(context, next, lit, dark))
-                    Spacer(modifier = GlanceModifier.height(2.dp))
-                }
                 Agenda(context, s, lit)
             }
             Spacer(modifier = GlanceModifier.width(10.dp))
@@ -191,12 +176,12 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
-    /** Today's remaining events, then today's open to-dos — one line each. */
+    /** Today's events, then today's open to-dos — one line each. */
     @Composable
     private fun Agenda(context: Context, s: Snapshot, lit: Int) {
         val markColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(lit))
         LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
-            if (s.events.isEmpty() && s.tasks.isEmpty() && s.next == null) {
+            if (s.events.isEmpty() && s.tasks.isEmpty()) {
                 item {
                     Text(
                         text = context.getString(R.string.no_events),
@@ -299,22 +284,6 @@ class DotWidget : GlanceAppWidget() {
         WeatherKind.SNOW -> R.drawable.dot_wx_snow
         WeatherKind.THUNDER -> R.drawable.dot_wx_thunder
     }
-
-    /** "NEXT 41:59 歯医者" with a launcher-side countdown. */
-    private fun nextViews(context: Context, event: EventInstance, lit: Int, dark: Boolean): RemoteViews =
-        RemoteViews(context.packageName, R.layout.widget_dot_next).apply {
-            val base = android.os.SystemClock.elapsedRealtime() +
-                (event.begin - System.currentTimeMillis())
-            setChronometer(R.id.dot_next_timer, base, null, true)
-            setChronometerCountDown(R.id.dot_next_timer, true)
-            setTextColor(R.id.dot_next_timer, lit)
-            setTextColor(R.id.dot_next_label, lit)
-            setTextViewText(
-                R.id.dot_next_title,
-                event.title.ifBlank { context.getString(R.string.untitled) },
-            )
-            setTextColor(R.id.dot_next_title, if (dark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt())
-        }
 
     private fun calendarViews(
         context: Context,
