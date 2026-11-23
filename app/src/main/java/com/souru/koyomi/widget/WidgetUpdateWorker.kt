@@ -54,8 +54,9 @@ class WidgetUpdateWorker(
                 HimekuriWidget(),
                 MiniMonthWidget(),
                 HitomeWidget(),
-                DotWidget(),
             ).forEach { it.refreshAll(context) }
+            // 「ドット」 is a classic RemoteViews widget (minute-drawn clock).
+            DotWidgetUpdater.updateAll(context)
         }
 
         fun schedule(context: Context) {

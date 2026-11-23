@@ -289,4 +289,6 @@
     <string name="clock_style_system">Follow device</string>
     <string name="clock_style_24h">24-hour</string>
     <string name="clock_style_12h">12-hour</string>
+    <string name="widget_dot_exact_alarm">To draw the round-dot clock, Koyomi redraws it once a minute while your screen is on. Allow "Alarms &amp; reminders" for Koyomi to turn it on — until then a simpler dot clock is shown.</string>
+    <string name="widget_dot_exact_alarm_allow">Allow</string>
 </resources>

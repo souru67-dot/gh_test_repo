@@ -289,4 +289,6 @@
     <string name="clock_style_system">跟随设备</string>
     <string name="clock_style_24h">24 小时制</string>
     <string name="clock_style_12h">12 小时制</string>
+    <string name="widget_dot_exact_alarm">圆点时钟会在屏幕亮起时每分钟重绘一次。为 Koyomi 允许「闹钟和提醒」即可开启,在此之前显示简易时钟。</string>
+    <string name="widget_dot_exact_alarm_allow">允许</string>
 </resources>

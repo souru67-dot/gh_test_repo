@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「ドット」 widget (classic RemoteViews, not Glance):
+    dot_canvas       everything except the clock, drawn in-app as one bitmap
+                     (background, date + weather, agenda, month)
+    dot_clock_bitmap the 5x7 round-dot clock, re-drawn every minute and pushed
+                     with a partial update (only this view changes)
+    dot_clock_live   fallback when exact alarms aren't allowed: a TextClock
+                     seen through a dot mask, which ticks on its own
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dot_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/dot_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+
+    <ImageView
+        android:id="@+id/dot_clock_bitmap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="12dp"
+        android:scaleType="fitStart" />
+
+    <FrameLayout
+        android:id="@+id/dot_clock_live"
+        android:layout_width="148dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="12dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/dot_clock_ghost"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/dot_ghost_orange_dark" />
+
+        <TextClock
+            android:id="@+id/dot_clock_time"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:autoSizeMaxTextSize="120sp"
+            android:autoSizeMinTextSize="16sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:fontFamily="sans-serif-black"
+            android:format12Hour="hh:mm"
+            android:format24Hour="HH:mm"
+            android:gravity="center_vertical|start"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="#F2711C" />
+
+        <ImageView
+            android:id="@+id/dot_clock_mask"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/dot_mask_dark_100" />
+    </FrameLayout>
+</FrameLayout>

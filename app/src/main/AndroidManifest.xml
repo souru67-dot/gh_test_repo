@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Weather forecast (Open-Meteo). No location permission: the user picks a place by name. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 「ドット」 widget: redraw the dot clock on each minute (non-wakeup).
+         Optional; without it the widget falls back to a self-ticking clock. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".KoyomiApplication"
@@ -147,6 +150,7 @@
             android:label="@string/widget_dot_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

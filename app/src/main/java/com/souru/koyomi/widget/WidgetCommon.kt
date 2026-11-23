@@ -103,10 +103,20 @@ suspend fun resolveWidgetLook(
     glanceId: GlanceId,
     /** Theme when the user hasn't picked one for this widget (dot widget = DARK). */
     defaultTheme: ThemeMode = ThemeMode.SYSTEM,
+): WidgetLook = resolveWidgetLook(
+    context,
+    glanceId.toString().filter { it.isDigit() }.toIntOrNull() ?: -1,
+    defaultTheme,
+)
+
+/** Same as above, for classic (non-Glance) widgets keyed by appWidgetId. */
+suspend fun resolveWidgetLook(
+    context: Context,
+    appWidgetId: Int,
+    defaultTheme: ThemeMode = ThemeMode.SYSTEM,
 ): WidgetLook {
     val app = context.applicationContext as KoyomiApplication
     val settings = app.container.settingsRepository
-    val appWidgetId = glanceId.toString().filter { it.isDigit() }.toIntOrNull() ?: -1
     val theme = settings.widgetThemeOverride(appWidgetId).first() ?: defaultTheme
     val opacity = settings.widgetOpacity(appWidgetId).first()
         ?: settings.widgetOpacityPercent.first()

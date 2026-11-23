@@ -206,6 +206,37 @@ class WidgetConfigActivity : ComponentActivity() {
                             )
                         }
 
+                        if (isDot && !DotClockTicker.canTick(this@WidgetConfigActivity)) {
+                            // Exact alarms are off (default on Android 14+): the
+                            // round-dot clock needs them to redraw each minute.
+                            androidx.compose.material3.Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 20.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.widget_dot_exact_alarm),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            runCatching {
+                                                startActivity(
+                                                    Intent(
+                                                        android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                                        android.net.Uri.parse("package:$packageName"),
+                                                    ),
+                                                )
+                                            }
+                                        },
+                                    ) { Text(stringResource(R.string.widget_dot_exact_alarm_allow)) }
+                                }
+                            }
+                        }
+
                         if (isDot) {
                             Text(
                                 text = stringResource(R.string.widget_dot_color),
