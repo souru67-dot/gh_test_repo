@@ -468,12 +468,12 @@ object DotWidgetUpdater {
         return clockText(t.hour, t.minute, is24)
     }
 
-    /** "21:30" or "9:30P" — compact, Latin-only for the dot face. */
+    /** "21:30" or "09:30P" — compact, Latin-only for the dot face. */
     private fun clockText(hour: Int, minute: Int, is24: Boolean): String = if (is24) {
         "%02d:%02d".format(Locale.ENGLISH, hour, minute)
     } else {
         val h = if (hour % 12 == 0) 12 else hour % 12
-        "%d:%02d%s".format(Locale.ENGLISH, h, minute, if (hour < 12) "A" else "P")
+        "%02d:%02d%s".format(Locale.ENGLISH, h, minute, if (hour < 12) "A" else "P")
     }
 
     private fun sp(context: Context, value: Float): Float =
@@ -522,7 +522,7 @@ private object DotRenderer {
     /**
      * The LED clock: four 5x7 digits of big round dots, every unlit dot
      * faintly visible, and a colon column (two lit dots) — like a real dot panel.
-     * In 12-hour mode a leading zero is left unlit.
+     * Hours always show two digits (a leading zero is lit, also in 12-hour mode).
      */
     fun clock(context: Context, hour: Int, minute: Int, pitchDp: Float, lit: Int): Bitmap {
         val d = context.resources.displayMetrics.density
@@ -544,8 +544,8 @@ private object DotRenderer {
             }
             x += 5 * p
         }
-        val leadingBlank = hour < 10 && !TimeStyle.is24Hour(context)
-        digit(if (leadingBlank) null else hour / 10)
+        // Always two digits ("09:05"), in 12-hour mode too.
+        digit(hour / 10)
         x += gap
         digit(hour % 10)
         x += gap
