@@ -24,7 +24,7 @@
     <path android:fillColor="#C2453A" android:pathData="M22,112h6v5h-6zM22,130h6v5h-6zM22,148h6v5h-6zM22,166h6v5h-6z" />
     <path android:fillColor="#3C64A6" android:pathData="M118,94h6v5h-6zM118,112h6v5h-6zM118,130h6v5h-6zM118,148h6v5h-6z" />
     <!-- Today -->
-    <path android:fillColor="#111111" android:pathData="M73,132.5m-7.5,0a7.5,7.5 0 1 1 15,0a7.5,7.5 0 1 1 -15,0" />
+    <path android:fillColor="#F2711C" android:pathData="M73,132.5m-7.5,0a7.5,7.5 0 1 1 15,0a7.5,7.5 0 1 1 -15,0" />
     <path android:fillColor="#FFFFFF" android:pathData="M70,130h6v5h-6z" />
     <!-- Divider -->
     <path android:fillColor="#EBEBEB" android:pathData="M140,76h1v112h-1z" />

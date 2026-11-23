@@ -11,8 +11,8 @@
     <path android:fillColor="#111111" android:pathData="M20,34h14v28H20z" />
     <path android:fillColor="#111111" android:pathData="M40,34h14v28H40z" />
     <!-- Colon dots -->
-    <path android:fillColor="#111111" android:pathData="M60,42m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
-    <path android:fillColor="#111111" android:pathData="M60,54m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#F2711C" android:pathData="M60,42m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#F2711C" android:pathData="M60,54m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
     <path android:fillColor="#111111" android:pathData="M68,34h14v28H68z" />
     <path android:fillColor="#111111" android:pathData="M88,34h14v28H88z" />
     <!-- Date + weekday (ink) under the clock -->

@@ -205,7 +205,7 @@ class TodoAgendaWidget : GlanceAppWidget() {
                     .size(8.dp)
                     .background(
                         task.color?.let { eventColorProvider(it) }
-                            ?: GlanceTheme.colors.onSurfaceVariant,
+                            ?: GlanceTheme.colors.primary,
                     )
                     .cornerRadius(4.dp),
             ) {}

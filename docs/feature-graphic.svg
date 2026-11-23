@@ -8,7 +8,7 @@
     <path d="M780 152 V320 M808 152 V320 M836 152 V320 M864 152 V320 M892 152 V320 M920 152 V320 M948 152 V320 M976 152 V320"/>
   </g>
   <!-- "Today": a solid ink circle in the faint grid, as in the app -->
-  <circle cx="878" cy="250" r="11" fill="#111111"/>
+  <circle cx="878" cy="250" r="11" fill="#F2711C"/>
 
   <!-- ===== 日めくり mark (left) — same drawing as the launcher icon ===== -->
   <g transform="translate(84,140) scale(4) translate(-32,-26)">
@@ -35,5 +35,5 @@
         font-size="22" fill="#6B6B6B" letter-spacing="2">白と黒の、端正なカレンダー</text>
 
   <!-- Hairline accent -->
-  <rect x="334" y="362" width="120" height="2" fill="#111111"/>
+  <rect x="334" y="362" width="120" height="2" fill="#F2711C"/>
 </svg>

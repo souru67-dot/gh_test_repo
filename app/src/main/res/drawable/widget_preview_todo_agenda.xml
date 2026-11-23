@@ -10,7 +10,7 @@
     <!-- Left: ToDo label (ink) -->
     <path android:fillColor="#111111" android:pathData="M20,14h26v6H20z" />
     <!-- ToDo rows: colored dot + title bar -->
-    <path android:fillColor="#111111" android:pathData="M23,29m-3,0a3,3 0 1 1 6,0a3,3 0 1 1 -6,0" />
+    <path android:fillColor="#F2711C" android:pathData="M23,29m-3,0a3,3 0 1 1 6,0a3,3 0 1 1 -6,0" />
     <path android:fillColor="#111111" android:pathData="M31,26h64v6H31z" />
     <path android:fillColor="#4A6FA5" android:pathData="M23,41m-3,0a3,3 0 1 1 6,0a3,3 0 1 1 -6,0" />
     <path android:fillColor="#111111" android:pathData="M31,38h48v6H31z" />
@@ -32,7 +32,7 @@
     <!-- Right: day-number grid -->
     <path android:fillColor="#555555" android:pathData="M132,30h6v4h-6zM146,30h6v4h-6zM160,30h6v4h-6zM174,30h6v4h-6zM188,30h6v4h-6zM202,30h6v4h-6zM216,30h6v4h-6zM132,46h6v4h-6zM146,46h6v4h-6zM174,46h6v4h-6zM188,46h6v4h-6zM202,46h6v4h-6zM216,46h6v4h-6zM132,62h6v4h-6zM146,62h6v4h-6zM160,62h6v4h-6zM188,62h6v4h-6zM202,62h6v4h-6zM216,62h6v4h-6zM132,78h6v4h-6zM146,78h6v4h-6zM160,78h6v4h-6zM174,78h6v4h-6zM188,78h6v4h-6zM202,78h6v4h-6zM132,94h6v4h-6zM146,94h6v4h-6zM160,94h6v4h-6zM174,94h6v4h-6zM188,94h6v4h-6zM202,94h6v4h-6zM216,94h6v4h-6z" />
     <!-- Today: filled circle -->
-    <path android:fillColor="#111111" android:pathData="M163,47.5m-7,0a7,7 0 1 1 14,0a7,7 0 1 1 -14,0" />
+    <path android:fillColor="#F2711C" android:pathData="M163,47.5m-7,0a7,7 0 1 1 14,0a7,7 0 1 1 -14,0" />
     <path android:fillColor="#FFFFFF" android:pathData="M160,46h6v4h-6z" />
     <!-- Event dots -->
     <path android:fillColor="#4A6FA5" android:pathData="M135,38m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />

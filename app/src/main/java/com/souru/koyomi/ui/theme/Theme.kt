@@ -134,9 +134,22 @@ private fun monoScheme(dark: Boolean, accent: Color? = null): ColorScheme = if (
     )
 }
 
-/** 墨 — pure black on white (white on black at night). The default. */
-internal val KoyomiLightColors = monoScheme(dark = false)
-internal val KoyomiDarkColors = monoScheme(dark = true)
+/**
+ * 墨 × 橙 — the default: black-and-white paper with ONE orange accent that
+ * stays the same orange in light and dark mode. Filled marks (today,
+ * buttons, switches) use the vivid orange with white on top in both modes;
+ * small accent TEXT on white uses a slightly deeper orange to stay legible.
+ */
+private val Orange = Color(0xFFF2711C)
+private val OrangeDeep = Color(0xFFD9590B)
+
+internal val KoyomiLightColors = monoScheme(dark = false, accent = Orange).copy(
+    tertiary = OrangeDeep,
+)
+internal val KoyomiDarkColors = monoScheme(dark = true, accent = Orange).copy(
+    onPrimary = Paper,
+    onTertiary = Paper,
+)
 
 // ---------- 季節のテーマパック ----------
 // Same white/black paper; only the ink takes on the season's hue.
