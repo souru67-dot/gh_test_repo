@@ -322,11 +322,18 @@ class DotWidget : GlanceAppWidget() {
     ): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_dot_clock).apply {
             setTextColor(R.id.dot_clock_time, lit)
-            setInt(
-                R.id.dot_clock_ghost,
-                "setBackgroundResource",
-                if (dark) color.ghostDark else color.ghostLight,
-            )
+            // The unlit-LED grid reads as a panel on a solid widget, but on a
+            // see-through one it's just a rectangle floating on the wallpaper
+            // — show it only when the widget is mostly opaque.
+            if (look.opacityPercent >= 60) {
+                setInt(
+                    R.id.dot_clock_ghost,
+                    "setBackgroundResource",
+                    if (dark) color.ghostDark else color.ghostLight,
+                )
+            } else {
+                setViewVisibility(R.id.dot_clock_ghost, android.view.View.GONE)
+            }
             // Mask tiles are pre-baked at 20% steps of opacity (no runtime
             // alpha call, which older launchers can't apply to a view).
             val step = ((look.opacityPercent + 10) / 20).coerceIn(0, 5)
