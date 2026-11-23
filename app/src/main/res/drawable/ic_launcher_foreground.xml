@@ -4,40 +4,40 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!--
-      こよみ brand mark (壱・日めくり): a tear-off daily calendar page.
-      White page on the washi background, 朱 (vermilion) top band with two
-      binding rings, and a bold 藍墨 (ink) "1". Safe zone 24..84.
+      こよみ brand mark (壱・日めくり), monochrome edition: a solid black
+      tear-off page on white, a hairline cut where the header band would be,
+      two binding rings, and a bold white "1". Safe zone 24..84.
     -->
-    <!-- Page -->
+    <!-- Page (墨) -->
+    <path
+        android:fillColor="#111111"
+        android:pathData="M39,30h30a7,7 0 0 1 7,7v36a7,7 0 0 1 -7,7h-30a7,7 0 0 1 -7,-7v-36a7,7 0 0 1 7,-7z" />
+    <!-- Hairline separating the header band -->
     <path
         android:fillColor="#FFFFFF"
-        android:strokeColor="#E2DAC8"
-        android:strokeWidth="1"
-        android:pathData="M37,28h34a6,6 0 0 1 6,6v42a6,6 0 0 1 -6,6h-34a6,6 0 0 1 -6,-6v-42a6,6 0 0 1 6,-6z" />
-    <!-- 朱: top band -->
+        android:pathData="M32,43h44v1.5h-44z" />
+    <!-- Binding rings: the arcs above the page read black on white -->
     <path
-        android:fillColor="#A8503C"
-        android:pathData="M37,28h34a6,6 0 0 1 6,6v8h-46v-8a6,6 0 0 1 6,-6z" />
-    <!-- Binding rings (墨) -->
-    <path
-        android:strokeColor="#343B46"
+        android:strokeColor="#111111"
         android:strokeWidth="2.5"
+        android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M44,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
+        android:pathData="M41,35v-5a4,4 0 0 1 8,0v5" />
     <path
-        android:strokeColor="#343B46"
+        android:strokeColor="#111111"
         android:strokeWidth="2.5"
+        android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M64,29m-4,0a4,4 0 1 1 8,0a4,4 0 1 1 -8,0" />
-    <!-- Ring holes punched through the band -->
+        android:pathData="M59,35v-5a4,4 0 0 1 8,0v5" />
+    <!-- Ring holes punched through the page -->
     <path
-        android:fillColor="#F8F3EA"
-        android:pathData="M44,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,34m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
     <path
-        android:fillColor="#F8F3EA"
-        android:pathData="M64,33m-2.2,0a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0" />
-    <!-- 藍墨: the day numeral "1" -->
+        android:fillColor="#FFFFFF"
+        android:pathData="M63,34m-2,0a2,2 0 1 1 4,0a2,2 0 1 1 -4,0" />
+    <!-- The day numeral "1" (paper white) -->
     <path
-        android:fillColor="#343B46"
-        android:pathData="M59.5,48h-8l-9.5,7.5v7l8,-6v19.5h9.5z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M59,50h-6.5l-8.5,6.5v6.5l6.5,-4.5v17.5h8.5z" />
 </vector>
