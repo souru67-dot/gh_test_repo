@@ -26,6 +26,12 @@ class WidgetUpdateWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        // ひとめ shows today's weather: top the forecast up first (a no-op
+        // while the 3-hour cache is fresh, silent when offline).
+        runCatching {
+            (applicationContext as com.souru.koyomi.KoyomiApplication)
+                .container.weatherRepository.refreshIfStale()
+        }
         updateAllWidgets(applicationContext)
         schedule(applicationContext)
         scheduleNextExpiry(applicationContext)
@@ -46,6 +52,7 @@ class WidgetUpdateWorker(
             TodoAgendaWidget().updateAll(context)
             HimekuriWidget().updateAll(context)
             MiniMonthWidget().updateAll(context)
+            HitomeWidget().updateAll(context)
         }
 
         fun schedule(context: Context) {

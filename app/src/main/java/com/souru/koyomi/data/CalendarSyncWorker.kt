@@ -23,6 +23,8 @@ class CalendarSyncWorker(
     override suspend fun doWork(): Result {
         val app = applicationContext as KoyomiApplication
         app.container.calendarRepository.requestSync()
+        // Keep the widget weather current between app launches too.
+        runCatching { app.container.weatherRepository.refreshIfStale() }
         return Result.success()
     }
 

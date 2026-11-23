@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="280dp"
+    android:height="210dp"
+    android:viewportWidth="280"
+    android:viewportHeight="210">
+    <!-- ひとめ: big date + weather, hairline, mini month | today's agenda -->
+    <path android:fillColor="#FFFFFF" android:pathData="M28,0h224a28,28 0 0 1 28,28v154a28,28 0 0 1 -28,28H28a28,28 0 0 1 -28,-28V28A28,28 0 0 1 28,0z" />
+    <!-- Big day number + weekday / month -->
+    <path android:fillColor="#111111" android:pathData="M20,20h40v30h-40z" />
+    <path android:fillColor="#111111" android:pathData="M70,24h40v7h-40z" />
+    <path android:fillColor="#BDBDBD" android:pathData="M70,38h30v5h-30z" />
+    <!-- Weather: glyph + high / low -->
+    <path android:fillColor="#F6BF26" android:pathData="M212,35m-9,0a9,9 0 1 1 18,0a9,9 0 1 1 -18,0" />
+    <path android:fillColor="#111111" android:pathData="M232,26h26v11h-26z" />
+    <path android:fillColor="#BDBDBD" android:pathData="M238,42h20v4h-20z" />
+    <!-- Hairline -->
+    <path android:fillColor="#EBEBEB" android:pathData="M16,64h248v1.5h-248z" />
+    <!-- Weekday letters -->
+    <path android:fillColor="#C2453A" android:pathData="M22,78h6v4h-6z" />
+    <path android:fillColor="#BDBDBD" android:pathData="M38,78h6v4h-6zM54,78h6v4h-6zM70,78h6v4h-6zM86,78h6v4h-6zM102,78h6v4h-6z" />
+    <path android:fillColor="#3C64A6" android:pathData="M118,78h6v4h-6z" />
+    <!-- Days -->
+    <path android:fillColor="#555555" android:pathData="M70,94h6v5h-6zM86,94h6v5h-6zM102,94h6v5h-6zM38,112h6v5h-6zM54,112h6v5h-6zM70,112h6v5h-6zM86,112h6v5h-6zM102,112h6v5h-6zM38,130h6v5h-6zM54,130h6v5h-6zM86,130h6v5h-6zM102,130h6v5h-6zM38,148h6v5h-6zM54,148h6v5h-6zM70,148h6v5h-6zM86,148h6v5h-6zM102,148h6v5h-6zM38,166h6v5h-6zM54,166h6v5h-6zM70,166h6v5h-6zM86,166h6v5h-6z" />
+    <path android:fillColor="#C2453A" android:pathData="M22,112h6v5h-6zM22,130h6v5h-6zM22,148h6v5h-6zM22,166h6v5h-6z" />
+    <path android:fillColor="#3C64A6" android:pathData="M118,94h6v5h-6zM118,112h6v5h-6zM118,130h6v5h-6zM118,148h6v5h-6z" />
+    <!-- Today -->
+    <path android:fillColor="#111111" android:pathData="M73,132.5m-7.5,0a7.5,7.5 0 1 1 15,0a7.5,7.5 0 1 1 -15,0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M70,130h6v5h-6z" />
+    <!-- Divider -->
+    <path android:fillColor="#EBEBEB" android:pathData="M140,76h1v112h-1z" />
+    <!-- Agenda: label + three rows (calendar notch, time, title) -->
+    <path android:fillColor="#111111" android:pathData="M152,78h18v5h-18z" />
+    <path android:fillColor="#4A6FA5" android:pathData="M152,94h3v20h-3z" />
+    <path android:fillColor="#E67C73" android:pathData="M152,124h3v20h-3z" />
+    <path android:fillColor="#33B679" android:pathData="M152,154h3v20h-3z" />
+    <path android:fillColor="#BDBDBD" android:pathData="M161,96h24v4h-24zM161,126h24v4h-24zM161,156h24v4h-24z" />
+    <path android:fillColor="#111111" android:pathData="M161,105h80v6h-80zM161,135h64v6h-64zM161,165h72v6h-72z" />
+</vector>

@@ -14,11 +14,11 @@ Play Console の「ストアの掲載情報」にそのまま使える文面で�
 **アプリ名**(30文字以内): こよみ — 和のカレンダー
 
 **簡単な説明**(80文字以内):
-端末のカレンダーを、墨と和紙の静かな画面で。広告なし・基本無料、和の暦も。
+端末のカレンダーを、白と黒の端正な画面で。広告なし・基本無料、和の暦も。
 
 **詳しい説明**(4000文字以内):
 > こよみは、端末に登録済みのカレンダー(Googleカレンダー、Exchangeなど)を
-> そのまま読み書きする、静かで美しいカレンダーです。墨・和紙・朱を基調にした
+> そのまま読み書きする、静かで美しいカレンダーです。白と黒だけで組んだ
 > 余白のある画面で、毎日の予定と穏やかに向き合えます。広告・トラッキングは
 > 一切ありません。
 >
@@ -28,15 +28,16 @@ Play Console の「ストアの掲載情報」にそのまま使える文面で�
 > ・通知は「開始◯分前に1回だけ」。予定を探せる検索とアジェンダ
 > ・ToDoリスト、記念日カウントダウン(あと◯日)、ひとこと日記(過去の今日)
 > ・予定の場所をタップして地図アプリで開く
-> ・月カレンダーウィジェット、墨と和紙テーマ
+> ・月カレンダーウィジェット、墨(モノクローム)テーマ
 >
 > ■ こよみ プレミアム(買い切りで解除)
 > ・和の暦: 六曜・二十四節気・旧暦・月齢・和暦、そして開運日
 >   (一粒万倍日・天赦日・寅の日・巳の日)
 > ・カレンダーに2週間の天気
 > ・きせかえ全テーマ(桜・若葉・藍・紅葉)+ 好きな色のカスタムテーマ
-> ・ホーム画面ウィジェット全8種(日めくり2×2、ミニカレンダー2×2、
->   時計+予定、カレンダー+予定、ToDo+予定+カレンダー ほか)
+> ・ホーム画面ウィジェット全9種(今日の予定・カレンダー・天気をひと目で見る
+>   「ひとめ」、日めくり2×2、ミニカレンダー2×2、時計+予定 ほか)。
+>   背景の透明度を0〜100%で調整でき、壁紙に溶け込む
 > ・時短: 予定テンプレート、複数日への一括複製、スタンプ予定、
 >   ドラッグ&ドロップでの移動
 > ・機種変更の引き継ぎバックアップ
@@ -55,12 +56,12 @@ Play Console の「ストアの掲載情報」にそのまま使える文面で�
 **App name**: Koyomi: Minimal Calendar
 
 **Short description**:
-Your device calendars in a calm paper-and-ink design. No ads. Free, with premium.
+Your device calendars in a crisp black-and-white design. No ads. Free, with premium.
 
 **Full description**:
 > Koyomi reads and writes the calendars already on your device — Google
-> Calendar, Exchange and more — in a calm, beautiful design inspired by ink,
-> washi paper and vermilion. No ads, no tracking.
+> Calendar, Exchange and more — in a calm, beautiful design built from black
+> and white alone. No ads, no tracking.
 >
 > Everyday basics (free)
 > - Month, week, day and year views, with a one-handed bottom sheet
@@ -68,15 +69,16 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 > - Reminders that fire once, N minutes before. Search and agenda
 > - To-do list, anniversary countdowns, a one-line daily note (“this day last year”)
 > - Tap an event’s location to open it in Maps
-> - Month calendar widget and the Ink & Washi theme
+> - Month calendar widget and the monochrome Sumi theme
 >
 > Koyomi Premium (one-time unlock)
 > - Japanese almanac: rokuyō, 24 solar terms, lunar date, moon age, era year,
 >   and lucky days
 > - Two-week weather on your calendar
 > - All theme packs + a custom color of your choice
-> - All 8 home-screen widgets (daily page 2×2, mini month 2×2, clock+today,
->   calendar+today, to-dos+events+calendar, and more)
+> - All 9 home-screen widgets, including "At a glance" (today's events,
+>   the month and the weather in one view), daily page 2×2 and mini month
+>   2×2 — with background transparency from 0 to 100%
 > - Shortcuts: event templates, multi-day copy, stamp events, drag & drop
 > - Public holidays for Japan, US, UK and South Korea
 > - Transfer backup for a new phone
@@ -94,11 +96,11 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 **应用名称**: Koyomi 和风日历
 
 **简短说明**:
-将设备日历呈现于墨与和纸的静谧界面。无广告，免费下载。
+将设备日历呈现于黑白分明的简洁界面。无广告，免费下载。
 
 **完整说明**:
-> Koyomi 直接读写设备上已有的日历(Google 日历、Exchange 等），以墨、和纸、
-> 朱红为基调的留白界面，让你从容面对每日安排。无广告、无追踪。
+> Koyomi 直接读写设备上已有的日历(Google 日历、Exchange 等），以黑与白
+> 构成的留白界面，让你从容面对每日安排。无广告、无追踪。
 >
 > 日常基础(免费)
 > - 月/周/日/年视图,以月视图为主,单手可及的底部面板
@@ -106,13 +108,13 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 > - 提醒仅在开始前 N 分钟响一次。搜索与日程一览
 > - 待办清单、纪念日倒数(还有◯天)、一句话日记(去年今天)
 > - 点按日程地点,在地图中打开
-> - 月历小组件与「墨与和纸」主题
+> - 月历小组件与「墨」黑白主题
 >
 > Koyomi 高级版(一次买断解锁)
 > - 日本历法:六曜、二十四节气、农历、月龄、年号,以及吉日
 > - 日历上的两周天气
 > - 全部主题配色 + 自定义颜色
-> - 全部 8 款主屏小组件
+> - 全部 9 款主屏小组件(含今日日程・日历・天气一览的「一览」),背景透明度 0〜100%
 > - 效率:模板、多日复制、快捷日程、拖放移动
 > - 日本、美国、英国、韩国的公众假期
 > - 换机迁移备份
@@ -129,11 +131,11 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 **應用程式名稱**: Koyomi 和風日曆
 
 **簡短說明**:
-將裝置日曆呈現於墨與和紙的靜謐介面。無廣告,免費下載。
+將裝置日曆呈現於黑白分明的簡潔介面。無廣告,免費下載。
 
 **完整說明**:
-> Koyomi 直接讀寫裝置上既有的日曆(Google 日曆、Exchange 等),以墨、和紙、
-> 朱紅為基調的留白介面,讓你從容面對每日安排。無廣告、無追蹤。
+> Koyomi 直接讀寫裝置上既有的日曆(Google 日曆、Exchange 等),以黑與白
+> 構成的留白介面,讓你從容面對每日安排。無廣告、無追蹤。
 >
 > 日常基礎(免費)
 > - 月/週/日/年檢視,以月檢視為主,單手可及的底部面板
@@ -141,13 +143,13 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 > - 提醒僅在開始前 N 分鐘響一次。搜尋與行程一覽
 > - 待辦清單、紀念日倒數(還有◯天)、一句話日記(去年今天)
 > - 點按活動地點,在地圖中開啟
-> - 月曆小工具與「墨與和紙」主題
+> - 月曆小工具與「墨」黑白主題
 >
 > Koyomi 進階版(一次買斷解鎖)
 > - 日本曆法:六曜、二十四節氣、農曆、月齡、年號,以及吉日
 > - 日曆上的兩週天氣
 > - 全部主題配色 + 自訂顏色
-> - 全部 8 款主畫面小工具
+> - 全部 9 款主畫面小工具(含今日活動・行事曆・天氣一覽的「一覽」),背景透明度 0〜100%
 > - 效率:範本、多日複製、快速活動、拖放移動
 > - 日本、美國、英國、韓國的國定假日
 > - 換機轉移備份
@@ -164,11 +166,11 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 **앱 이름**: Koyomi 미니멀 캘린더
 
 **간단한 설명**:
-기기의 캘린더를 먹과 화지의 고요한 화면으로. 광고 없음, 무료.
+기기의 캘린더를 흑과 백의 단정한 화면으로. 광고 없음, 무료.
 
 **전체 설명**:
 > Koyomi는 기기에 이미 있는 캘린더(Google 캘린더, Exchange 등)를 그대로
-> 읽고 쓰는, 먹·화지·주홍을 기조로 한 여백 있는 캘린더입니다. 광고와 추적이
+> 읽고 쓰는, 흑과 백만으로 구성한 여백 있는 캘린더입니다. 광고와 추적이
 > 전혀 없습니다.
 >
 > 매일 쓰는 기본(무료)
@@ -177,13 +179,13 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 > - 알림은 시작 N분 전 한 번만. 검색과 일정 목록
 > - 할 일 목록, 기념일 카운트다운(D-◯), 한 줄 일기(작년 오늘)
 > - 일정 위치를 눌러 지도 앱에서 열기
-> - 월 캘린더 위젯과 ‘먹과 화지’ 테마
+> - 월 캘린더 위젯과 흑백 ‘먹’ 테마
 >
 > Koyomi 프리미엄(한 번 구매로 잠금 해제)
 > - 일본 역법: 로쿠요, 24절기, 음력, 월령, 연호, 그리고 길일
 > - 캘린더 위 2주 날씨
 > - 모든 테마 색상 + 맞춤 색상
-> - 홈 화면 위젯 8종 전체
+> - 홈 화면 위젯 9종 전체(오늘 일정·달력·날씨를 한눈에 보는 ‘한눈에’ 포함), 배경 투명도 0~100%
 > - 생산성: 템플릿, 여러 날 복사, 스탬프 일정, 드래그 앤 드롭
 > - 일본·미국·영국·대한민국 공휴일
 > - 기기 변경용 이전 백업
@@ -206,12 +208,12 @@ Your device calendars in a calm paper-and-ink design. No ads. Free, with premium
 
 ### スクリーンショット構成(推奨8枚)
 
-1. 月表示(予定入り・墨と和紙)+ キャッチ「余白の美しいカレンダー」
+1. 月表示(予定入り・白と黒)+ キャッチ「余白の美しいカレンダー」
 2. 日別シート(記念日・天気・予定)
 3. 和の暦(六曜・二十四節気・開運日・和暦)※プレミアム訴求
 4. 年表示
 5. きせかえテーマ+カスタムカラー
-6. ウィジェット8種
+6. ウィジェット9種(「ひとめ」を主役に、透過で壁紙に置いた例も)
 7. ToDo・記念日・日記
 8. こよみ プレミアム画面(価格・解除)
 

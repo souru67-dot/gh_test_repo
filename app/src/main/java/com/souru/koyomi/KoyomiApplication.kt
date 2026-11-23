@@ -73,6 +73,12 @@ class KoyomiApplication : Application() {
                 CalendarSyncWorker.schedule(this@KoyomiApplication, minutes)
             }
         }
+        // Redraw widgets when a fresh forecast lands (ひとめ shows it).
+        appScope.launch {
+            container.weatherRepository.forecastByDay.drop(1).collect {
+                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+            }
+        }
         // Redraw widgets when their opacity setting changes.
         appScope.launch {
             container.settingsRepository.widgetOpacityPercent.collect {
