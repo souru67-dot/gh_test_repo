@@ -14,13 +14,13 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/dot_lit"
-        android:textSize="15sp" />
+        android:textSize="14sp" />
 
     <ImageView
         android:id="@+id/dot_wx"
         android:layout_width="13dp"
         android:layout_height="13dp"
-        android:layout_marginStart="9dp"
+        android:layout_marginStart="8dp"
         android:visibility="gone" />
 
     <TextView

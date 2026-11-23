@@ -257,7 +257,7 @@ class DotWidget : GlanceAppWidget() {
             setTextColor(R.id.dot_clock_ghost, ghostOf(lit))
         }
 
-    /** "11/23 MON ☀ 18° 9° 70%" — Latin on purpose: the dot face has no CJK. */
+    /** "11/23 MON ☀ 18° 70%" — Latin on purpose: the dot face has no CJK. */
     private fun dateViews(
         context: Context,
         date: LocalDate,
@@ -275,7 +275,9 @@ class DotWidget : GlanceAppWidget() {
             setImageViewResource(R.id.dot_wx, weatherIcon(weather.kind))
             setInt(R.id.dot_wx, "setColorFilter", lit)
             setViewVisibility(R.id.dot_wx, android.view.View.VISIBLE)
-            setTextViewText(R.id.dot_temp, "${weather.maxC.toInt()}° ${weather.minC.toInt()}°")
+            // High only: the 4x2 left column has no room for both temps
+            // next to the date.
+            setTextViewText(R.id.dot_temp, "${weather.maxC.toInt()}°")
             setTextColor(R.id.dot_temp, lit)
             setViewVisibility(R.id.dot_temp, android.view.View.VISIBLE)
             // Rain chance only when it matters (umbrella-worthy days).
