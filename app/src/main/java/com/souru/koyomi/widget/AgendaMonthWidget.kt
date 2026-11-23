@@ -51,18 +51,29 @@ class AgendaMonthWidgetReceiver : GlanceAppWidgetReceiver() {
  */
 class AgendaMonthWidget : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadMonthGridData(context)
-        val sections = loadDaySections(context, days = 1)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(
+        val data: MonthGridData,
+        val today: WidgetDaySection,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        val premium = isPremiumUnlocked(context)
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    data = loadMonthGridData(context),
+                    today = loadDaySections(context, days = 1).first(),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, sections.first(), data, look)
+                    Content(context, s.today, s.data, s.look)
                 }
             }
         }

@@ -38,21 +38,22 @@ class MonthWidget : GlanceAppWidget() {
         setOf(SIZE_COMPACT, SIZE_FULL),
     )
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadMonthGridData(context)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(val data: MonthGridData, val look: WidgetLook)
 
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = { Snapshot(loadMonthGridData(context), resolveWidgetLook(context, id)) },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
                 val size = LocalSize.current
                 val compact = size.height < 230.dp
                 GlanceMonthCalendar(
                     context = context,
-                    data = data,
+                    data = s.data,
                     compact = compact,
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .background(widgetBackground(look))
+                        .background(widgetBackground(s.look))
                         .cornerRadius(28.dp)
                         // Whole-widget tap opens the app; day cells (children)
                         // take priority and open their specific day.

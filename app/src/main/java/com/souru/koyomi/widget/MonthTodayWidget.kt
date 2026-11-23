@@ -36,18 +36,29 @@ class MonthTodayWidgetReceiver : GlanceAppWidgetReceiver() {
 /** 4x4 widget: this month's calendar with today's events underneath. */
 class MonthTodayWidget : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadMonthGridData(context)
-        val sections = loadDaySections(context, days = 1)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(
+        val data: MonthGridData,
+        val today: WidgetDaySection,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        val premium = isPremiumUnlocked(context)
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    data = loadMonthGridData(context),
+                    today = loadDaySections(context, days = 1).first(),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, data, sections.first(), look)
+                    Content(context, s.data, s.today, s.look)
                 }
             }
         }

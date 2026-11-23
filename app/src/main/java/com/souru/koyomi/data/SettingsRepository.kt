@@ -283,9 +283,18 @@ class SettingsRepository(private val context: Context) {
         (prefs[Keys.WIDGET_OPACITY_PERCENT]?.toIntOrNull() ?: 100).coerceIn(0, 100)
     }
 
+    /**
+     * The app-wide opacity applies to EVERY widget: per-widget overrides
+     * saved from a widget's own settings screen are cleared. Previously an
+     * override (often just the 100% default saved once on first add) made
+     * the app setting look broken for that widget.
+     */
     suspend fun setWidgetOpacityPercent(percent: Int) {
-        context.dataStore.edit {
-            it[Keys.WIDGET_OPACITY_PERCENT] = percent.coerceIn(0, 100).toString()
+        context.dataStore.edit { prefs ->
+            prefs[Keys.WIDGET_OPACITY_PERCENT] = percent.coerceIn(0, 100).toString()
+            prefs.asMap().keys
+                .filter { it.name.startsWith("widget_opacity_") && it.name != Keys.WIDGET_OPACITY_PERCENT.name }
+                .forEach { prefs.remove(it) }
         }
     }
 
@@ -303,6 +312,14 @@ class SettingsRepository(private val context: Context) {
             ThemeMode.entries.find { it.name == name }
         } ?: ThemeMode.SYSTEM
     }
+
+    /** Per-widget theme, or null when the user never chose one for it. */
+    fun widgetThemeOverride(appWidgetId: Int): Flow<ThemeMode?> =
+        context.dataStore.data.map { prefs ->
+            prefs[widgetThemeKey(appWidgetId)]?.let { name ->
+                ThemeMode.entries.find { it.name == name }
+            }
+        }
 
     suspend fun setWidgetTheme(appWidgetId: Int, mode: ThemeMode) {
         context.dataStore.edit { it[widgetThemeKey(appWidgetId)] = mode.name }

@@ -51,19 +51,31 @@ class TodoAgendaWidgetReceiver : GlanceAppWidgetReceiver() {
  */
 class TodoAgendaWidget : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val tasks = loadOpenTasks(context)
-        val sections = loadUpcomingDaySections(context, maxDays = 7, lookaheadDays = 14)
-        val data = loadMonthGridData(context)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(
+        val tasks: List<com.souru.koyomi.data.task.Task>,
+        val sections: List<WidgetDaySection>,
+        val data: MonthGridData,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        val premium = isPremiumUnlocked(context)
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    tasks = loadOpenTasks(context),
+                    sections = loadUpcomingDaySections(context, maxDays = 7, lookaheadDays = 14),
+                    data = loadMonthGridData(context),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, tasks, sections, data, look)
+                    Content(context, s.tasks, s.sections, s.data, s.look)
                 }
             }
         }

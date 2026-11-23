@@ -62,25 +62,39 @@ class HitomeWidget : GlanceAppWidget() {
 
     private data class WeatherNow(val weather: DailyWeather, val place: String?)
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
+    private class Snapshot(
+        val month: MonthGridData,
+        val today: WidgetDaySection,
+        val weather: WeatherNow?,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
+
+    private suspend fun load(context: Context, id: GlanceId): Snapshot {
         val app = context.applicationContext as KoyomiApplication
-        val month = loadMonthGridData(context)
         val today = loadDaySections(context, days = 1).first()
-        val look = resolveWidgetLook(context, id)
-        val premium = isPremiumUnlocked(context)
         val weather = runCatching {
             val repo = app.container.weatherRepository
             repo.forecastByDay.first()[today.date]?.let { forecast ->
                 WeatherNow(forecast, repo.place.first()?.name)
             }
         }.getOrNull()
+        return Snapshot(
+            month = loadMonthGridData(context),
+            today = today,
+            weather = weather,
+            look = resolveWidgetLook(context, id),
+            premium = isPremiumUnlocked(context),
+        )
+    }
 
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(load = { load(context, id) }) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, today, month, weather, look)
+                    Content(context, s.today, s.month, s.weather, s.look)
                 }
             }
         }

@@ -40,17 +40,27 @@ class ClockTodayWidgetReceiver : GlanceAppWidgetReceiver() {
  */
 class ClockTodayWidget : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sections = loadUpcomingDaySections(context, maxDays = 3, lookaheadDays = 14)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(
+        val sections: List<WidgetDaySection>,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        val premium = isPremiumUnlocked(context)
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    sections = loadUpcomingDaySections(context, maxDays = 3, lookaheadDays = 14),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, sections, look)
+                    Content(context, s.sections, s.look)
                 }
             }
         }

@@ -57,20 +57,30 @@ class TodayWidget : GlanceAppWidget() {
         setOf(SIZE_MINI, SIZE_REGULAR),
     )
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sections = loadDaySections(context, days = 2)
-        val look = resolveWidgetLook(context, id)
+    private class Snapshot(
+        val sections: List<WidgetDaySection>,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        val premium = isPremiumUnlocked(context)
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    sections = loadDaySections(context, days = 2),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
                 val size = LocalSize.current
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else if (size.width < 180.dp) {
-                    MiniContent(context, sections[0], look)
+                    MiniContent(context, s.sections[0], s.look)
                 } else {
-                    FullContent(context, sections[0], sections[1], look)
+                    FullContent(context, s.sections[0], s.sections[1], s.look)
                 }
             }
         }

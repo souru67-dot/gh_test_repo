@@ -27,26 +27,36 @@ class MiniMonthWidgetReceiver : GlanceAppWidgetReceiver() {
 /** 2x2: the dots-only mini month on its own — the smallest こよみ. */
 class MiniMonthWidget : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadMonthGridData(context)
-        val look = resolveWidgetLook(context, id)
-        val premium = isPremiumUnlocked(context)
+    private class Snapshot(
+        val data: MonthGridData,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
 
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(
+            load = {
+                Snapshot(
+                    data = loadMonthGridData(context),
+                    look = resolveWidgetLook(context, id),
+                    premium = isPremiumUnlocked(context),
+                )
+            },
+        ) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
                     Box(
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .background(widgetBackground(look))
+                            .background(widgetBackground(s.look))
                             .cornerRadius(28.dp)
                             .padding(12.dp),
                     ) {
                         GlanceMiniMonth(
                             context = context,
-                            data = data,
+                            data = s.data,
                             modifier = GlanceModifier.fillMaxSize(),
                         )
                     }

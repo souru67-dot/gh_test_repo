@@ -55,7 +55,14 @@ class HimekuriWidget : GlanceAppWidget() {
         val countdown: String?,
     )
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
+    private class Snapshot(
+        val today: LocalDate,
+        val data: HimekuriData,
+        val look: WidgetLook,
+        val premium: Boolean,
+    )
+
+    private suspend fun load(context: Context, id: GlanceId): Snapshot {
         val today = LocalDate.now()
         val app = context.applicationContext as KoyomiApplication
         val nearest = runCatching {
@@ -79,15 +86,16 @@ class HimekuriWidget : GlanceAppWidget() {
                 }
             },
         )
-        val look = resolveWidgetLook(context, id)
-        val premium = isPremiumUnlocked(context)
+        return Snapshot(today, data, resolveWidgetLook(context, id), isPremiumUnlocked(context))
+    }
 
-        provideContent {
-            GlanceTheme(colors = widgetColors(look)) {
-                if (!premium) {
-                    WidgetPremiumLock(context, look)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideFreshContent(load = { load(context, id) }) { s ->
+            GlanceTheme(colors = widgetColors(s.look)) {
+                if (!s.premium) {
+                    WidgetPremiumLock(context, s.look)
                 } else {
-                    Content(context, today, data, look)
+                    Content(context, s.today, s.data, s.look)
                 }
             }
         }

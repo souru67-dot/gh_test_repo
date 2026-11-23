@@ -8,7 +8,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.glance.appwidget.updateAll
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -43,16 +42,19 @@ class WidgetUpdateWorker(
         private const val WORK_MIDNIGHT = "koyomi_widget_midnight"
         private const val WORK_NEXT_EXPIRY = "koyomi_widget_next_expiry"
 
+        /** Redraws every placed widget with freshly loaded data (see WidgetRefresh). */
         suspend fun updateAllWidgets(context: Context) {
-            MonthWidget().updateAll(context)
-            TodayWidget().updateAll(context)
-            ClockTodayWidget().updateAll(context)
-            MonthTodayWidget().updateAll(context)
-            AgendaMonthWidget().updateAll(context)
-            TodoAgendaWidget().updateAll(context)
-            HimekuriWidget().updateAll(context)
-            MiniMonthWidget().updateAll(context)
-            HitomeWidget().updateAll(context)
+            listOf(
+                MonthWidget(),
+                TodayWidget(),
+                ClockTodayWidget(),
+                MonthTodayWidget(),
+                AgendaMonthWidget(),
+                TodoAgendaWidget(),
+                HimekuriWidget(),
+                MiniMonthWidget(),
+                HitomeWidget(),
+            ).forEach { it.refreshAll(context) }
         }
 
         fun schedule(context: Context) {
