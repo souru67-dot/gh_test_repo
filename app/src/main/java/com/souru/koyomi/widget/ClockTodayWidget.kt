@@ -84,7 +84,7 @@ class ClockTodayWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(GlanceTheme.colors.outlineVariant),
+                    .background(GlanceTheme.colors.surfaceVariant),
             ) {}
             Spacer(modifier = GlanceModifier.width(12.dp))
             LazyColumn(

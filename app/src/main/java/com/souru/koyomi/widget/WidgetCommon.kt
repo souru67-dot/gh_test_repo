@@ -79,11 +79,19 @@ data class WidgetLook(
         }
 }
 
-/** The widget flavour of a pack's scheme: Saturday blue rides in `secondary`. */
-fun widgetScheme(look: WidgetLook, dark: Boolean): androidx.compose.material3.ColorScheme =
-    koyomiColorScheme(look.pack, darkTheme = dark, customColor = look.customColor).copy(
+/**
+ * The widget flavour of a pack's scheme. Glance exposes fewer roles than
+ * Material 3, so two are repurposed: Saturday blue rides in `secondary`,
+ * and `surfaceVariant` carries the hairline-divider gray (Glance has no
+ * `outlineVariant`; widgets use surfaceVariant only for dividers).
+ */
+fun widgetScheme(look: WidgetLook, dark: Boolean): androidx.compose.material3.ColorScheme {
+    val base = koyomiColorScheme(look.pack, darkTheme = dark, customColor = look.customColor)
+    return base.copy(
         secondary = if (dark) Color(0xFF8FB0E6) else Color(0xFF3C64A6),
+        surfaceVariant = base.outlineVariant,
     )
+}
 
 /**
  * Resolves the per-widget theme/opacity chosen in the widget config screen,
@@ -190,7 +198,7 @@ fun WidgetHairlineDivider(modifier: GlanceModifier = GlanceModifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(GlanceTheme.colors.outlineVariant),
+            .background(GlanceTheme.colors.surfaceVariant),
     ) {}
 }
 
