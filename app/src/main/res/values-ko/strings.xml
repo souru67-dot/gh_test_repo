@@ -284,4 +284,5 @@
     <string name="widget_hitome_description">오늘의 날짜와 날씨, 이번 달 달력, 오늘 일정을 한눈에.</string>
     <string name="widget_dot_label">도트</string>
     <string name="widget_dot_description">LED 스타일의 도트 시계와 날짜, 이번 달 달력, 오늘의 일정과 할 일.</string>
+    <string name="widget_dot_color">도트 색상</string>
 </resources>

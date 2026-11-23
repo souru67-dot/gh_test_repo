@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "NEXT 41:59 歯医者": a live countdown to the next timed event. The
+  Chronometer ticks in the launcher on its own; the widget refreshes when
+  the event starts to move on to the following one.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/dot_next_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:alpha="0.75"
+        android:fontFamily="@font/doto_dot"
+        android:includeFontPadding="false"
+        android:text="NEXT"
+        android:textColor="@color/dot_lit"
+        android:textSize="10sp" />
+
+    <Chronometer
+        android:id="@+id/dot_next_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:fontFamily="monospace"
+        android:includeFontPadding="false"
+        android:textColor="@color/dot_lit"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/dot_next_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textSize="10sp" />
+</LinearLayout>

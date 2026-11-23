@@ -30,10 +30,27 @@ data class DailyWeather(
     val code: Int,
     val maxC: Double,
     val minC: Double,
+    /** Max precipitation probability of the day (%), null if unknown. */
+    val rainChance: Int? = null,
 ) {
     val emoji: String get() = weatherEmoji(code)
+    val kind: WeatherKind get() = weatherKind(code)
     val tempLabel: String
         get() = "${maxC.toInt()}°/${minC.toInt()}°"
+}
+
+/** Coarse weather category, e.g. for the dot-matrix icons. */
+enum class WeatherKind { SUN, PARTLY, CLOUD, FOG, RAIN, SNOW, THUNDER }
+
+fun weatherKind(code: Int): WeatherKind = when (code) {
+    0 -> WeatherKind.SUN
+    1, 2 -> WeatherKind.PARTLY
+    3 -> WeatherKind.CLOUD
+    45, 48 -> WeatherKind.FOG
+    in 51..57, in 61..67, in 80..82 -> WeatherKind.RAIN
+    in 71..77, 85, 86 -> WeatherKind.SNOW
+    95, 96, 99 -> WeatherKind.THUNDER
+    else -> WeatherKind.CLOUD
 }
 
 /** WMO code → a compact glyph that stays legible at small sizes. */
@@ -155,7 +172,8 @@ class WeatherRepository(private val context: Context) {
             httpGet(
                 "https://api.open-meteo.com/v1/forecast" +
                     "?latitude=${place.latitude}&longitude=${place.longitude}" +
-                    "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+                    "&daily=weather_code,temperature_2m_max,temperature_2m_min," +
+                    "precipitation_probability_max" +
                     "&timezone=auto&forecast_days=14",
             )
         }
@@ -166,6 +184,8 @@ class WeatherRepository(private val context: Context) {
         val codes = daily.optJSONArray("weather_code") ?: return emptyMap()
         val maxes = daily.optJSONArray("temperature_2m_max") ?: return emptyMap()
         val mins = daily.optJSONArray("temperature_2m_min") ?: return emptyMap()
+        // Optional: absent in caches written before it was requested.
+        val rain = daily.optJSONArray("precipitation_probability_max")
         val result = mutableMapOf<LocalDate, DailyWeather>()
         for (i in 0 until dates.length()) {
             if (codes.isNull(i) || maxes.isNull(i) || mins.isNull(i)) continue
@@ -175,6 +195,7 @@ class WeatherRepository(private val context: Context) {
                 code = codes.getInt(i),
                 maxC = maxes.getDouble(i),
                 minC = mins.getDouble(i),
+                rainChance = rain?.takeIf { i < it.length() && !it.isNull(i) }?.getInt(i),
             )
         }
         return result

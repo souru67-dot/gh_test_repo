@@ -134,11 +134,13 @@ class WidgetUpdateWorker(
 
             val eventExpiries = runCatching {
                 val hidden = app.container.settingsRepository.hiddenCalendarIds.first()
+                // Starts too: the dot widget's NEXT countdown moves on when an
+                // event begins. Tomorrow is included for early-morning starts.
                 app.container.calendarRepository
-                    .loadEventsByDay(today, today.plusDays(1), hidden)[today]
-                    .orEmpty()
+                    .loadEventsByDay(today, today.plusDays(2), hidden)
+                    .values.flatten()
                     .filter { !it.allDay }
-                    .map { it.end }
+                    .flatMap { listOf(it.begin, it.end) }
             }.getOrDefault(emptyList())
             val taskExpiries = runCatching {
                 app.container.taskRepository

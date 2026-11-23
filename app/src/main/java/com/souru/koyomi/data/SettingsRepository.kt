@@ -336,6 +336,17 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    private fun widgetDotColorKey(appWidgetId: Int) =
+        stringPreferencesKey("widget_dotcolor_$appWidgetId")
+
+    /** 「ドット」 widget LED color name (DotColor), null = default orange. */
+    fun widgetDotColor(appWidgetId: Int): Flow<String?> =
+        context.dataStore.data.map { prefs -> prefs[widgetDotColorKey(appWidgetId)] }
+
+    suspend fun setWidgetDotColor(appWidgetId: Int, colorName: String) {
+        context.dataStore.edit { it[widgetDotColorKey(appWidgetId)] = colorName }
+    }
+
     suspend fun setCalendarHidden(calendarId: Long, hidden: Boolean) {
         context.dataStore.edit { prefs ->
             val current = prefs[Keys.HIDDEN_CALENDAR_IDS].orEmpty()

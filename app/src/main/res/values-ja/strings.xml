@@ -283,4 +283,5 @@
     <string name="widget_hitome_description">今日の日付と天気、今月のカレンダー、今日の予定をひと目で。</string>
     <string name="widget_dot_label">ドット</string>
     <string name="widget_dot_description">LEDのようなドット時計に、日付・今月のカレンダー・今日の予定とタスクを。</string>
+    <string name="widget_dot_color">ドットの色</string>
 </resources>

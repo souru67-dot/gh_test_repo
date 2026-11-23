@@ -284,4 +284,5 @@
     <string name="widget_hitome_description">今天的日期與天氣、本月行事曆和今天的活動,一目了然。</string>
     <string name="widget_dot_label">點陣</string>
     <string name="widget_dot_description">LED 風格的點陣時鐘,搭配日期、本月行事曆以及今天的活動和待辦。</string>
+    <string name="widget_dot_color">點陣顏色</string>
 </resources>

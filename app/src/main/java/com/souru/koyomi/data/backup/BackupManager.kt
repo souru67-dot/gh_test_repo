@@ -239,6 +239,7 @@ class BackupManager(
         fun isDeviceLocal(name: String): Boolean =
             name in DEVICE_LOCAL_KEYS ||
                 name.startsWith("widget_theme_") ||
+                name.startsWith("widget_dotcolor_") ||
                 name.startsWith("widget_opacity_") && name != "widget_opacity_percent"
     }
 }

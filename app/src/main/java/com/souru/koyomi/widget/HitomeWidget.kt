@@ -229,8 +229,12 @@ class HitomeWidget : GlanceAppWidget() {
                     ),
                 )
                 Text(
-                    text = listOfNotNull("${now.weather.minC.toInt()}°", now.place)
-                        .joinToString("  "),
+                    text = listOfNotNull(
+                        "${now.weather.minC.toInt()}°",
+                        // Umbrella-worthy days only.
+                        now.weather.rainChance?.takeIf { it >= 50 }?.let { "☂$it%" },
+                        now.place,
+                    ).joinToString("  "),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
                         fontSize = 9.sp,

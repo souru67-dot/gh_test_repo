@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,6 +73,8 @@ class WidgetConfigActivity : ComponentActivity() {
                 var theme by remember { mutableStateOf(ThemeMode.SYSTEM) }
                 var opacity by remember { mutableFloatStateOf(1f) }
                 var pack by remember { mutableStateOf(com.souru.koyomi.data.ThemePack.SUMI) }
+                var isDot by remember { mutableStateOf(false) }
+                var dotColor by remember { mutableStateOf(DotColor.ORANGE) }
                 var customColor by remember {
                     androidx.compose.runtime.mutableIntStateOf(
                         com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
@@ -80,7 +83,7 @@ class WidgetConfigActivity : ComponentActivity() {
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     // The dot-matrix widget is designed dark-first.
-                    val isDot = runCatching {
+                    isDot = runCatching {
                         AppWidgetManager.getInstance(this@WidgetConfigActivity)
                             .getAppWidgetInfo(appWidgetId)?.provider?.className
                     }.getOrNull()?.endsWith("DotWidgetReceiver") == true
@@ -92,6 +95,7 @@ class WidgetConfigActivity : ComponentActivity() {
                         ) / 100f
                     pack = settings.themePack.first()
                     customColor = settings.customThemeColor.first()
+                    dotColor = DotColor.fromName(settings.widgetDotColor(appWidgetId).first())
                     loaded = true
                 }
                 val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -116,11 +120,21 @@ class WidgetConfigActivity : ComponentActivity() {
                             ThemeMode.DARK -> true
                             ThemeMode.SYSTEM -> systemDark
                         }
-                        val previewScheme = com.souru.koyomi.ui.theme.koyomiColorScheme(
+                        val baseScheme = com.souru.koyomi.ui.theme.koyomiColorScheme(
                             pack,
                             previewDark,
                             customColor,
                         )
+                        // The dot widget's accent is its LED color.
+                        val previewScheme = if (isDot) {
+                            baseScheme.copy(
+                                primary = androidx.compose.ui.graphics.Color(
+                                    if (previewDark) dotColor.dark else dotColor.light,
+                                ),
+                            )
+                        } else {
+                            baseScheme
+                        }
                         Row(
                             modifier = Modifier.padding(top = 20.dp),
                             horizontalArrangement = androidx.compose.foundation.layout.Arrangement
@@ -192,8 +206,58 @@ class WidgetConfigActivity : ComponentActivity() {
                             )
                         }
 
+                        if (isDot) {
+                            Text(
+                                text = stringResource(R.string.widget_dot_color),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+                            )
+                            Row(
+                                horizontalArrangement = androidx.compose.foundation.layout.Arrangement
+                                    .spacedBy(14.dp),
+                            ) {
+                                for (option in DotColor.entries) {
+                                    val selected = option == dotColor
+                                    androidx.compose.foundation.layout.Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(
+                                                androidx.compose.ui.graphics.Color(
+                                                    if (previewDark) option.dark else option.light,
+                                                ),
+                                                androidx.compose.foundation.shape.CircleShape,
+                                            )
+                                            .then(
+                                                if (selected) {
+                                                    Modifier.border(
+                                                        3.dp,
+                                                        MaterialTheme.colorScheme.onSurface,
+                                                        androidx.compose.foundation.shape.CircleShape,
+                                                    )
+                                                } else {
+                                                    Modifier.border(
+                                                        1.dp,
+                                                        MaterialTheme.colorScheme.outlineVariant,
+                                                        androidx.compose.foundation.shape.CircleShape,
+                                                    )
+                                                },
+                                            )
+                                            .clickable { dotColor = option },
+                                    )
+                                }
+                            }
+                        }
+
                         Button(
-                            onClick = { save(appWidgetId, theme, (opacity * 100).toInt()) },
+                            onClick = {
+                                save(
+                                    appWidgetId,
+                                    theme,
+                                    (opacity * 100).toInt(),
+                                    dotColor.takeIf { isDot },
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 32.dp)
@@ -289,11 +353,17 @@ class WidgetConfigActivity : ComponentActivity() {
         }
     }
 
-    private fun save(appWidgetId: Int, theme: ThemeMode, opacityPercent: Int) {
+    private fun save(
+        appWidgetId: Int,
+        theme: ThemeMode,
+        opacityPercent: Int,
+        dotColor: DotColor?,
+    ) {
         val settings = (application as KoyomiApplication).container.settingsRepository
         lifecycleScope.launch {
             settings.setWidgetTheme(appWidgetId, theme)
             settings.setWidgetOpacity(appWidgetId, opacityPercent)
+            dotColor?.let { settings.setWidgetDotColor(appWidgetId, it.name) }
             WidgetUpdateWorker.updateAllWidgets(applicationContext)
             setResult(
                 RESULT_OK,

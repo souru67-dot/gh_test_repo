@@ -35,6 +35,8 @@ import com.souru.koyomi.R
 import com.souru.koyomi.data.ThemeMode
 import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.weather.DailyWeather
+import com.souru.koyomi.data.weather.WeatherKind
 import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.util.orderedWeekDays
 import java.time.DayOfWeek
@@ -43,6 +45,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
+import kotlinx.coroutines.flow.first
 
 class DotWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DotWidget()
@@ -54,21 +57,42 @@ class DotWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 /**
+ * LED colors for the 「ドット」 widget. Each has a variant for light
+ * backgrounds, where the bright LED tones would wash out.
+ */
+enum class DotColor(val dark: Int, val light: Int, val discDark: Int, val discLight: Int) {
+    ORANGE(0xFFF2711C.toInt(), 0xFFF2711C.toInt(), R.drawable.dot_today_bg_orange, R.drawable.dot_today_bg_orange),
+    GREEN(0xFF39E27A.toInt(), 0xFF1E9E52.toInt(), R.drawable.dot_today_bg_green, R.drawable.dot_today_bg_green_light),
+    WHITE(0xFFF2F2F2.toInt(), 0xFF111111.toInt(), R.drawable.dot_today_bg_white, R.drawable.dot_today_bg_white_light),
+    RED(0xFFFF4D3D.toInt(), 0xFFE03A2E.toInt(), R.drawable.dot_today_bg_red, R.drawable.dot_today_bg_red_light),
+    BLUE(0xFF4DA3FF.toInt(), 0xFF2F6FD6.toInt(), R.drawable.dot_today_bg_blue, R.drawable.dot_today_bg_blue_light),
+    ;
+
+    companion object {
+        fun fromName(name: String?): DotColor = entries.find { it.name == name } ?: ORANGE
+    }
+}
+
+/**
  * ドット (4x2): an LED dot-matrix board — a big round-dot clock with its
- * unlit dots glowing faintly, the date, today's events and to-dos on the
- * left, and a dot-matrix month on the right. Orange on black by default.
+ * unlit dots glowing faintly, the date with the day's weather, a live
+ * countdown to the next event, today's events and to-dos, and a dot-matrix
+ * month. Orange on black by default; the LED color is per widget.
  *
- * The clock is a TextClock (ticks without widget redraws); the date and the
- * month are RemoteViews TextViews in the bundled Doto face, refreshed at
- * midnight with the rest of the widgets. Event/to-do titles stay in the
- * system font because Doto only covers Latin.
+ * The clock is a TextClock and the countdown a Chronometer (both tick in
+ * the launcher without widget redraws); the rest refreshes with the other
+ * widgets (calendar changes, event start/end, midnight). Event/to-do titles
+ * stay in the system font because the Doto face only covers Latin.
  */
 class DotWidget : GlanceAppWidget() {
 
     private class Snapshot(
         val month: MonthGridData,
         val events: List<EventInstance>,
+        val next: EventInstance?,
         val tasks: List<Task>,
+        val weather: DailyWeather?,
+        val color: DotColor,
         val look: WidgetLook,
         val premium: Boolean,
     )
@@ -77,6 +101,7 @@ class DotWidget : GlanceAppWidget() {
         val app = context.applicationContext as KoyomiApplication
         val today = LocalDate.now()
         val now = LocalTime.now()
+        val nowMs = System.currentTimeMillis()
         val tasks = runCatching {
             app.container.taskRepository
                 .loadTasksByDay(today, today.plusDays(1))[today]
@@ -84,10 +109,27 @@ class DotWidget : GlanceAppWidget() {
                 // Open to-dos; timed ones drop off once their time has passed.
                 .filter { !it.done && (it.time?.isAfter(now) ?: true) }
         }.getOrDefault(emptyList())
+        val sections = loadDaySections(context, days = 2)
+        // Next timed event that hasn't started, within 12 hours (rolls over
+        // to tomorrow morning once today's are done).
+        val next = sections.flatMap { it.events }
+            .filter { !it.allDay && it.begin > nowMs && it.begin - nowMs <= 12 * 3_600_000L }
+            .minByOrNull { it.begin }
+        val weather = runCatching {
+            app.container.weatherRepository.forecastByDay.first()[today]
+        }.getOrNull()
+        val appWidgetId = id.toString().filter { it.isDigit() }.toIntOrNull() ?: -1
+        val color = DotColor.fromName(
+            app.container.settingsRepository.widgetDotColor(appWidgetId).first(),
+        )
         return Snapshot(
             month = loadMonthGridData(context),
-            events = loadDaySections(context, days = 1).first().events,
+            // The next event already has its own countdown line.
+            events = sections.first().events.filter { it != next },
+            next = next,
             tasks = tasks,
+            weather = weather,
+            color = color,
             look = resolveWidgetLook(context, id, defaultTheme = ThemeMode.DARK),
             premium = isPremiumUnlocked(context),
         )
@@ -105,9 +147,17 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
+    /** Whether this widget currently draws on a dark background. */
+    private fun isDark(context: Context, look: WidgetLook): Boolean = look.forcedDark
+        ?: ((context.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES)
+
     @Composable
     private fun Content(context: Context, s: Snapshot) {
         val today = LocalDate.now()
+        val dark = isDark(context, s.look)
+        val lit = if (dark) s.color.dark else s.color.light
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -121,15 +171,19 @@ class DotWidget : GlanceAppWidget() {
                     .defaultWeight()
                     .fillMaxHeight(),
             ) {
-                AndroidRemoteViews(RemoteViews(context.packageName, R.layout.widget_dot_clock))
+                AndroidRemoteViews(clockViews(context, lit))
                 Spacer(modifier = GlanceModifier.height(4.dp))
-                AndroidRemoteViews(dateViews(context, today))
+                AndroidRemoteViews(dateViews(context, today, s.weather, lit))
                 Spacer(modifier = GlanceModifier.height(6.dp))
-                Agenda(context, s)
+                s.next?.let { next ->
+                    AndroidRemoteViews(nextViews(context, next, lit, dark))
+                    Spacer(modifier = GlanceModifier.height(2.dp))
+                }
+                Agenda(context, s, lit)
             }
             Spacer(modifier = GlanceModifier.width(10.dp))
             AndroidRemoteViews(
-                remoteViews = calendarViews(context, s.month, today),
+                remoteViews = calendarViews(context, s.month, today, s.color, lit, dark),
                 modifier = GlanceModifier
                     .width(124.dp)
                     .fillMaxHeight(),
@@ -137,11 +191,12 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
-    /** Today's events, then today's open to-dos — one compact line each. */
+    /** Today's remaining events, then today's open to-dos — one line each. */
     @Composable
-    private fun Agenda(context: Context, s: Snapshot) {
+    private fun Agenda(context: Context, s: Snapshot, lit: Int) {
+        val markColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(lit))
         LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
-            if (s.events.isEmpty() && s.tasks.isEmpty()) {
+            if (s.events.isEmpty() && s.tasks.isEmpty() && s.next == null) {
                 item {
                     Text(
                         text = context.getString(R.string.no_events),
@@ -156,6 +211,7 @@ class DotWidget : GlanceAppWidget() {
                 AgendaLine(
                     mark = formatWidgetTime(context, event),
                     title = event.title.ifBlank { context.getString(R.string.untitled) },
+                    markColor = markColor,
                 )
             }
             items(s.tasks) { task ->
@@ -163,24 +219,25 @@ class DotWidget : GlanceAppWidget() {
                     mark = task.time?.format(com.souru.koyomi.util.deviceTimeFormatter(context))
                         ?.let { "□ $it" } ?: "□",
                     title = task.title,
+                    markColor = markColor,
                 )
             }
         }
     }
 
     @Composable
-    private fun AgendaLine(mark: String, title: String) {
+    private fun AgendaLine(
+        mark: String,
+        title: String,
+        markColor: androidx.glance.unit.ColorProvider,
+    ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = mark,
-                style = TextStyle(
-                    color = GlanceTheme.colors.primary,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
+                style = TextStyle(color = markColor, fontSize = 9.sp, fontWeight = FontWeight.Medium),
                 maxLines = 1,
                 modifier = GlanceModifier.width(44.dp),
             )
@@ -192,18 +249,79 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
-    /** "11/23 MON" — Latin on purpose: the dot face has no CJK glyphs. */
-    private fun dateViews(context: Context, date: LocalDate): RemoteViews =
-        RemoteViews(context.packageName, R.layout.widget_dot_date).apply {
-            val weekday = date.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH)
-                .uppercase(Locale.ENGLISH)
-            setTextViewText(
-                R.id.dot_date,
-                "%02d/%02d %s".format(Locale.ENGLISH, date.monthValue, date.dayOfMonth, weekday),
-            )
+    private fun ghostOf(lit: Int): Int = (lit and 0x00FFFFFF) or (0x2E shl 24)
+
+    private fun clockViews(context: Context, lit: Int): RemoteViews =
+        RemoteViews(context.packageName, R.layout.widget_dot_clock).apply {
+            setTextColor(R.id.dot_clock_time, lit)
+            setTextColor(R.id.dot_clock_ghost, ghostOf(lit))
         }
 
-    private fun calendarViews(context: Context, data: MonthGridData, today: LocalDate): RemoteViews {
+    /** "11/23 MON ☀ 18° 9° 70%" — Latin on purpose: the dot face has no CJK. */
+    private fun dateViews(
+        context: Context,
+        date: LocalDate,
+        weather: DailyWeather?,
+        lit: Int,
+    ): RemoteViews = RemoteViews(context.packageName, R.layout.widget_dot_date).apply {
+        val weekday = date.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH)
+            .uppercase(Locale.ENGLISH)
+        setTextViewText(
+            R.id.dot_date,
+            "%02d/%02d %s".format(Locale.ENGLISH, date.monthValue, date.dayOfMonth, weekday),
+        )
+        setTextColor(R.id.dot_date, lit)
+        if (weather != null) {
+            setImageViewResource(R.id.dot_wx, weatherIcon(weather.kind))
+            setInt(R.id.dot_wx, "setColorFilter", lit)
+            setViewVisibility(R.id.dot_wx, android.view.View.VISIBLE)
+            setTextViewText(R.id.dot_temp, "${weather.maxC.toInt()}° ${weather.minC.toInt()}°")
+            setTextColor(R.id.dot_temp, lit)
+            setViewVisibility(R.id.dot_temp, android.view.View.VISIBLE)
+            // Rain chance only when it matters (umbrella-worthy days).
+            val rain = weather.rainChance
+            if (rain != null && rain >= 50) {
+                setTextViewText(R.id.dot_rain, "$rain%")
+                setTextColor(R.id.dot_rain, lit)
+                setViewVisibility(R.id.dot_rain, android.view.View.VISIBLE)
+            }
+        }
+    }
+
+    private fun weatherIcon(kind: WeatherKind): Int = when (kind) {
+        WeatherKind.SUN -> R.drawable.dot_wx_sun
+        WeatherKind.PARTLY -> R.drawable.dot_wx_partly
+        WeatherKind.CLOUD -> R.drawable.dot_wx_cloud
+        WeatherKind.FOG -> R.drawable.dot_wx_fog
+        WeatherKind.RAIN -> R.drawable.dot_wx_rain
+        WeatherKind.SNOW -> R.drawable.dot_wx_snow
+        WeatherKind.THUNDER -> R.drawable.dot_wx_thunder
+    }
+
+    /** "NEXT 41:59 歯医者" with a launcher-side countdown. */
+    private fun nextViews(context: Context, event: EventInstance, lit: Int, dark: Boolean): RemoteViews =
+        RemoteViews(context.packageName, R.layout.widget_dot_next).apply {
+            val base = android.os.SystemClock.elapsedRealtime() +
+                (event.begin - System.currentTimeMillis())
+            setChronometer(R.id.dot_next_timer, base, null, true)
+            setChronometerCountDown(R.id.dot_next_timer, true)
+            setTextColor(R.id.dot_next_timer, lit)
+            setTextColor(R.id.dot_next_label, lit)
+            setTextViewText(
+                R.id.dot_next_title,
+                event.title.ifBlank { context.getString(R.string.untitled) },
+            )
+            setTextColor(R.id.dot_next_title, if (dark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt())
+        }
+
+    private fun calendarViews(
+        context: Context,
+        data: MonthGridData,
+        today: LocalDate,
+        color: DotColor,
+        lit: Int,
+        dark: Boolean,
+    ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_dot_calendar)
         val month: YearMonth = data.month
         views.setTextViewText(
@@ -211,15 +329,23 @@ class DotWidget : GlanceAppWidget() {
             month.month.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH)
                 .uppercase(Locale.ENGLISH) + " " + month.year,
         )
+        views.setTextColor(R.id.dot_cal_header, lit)
         orderedWeekDays(data.weekStart).forEachIndexed { i, day ->
             views.setTextViewText(
                 WEEKDAY_IDS[i],
                 day.getDisplayName(JavaTextStyle.NARROW, Locale.ENGLISH),
             )
+            views.setTextColor(WEEKDAY_IDS[i], lit)
         }
-        val lit = context.getColor(R.color.dot_lit)
-        val holiday = context.getColor(R.color.dot_holiday)
-        val onLit = context.getColor(R.color.dot_on_lit)
+        // Sundays/holidays in red — unless the LED itself is red, then in
+        // plain ink so they still stand apart.
+        val holiday = if (color == DotColor.RED) {
+            if (dark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt()
+        } else {
+            context.getColor(R.color.dot_holiday)
+        }
+        val onDisc = if (color == DotColor.WHITE && dark) 0xFF111111.toInt() else 0xFFFFFFFF.toInt()
+        val disc = if (dark) color.discDark else color.discLight
         for (week in 0 until 6) {
             val inMonth = (0 until 7).any { YearMonth.from(data.days[week * 7 + it]) == month }
             views.setViewVisibility(
@@ -236,8 +362,8 @@ class DotWidget : GlanceAppWidget() {
                 }
                 views.setTextViewText(cell, date.dayOfMonth.toString())
                 if (date == today) {
-                    views.setInt(cell, "setBackgroundResource", R.drawable.dot_today_bg)
-                    views.setTextColor(cell, onLit)
+                    views.setInt(cell, "setBackgroundResource", disc)
+                    views.setTextColor(cell, onDisc)
                 } else {
                     views.setTextColor(
                         cell,
