@@ -521,7 +521,7 @@ private object DotRenderer {
 
     /**
      * The LED clock: four 5x7 digits of big round dots, every unlit dot
-     * faintly visible, and a dim separator column — like a real dot panel.
+     * faintly visible, and a colon column (two lit dots) — like a real dot panel.
      * In 12-hour mode a leading zero is left unlit.
      */
     fun clock(context: Context, hour: Int, minute: Int, pitchDp: Float, lit: Int): Bitmap {
@@ -549,7 +549,12 @@ private object DotRenderer {
         x += gap
         digit(hour % 10)
         x += gap
-        for (row in 0 until 7) canvas.drawCircle(x + 0.5f * p, (row + 0.5f) * p, r, off)
+        // Separator column: the colon is two lit dots (rows 3 and 5 of 7),
+        // the rest of the column stays as unlit LEDs. Kept steady — a blink
+        // would need per-second redraws.
+        for (row in 0 until 7) {
+            canvas.drawCircle(x + 0.5f * p, (row + 0.5f) * p, r, if (row == 2 || row == 4) on else off)
+        }
         x += p + gap
         digit(minute / 10)
         x += gap
