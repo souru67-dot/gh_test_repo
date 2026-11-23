@@ -1,5 +1,8 @@
 <resources>
     <style name="Theme.Koyomi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/koyomi_paper</item>
+        <item name="android:colorBackground">@color/koyomi_paper</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

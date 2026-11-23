@@ -709,8 +709,8 @@ private fun DraggableEventChip(
 }
 
 /**
- * こよみの chip language: a left color notch on a lightly tinted body, with
- * theme-colored text — legible in both themes and visually our own.
+ * こよみの chip language: a calendar-color notch on a neutral ink-wash body
+ * — the grid stays black and white, the notch alone says which calendar.
  */
 @Composable
 private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolean = false) {
@@ -725,8 +725,8 @@ private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolea
             .fillMaxWidth()
             .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
             .background(
-                solid.copy(alpha = 0.15f * strength),
-                RoundedCornerShape(3.dp),
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f * strength),
+                RoundedCornerShape(2.dp),
             ),
     ) {
         Box(
@@ -735,7 +735,7 @@ private fun EventChipBody(event: EventInstance, dimmed: Boolean, ghosted: Boolea
                 .fillMaxHeight()
                 .background(
                     solid.copy(alpha = strength),
-                    RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp),
+                    RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp),
                 ),
         )
         Text(

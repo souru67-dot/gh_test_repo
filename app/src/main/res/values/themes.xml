@@ -1,5 +1,10 @@
 <resources>
+    <!-- White paper, black ink. The window background matches the Compose
+         surface so launch and screen transitions never flash a tinted color. -->
     <style name="Theme.Koyomi" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/koyomi_paper</item>
+        <item name="android:colorBackground">@color/koyomi_paper</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

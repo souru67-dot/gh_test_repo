@@ -473,7 +473,7 @@ private fun ThemePackRow(
     ) {
         RadioButton(selected = selected, onClick = onClick)
         Row(modifier = Modifier.padding(start = 4.dp, end = 10.dp)) {
-            for (color in listOf(scheme.surface, scheme.primary, scheme.tertiary)) {
+            for (color in listOf(scheme.surface, scheme.primaryContainer, scheme.primary)) {
                 Box(
                     modifier = Modifier
                         .padding(end = 4.dp)
@@ -669,7 +669,7 @@ private fun CustomThemeSection(
     ) {
         RadioButton(selected = selected, onClick = onSelect)
         Row(modifier = Modifier.padding(start = 4.dp, end = 10.dp)) {
-            for (swatch in listOf(scheme.surface, scheme.primary, scheme.tertiary)) {
+            for (swatch in listOf(scheme.surface, scheme.primaryContainer, scheme.primary)) {
                 Box(
                     modifier = Modifier
                         .padding(end = 4.dp)

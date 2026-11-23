@@ -101,7 +101,7 @@ fun TasksScreen(
                     taskSection(
                         key = "overdue",
                         title = { stringResource(R.string.tasks_overdue) },
-                        titleColor = { MaterialTheme.colorScheme.tertiary },
+                        titleColor = { MaterialTheme.colorScheme.error },
                         tasks = state.overdue,
                         showDate = true,
                         viewModel = viewModel,
@@ -227,7 +227,7 @@ private fun TaskListRow(
                     text = subText,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (!task.done && task.dueDate.isBefore(LocalDate.now())) {
-                        MaterialTheme.colorScheme.tertiary
+                        MaterialTheme.colorScheme.error
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
