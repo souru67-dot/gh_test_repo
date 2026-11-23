@@ -1,32 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Dot-matrix clock. A TextClock ticks on its own (no widget redraws), drawn
-  in the round-dot Doto face; an "88 88" ghost underneath shows the unlit
-  dots like a real LED panel. Doto's digits are monospaced, so the ghost
-  lines up exactly with the live digits.
+  Dot-matrix clock. Widgets can't use bundled fonts (the launcher inflates
+  this layout), so the LED look is built from three layers:
+    1. a grid of faint dots (the unlit LEDs),
+    2. a live TextClock in the system's heaviest sans,
+    3. a background-colored mask with round holes on the same grid,
+  so the digits only show through the holes — a real dot panel, and the
+  clock still ticks by itself. Colors/alpha are set from code to match
+  the widget's background and LED color.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
-    <TextView
+    <ImageView
         android:id="@+id/dot_clock_ghost"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/doto_dot"
-        android:includeFontPadding="false"
-        android:text="88 88"
-        android:textColor="@color/dot_ghost"
-        android:textSize="48sp" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/dot_ghost_tile" />
 
     <TextClock
         android:id="@+id/dot_clock_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/doto_dot"
-        android:format12Hour="hh mm"
-        android:format24Hour="HH mm"
+        android:fontFamily="sans-serif-black"
+        android:format12Hour="hh:mm"
+        android:format24Hour="HH:mm"
         android:includeFontPadding="false"
-        android:textColor="@color/dot_lit"
-        android:textSize="48sp" />
+        android:paddingStart="2dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="2dp"
+        android:paddingBottom="1dp"
+        android:textColor="#F2711C"
+        android:textSize="46sp" />
+
+    <ImageView
+        android:id="@+id/dot_clock_mask"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/dot_mask_tile" />
 </FrameLayout>
