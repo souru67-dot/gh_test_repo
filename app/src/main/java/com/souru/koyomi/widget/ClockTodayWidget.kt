@@ -76,6 +76,7 @@ class ClockTodayWidget : GlanceAppWidget() {
             WidgetClock(
                 context = context,
                 modifier = GlanceModifier.width(128.dp),
+                forcedDark = look.forcedDark,
             )
             Spacer(modifier = GlanceModifier.width(12.dp))
             // Vertical hairline separating the clock from the agenda.
@@ -83,7 +84,7 @@ class ClockTodayWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(GlanceTheme.colors.surfaceVariant),
+                    .background(GlanceTheme.colors.outlineVariant),
             ) {}
             Spacer(modifier = GlanceModifier.width(12.dp))
             LazyColumn(

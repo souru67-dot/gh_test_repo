@@ -365,9 +365,10 @@ private fun WidgetOpacitySlider(percent: Int, onChange: (Int) -> Unit) {
             value = sliderValue,
             onValueChange = { sliderValue = it },
             onValueChangeFinished = {
-                onChange((sliderValue * 100).toInt().coerceIn(20, 100))
+                onChange((sliderValue * 100).toInt().coerceIn(0, 100))
             },
-            valueRange = 0.2f..1f,
+            // 0% = fully transparent: text straight on the wallpaper.
+            valueRange = 0f..1f,
             modifier = Modifier.weight(1f),
         )
         Text(

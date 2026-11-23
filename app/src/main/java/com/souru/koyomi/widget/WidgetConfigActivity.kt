@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -20,6 +22,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -67,6 +71,12 @@ class WidgetConfigActivity : ComponentActivity() {
                 var loaded by remember { mutableStateOf(false) }
                 var theme by remember { mutableStateOf(ThemeMode.SYSTEM) }
                 var opacity by remember { mutableFloatStateOf(1f) }
+                var pack by remember { mutableStateOf(com.souru.koyomi.data.ThemePack.SUMI) }
+                var customColor by remember {
+                    androidx.compose.runtime.mutableIntStateOf(
+                        com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
+                    )
+                }
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     theme = settings.widgetTheme(appWidgetId).first()
@@ -74,8 +84,11 @@ class WidgetConfigActivity : ComponentActivity() {
                         settings.widgetOpacity(appWidgetId).first()
                             ?: settings.widgetOpacityPercent.first()
                         ) / 100f
+                    pack = settings.themePack.first()
+                    customColor = settings.customThemeColor.first()
                     loaded = true
                 }
+                val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
 
                 Surface(modifier = Modifier.fillMaxSize()) {
                     if (!loaded) return@Surface
@@ -88,6 +101,39 @@ class WidgetConfigActivity : ComponentActivity() {
                         Text(
                             text = stringResource(R.string.widget_config_title),
                             style = MaterialTheme.typography.headlineSmall,
+                        )
+
+                        // Live preview over a light and a dark "wallpaper", so
+                        // the right text tone for a see-through widget is obvious.
+                        val previewDark = when (theme) {
+                            ThemeMode.LIGHT -> false
+                            ThemeMode.DARK -> true
+                            ThemeMode.SYSTEM -> systemDark
+                        }
+                        val previewScheme = com.souru.koyomi.ui.theme.koyomiColorScheme(
+                            pack,
+                            previewDark,
+                            customColor,
+                        )
+                        Row(
+                            modifier = Modifier.padding(top = 20.dp),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement
+                                .spacedBy(12.dp),
+                        ) {
+                            for (wallpaperDark in listOf(false, true)) {
+                                WidgetLookPreview(
+                                    scheme = previewScheme,
+                                    opacity = opacity,
+                                    wallpaperDark = wallpaperDark,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.widget_config_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
 
                         Text(
@@ -149,6 +195,88 @@ class WidgetConfigActivity : ComponentActivity() {
                         ) {
                             Text(stringResource(R.string.save))
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    /** A tiny mock widget on a sample wallpaper, drawn with the real colors. */
+    @Composable
+    private fun WidgetLookPreview(
+        scheme: androidx.compose.material3.ColorScheme,
+        opacity: Float,
+        wallpaperDark: Boolean,
+        modifier: Modifier = Modifier,
+    ) {
+        val wallpaper = if (wallpaperDark) {
+            androidx.compose.ui.graphics.Brush.linearGradient(
+                listOf(
+                    androidx.compose.ui.graphics.Color(0xFF1B2330),
+                    androidx.compose.ui.graphics.Color(0xFF3A2F45),
+                ),
+            )
+        } else {
+            androidx.compose.ui.graphics.Brush.linearGradient(
+                listOf(
+                    androidx.compose.ui.graphics.Color(0xFFE9E4DA),
+                    androidx.compose.ui.graphics.Color(0xFFBFD0DA),
+                ),
+            )
+        }
+        androidx.compose.foundation.layout.Box(
+            modifier = modifier
+                .height(116.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                .background(wallpaper)
+                .padding(12.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        scheme.surface.copy(alpha = opacity),
+                        androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    )
+                    .padding(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = java.time.LocalDate.now().dayOfMonth.toString(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = scheme.onSurface,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    )
+                    Text(
+                        text = java.time.LocalDate.now().dayOfWeek.getDisplayName(
+                            java.time.format.TextStyle.SHORT,
+                            java.util.Locale.getDefault(),
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp),
+                    )
+                }
+                for (width in listOf(0.8f, 0.55f)) {
+                    Row(
+                        modifier = Modifier.padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .size(width = 3.dp, height = 12.dp)
+                                .background(scheme.primary),
+                        )
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .fillMaxWidth(width)
+                                .height(6.dp)
+                                .background(
+                                    scheme.onSurface.copy(alpha = 0.75f),
+                                    androidx.compose.foundation.shape.RoundedCornerShape(3.dp),
+                                ),
+                        )
                     }
                 }
             }

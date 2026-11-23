@@ -278,4 +278,7 @@
     <string name="moon_first_quarter">上弦</string>
     <string name="moon_full">満月</string>
     <string name="moon_last_quarter">下弦</string>
+    <string name="widget_config_hint">透明にする場合は、明るい壁紙なら「ライト」、暗い壁紙なら「ダーク」を選ぶと文字がくっきり読めます。</string>
+    <string name="widget_hitome_label">ひとめ</string>
+    <string name="widget_hitome_description">今日の日付と天気、今月のカレンダー、今日の予定をひと目で。</string>
 </resources>

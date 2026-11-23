@@ -51,9 +51,13 @@ import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 import kotlinx.coroutines.flow.first
 
-// Muted (desaturated) weekend tints — quiet enough for a home screen.
-val WidgetSundayColor = ColorProvider(Color(0xFFBA7B74), Color(0xFFCB968F))
-val WidgetSaturdayColor = ColorProvider(Color(0xFF7A8FA8), Color(0xFF93A8BF))
+// Weekend tints ride on theme roles (widget schemes put Saturday blue in
+// `secondary`; `error` is already the Sunday red) so they follow a widget's
+// FORCED light/dark choice, not just the system night mode.
+val WidgetSundayColor: androidx.glance.unit.ColorProvider
+    @Composable get() = GlanceTheme.colors.error
+val WidgetSaturdayColor: androidx.glance.unit.ColorProvider
+    @Composable get() = GlanceTheme.colors.secondary
 
 
 // ---------- Per-widget look (theme + opacity) ----------
@@ -63,7 +67,23 @@ data class WidgetLook(
     val opacityPercent: Int,
     val pack: ThemePack = ThemePack.SUMI,
     val customColor: Int = com.souru.koyomi.data.SettingsRepository.DEFAULT_CUSTOM_THEME_COLOR,
-)
+    /** App-wide Material You opt-in; widgets follow it like the app does. */
+    val dynamicColor: Boolean = false,
+) {
+    /** Forced darkness, or null when following the system. */
+    val forcedDark: Boolean?
+        get() = when (theme) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> null
+        }
+}
+
+/** The widget flavour of a pack's scheme: Saturday blue rides in `secondary`. */
+fun widgetScheme(look: WidgetLook, dark: Boolean): androidx.compose.material3.ColorScheme =
+    koyomiColorScheme(look.pack, darkTheme = dark, customColor = look.customColor).copy(
+        secondary = if (dark) Color(0xFF8FB0E6) else Color(0xFF3C64A6),
+    )
 
 /**
  * Resolves the per-widget theme/opacity chosen in the widget config screen,
@@ -84,6 +104,7 @@ suspend fun resolveWidgetLook(context: Context, glanceId: GlanceId): WidgetLook 
         opacityPercent = opacity,
         pack = pack,
         customColor = customColor,
+        dynamicColor = settings.dynamicColor.first(),
     )
 }
 
@@ -116,24 +137,25 @@ fun WidgetPremiumLock(context: Context, look: WidgetLook) {
     }
 }
 
-/** Color scheme for the chosen widget theme (SYSTEM = dynamic on Android 12+). */
+private val WidgetLook.usesDynamic: Boolean
+    get() = dynamicColor && theme == ThemeMode.SYSTEM &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+
+/**
+ * Color scheme for the chosen widget theme. SYSTEM follows day/night with
+ * the app's monochrome palette (wallpaper colors only if the user opted
+ * into Material You in settings, exactly like the app itself).
+ */
 @Composable
-fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when (look.theme) {
-    ThemeMode.SYSTEM ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            GlanceTheme.colors
-        } else {
-            ColorProviders(
-                light = koyomiColorScheme(look.pack, darkTheme = false, customColor = look.customColor),
-                dark = koyomiColorScheme(look.pack, darkTheme = true, customColor = look.customColor),
-            )
-        }
-    ThemeMode.LIGHT -> {
-        val scheme = koyomiColorScheme(look.pack, darkTheme = false, customColor = look.customColor)
-        ColorProviders(light = scheme, dark = scheme)
-    }
-    ThemeMode.DARK -> {
-        val scheme = koyomiColorScheme(look.pack, darkTheme = true, customColor = look.customColor)
+fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when {
+    look.usesDynamic -> GlanceTheme.colors
+    look.theme == ThemeMode.SYSTEM -> ColorProviders(
+        light = widgetScheme(look, dark = false),
+        dark = widgetScheme(look, dark = true),
+    )
+    else -> {
+        val scheme = widgetScheme(look, dark = look.theme == ThemeMode.DARK)
         ColorProviders(light = scheme, dark = scheme)
     }
 }
@@ -141,7 +163,7 @@ fun widgetColors(look: WidgetLook): androidx.glance.color.ColorProviders = when 
 /** Widget background honoring the opacity setting (0 = fully transparent). */
 @Composable
 fun widgetBackground(look: WidgetLook): androidx.glance.unit.ColorProvider {
-    if (look.opacityPercent >= 100 && look.theme == ThemeMode.SYSTEM) {
+    if (look.opacityPercent >= 100 && look.usesDynamic) {
         return GlanceTheme.colors.surface
     }
     val alpha = look.opacityPercent / 100f
@@ -168,11 +190,11 @@ fun WidgetHairlineDivider(modifier: GlanceModifier = GlanceModifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(GlanceTheme.colors.surfaceVariant),
+            .background(GlanceTheme.colors.outlineVariant),
     ) {}
 }
 
-/** Section heading in the brand accent (朱) — 今日/明日/dates in list widgets. */
+/** Section heading in the ink color — 今日/明日/dates in list widgets. */
 @Composable
 fun WidgetSectionLabel(text: String, modifier: GlanceModifier = GlanceModifier) {
     Text(
@@ -264,7 +286,7 @@ fun GlanceMonthCalendar(
                     fontWeight = FontWeight.Bold,
                 ),
             )
-            // 朱 dot after the month — the launcher icon's brand mark, echoed.
+            // Ink dot after the month — a quiet typographic full stop.
             Box(
                 modifier = GlanceModifier
                     .padding(start = 5.dp, top = if (compact) 6.dp else 10.dp),
@@ -288,12 +310,12 @@ fun GlanceMonthCalendar(
             Text(
                 text = context.getString(R.string.back_to_today),
                 style = TextStyle(
-                    color = GlanceTheme.colors.onPrimaryContainer,
+                    color = GlanceTheme.colors.onPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                 ),
                 modifier = GlanceModifier
-                    .background(GlanceTheme.colors.primaryContainer)
+                    .background(GlanceTheme.colors.primary)
                     .cornerRadius(12.dp)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .clickable(actionStartActivity(openDayIntent(context, today))),
@@ -423,6 +445,8 @@ fun GlanceMiniMonth(
     context: Context,
     data: MonthGridData,
     modifier: GlanceModifier = GlanceModifier,
+    /** False when the host widget already shows the month (e.g. ひとめ). */
+    showHeader: Boolean = true,
 ) {
     val today = LocalDate.now()
     val locale = Locale.getDefault()
@@ -438,7 +462,7 @@ fun GlanceMiniMonth(
     }
     Column(modifier = modifier) {
         // Month header — small year alongside for context.
-        Row(
+        if (showHeader) Row(
             modifier = GlanceModifier.fillMaxWidth().padding(bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -703,14 +727,33 @@ fun WidgetCenteredMessage(text: String, modifier: GlanceModifier = GlanceModifie
 
 // ---------- Clock ----------
 
-/** Auto-updating clock via RemoteViews TextClock (no periodic redraws needed). */
+/**
+ * Auto-updating clock via RemoteViews TextClock (no periodic redraws needed).
+ * The layout's colors follow day/night; a widget forced to light or dark
+ * gets explicit colors so the clock never vanishes into its background.
+ */
 @Composable
-fun WidgetClock(context: Context, modifier: GlanceModifier = GlanceModifier) {
+fun WidgetClock(
+    context: Context,
+    modifier: GlanceModifier = GlanceModifier,
+    forcedDark: Boolean? = null,
+) {
+    val views = RemoteViews(context.packageName, R.layout.widget_clock)
+    if (forcedDark != null) {
+        views.setTextColor(
+            R.id.widget_clock_time,
+            if (forcedDark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt(),
+        )
+        views.setTextColor(
+            R.id.widget_clock_date,
+            if (forcedDark) 0xFFA3A3A3.toInt() else 0xFF6B6B6B.toInt(),
+        )
+    }
     Box(
         modifier = modifier.clickable(
             actionStartActivity(openDayIntent(context, LocalDate.now())),
         ),
     ) {
-        AndroidRemoteViews(RemoteViews(context.packageName, R.layout.widget_clock))
+        AndroidRemoteViews(views)
     }
 }

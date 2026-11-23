@@ -279,4 +279,7 @@
     <string name="moon_first_quarter">상현</string>
     <string name="moon_full">보름달</string>
     <string name="moon_last_quarter">하현</string>
+    <string name="widget_config_hint">투명하게 할 때는 밝은 배경화면이면 \'라이트\', 어두운 배경화면이면 \'다크\'를 선택하면 글자가 또렷하게 보입니다.</string>
+    <string name="widget_hitome_label">한눈에</string>
+    <string name="widget_hitome_description">오늘의 날짜와 날씨, 이번 달 달력, 오늘 일정을 한눈에.</string>
 </resources>

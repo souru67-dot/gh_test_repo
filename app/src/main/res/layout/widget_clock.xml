@@ -5,6 +5,7 @@
     android:orientation="vertical">
 
     <TextClock
+        android:id="@+id/widget_clock_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:format24Hour="HH:mm"
@@ -14,6 +15,7 @@
         android:textColor="@color/widget_text_primary" />
 
     <TextClock
+        android:id="@+id/widget_clock_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"

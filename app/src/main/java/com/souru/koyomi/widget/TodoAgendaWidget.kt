@@ -175,7 +175,7 @@ class TodoAgendaWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(GlanceTheme.colors.surfaceVariant),
+                    .background(GlanceTheme.colors.outlineVariant),
             ) {}
             Spacer(modifier = GlanceModifier.width(12.dp))
             GlanceMiniMonth(
@@ -205,9 +205,7 @@ class TodoAgendaWidget : GlanceAppWidget() {
                     .size(8.dp)
                     .background(
                         task.color?.let { eventColorProvider(it) }
-                            ?: androidx.glance.unit.ColorProvider(
-                                androidx.compose.ui.graphics.Color(0xFFA8503C),
-                            ),
+                            ?: GlanceTheme.colors.onSurfaceVariant,
                     )
                     .cornerRadius(4.dp),
             ) {}
@@ -226,7 +224,7 @@ class TodoAgendaWidget : GlanceAppWidget() {
                     text = relativeDayLabel(context, task.dueDate),
                     style = TextStyle(
                         color = if (overdue) {
-                            GlanceTheme.colors.tertiary
+                            GlanceTheme.colors.error
                         } else {
                             GlanceTheme.colors.onSurfaceVariant
                         },

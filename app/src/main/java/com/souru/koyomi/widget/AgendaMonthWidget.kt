@@ -116,7 +116,7 @@ class AgendaMonthWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(GlanceTheme.colors.surfaceVariant),
+                    .background(GlanceTheme.colors.outlineVariant),
             ) {}
             Spacer(modifier = GlanceModifier.width(12.dp))
             GlanceMiniMonth(

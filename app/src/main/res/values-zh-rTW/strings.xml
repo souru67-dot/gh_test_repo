@@ -279,4 +279,7 @@
     <string name="moon_first_quarter">上弦月</string>
     <string name="moon_full">滿月</string>
     <string name="moon_last_quarter">下弦月</string>
+    <string name="widget_config_hint">設為透明時,淺色桌布請選擇「淺色」,深色桌布請選擇「深色」,文字會更清晰。</string>
+    <string name="widget_hitome_label">一覽</string>
+    <string name="widget_hitome_description">今天的日期與天氣、本月行事曆和今天的活動,一目了然。</string>
 </resources>
