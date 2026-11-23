@@ -1,44 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Dot-matrix clock. Widgets can't use bundled fonts (the launcher inflates
-  this layout), so the LED look is built from three layers:
-    1. a grid of faint dots (the unlit LEDs),
-    2. a live TextClock in the system's heaviest sans,
-    3. a background-colored mask with round holes on the same grid,
-  so the digits only show through the holes — a real dot panel, and the
-  clock still ticks by itself. Colors/alpha are set from code to match
-  the widget's background and LED color.
+  this layout), so the LED look is three stacked layers filling the box:
+    1. a tiled grid of faint dots (the unlit LEDs)       - background tile
+    2. a live TextClock in the system's heaviest sans, auto-sized to the box
+    3. a tiled mask in the widget's background color with round holes
+  The digits show only through the holes: a real dot panel that still
+  ticks by itself. Tiles are set from code per background/LED color.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <ImageView
         android:id="@+id/dot_clock_ghost"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitXY"
-        android:src="@drawable/dot_ghost_tile" />
+        android:background="@drawable/dot_ghost_orange_dark" />
 
     <TextClock
         android:id="@+id/dot_clock_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoSizeMaxTextSize="120sp"
+        android:autoSizeMinTextSize="16sp"
+        android:autoSizeStepGranularity="1sp"
+        android:autoSizeTextType="uniform"
         android:fontFamily="sans-serif-black"
         android:format12Hour="hh:mm"
         android:format24Hour="HH:mm"
+        android:gravity="center_vertical|start"
         android:includeFontPadding="false"
-        android:paddingStart="2dp"
-        android:paddingTop="3dp"
-        android:paddingEnd="2dp"
-        android:paddingBottom="1dp"
-        android:textColor="#F2711C"
-        android:textSize="46sp" />
+        android:maxLines="1"
+        android:textColor="#F2711C" />
 
     <ImageView
         android:id="@+id/dot_clock_mask"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitXY"
-        android:src="@drawable/dot_mask_tile" />
+        android:background="@drawable/dot_mask_dark_100" />
 </FrameLayout>

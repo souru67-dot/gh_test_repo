@@ -50,7 +50,6 @@ import com.souru.koyomi.data.model.EventInstance
 import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.data.weather.DailyWeather
 import com.souru.koyomi.data.weather.WeatherKind
-import com.souru.koyomi.ui.theme.koyomiColorScheme
 import com.souru.koyomi.util.orderedWeekDays
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -73,12 +72,18 @@ class DotWidgetReceiver : GlanceAppWidgetReceiver() {
  * LED colors for the 「ドット」 widget. Each has a variant for light
  * backgrounds, where the bright LED tones would wash out.
  */
-enum class DotColor(val dark: Int, val light: Int) {
-    ORANGE(0xFFF2711C.toInt(), 0xFFF2711C.toInt()),
-    GREEN(0xFF39E27A.toInt(), 0xFF1E9E52.toInt()),
-    WHITE(0xFFF2F2F2.toInt(), 0xFF111111.toInt()),
-    RED(0xFFFF4D3D.toInt(), 0xFFE03A2E.toInt()),
-    BLUE(0xFF4DA3FF.toInt(), 0xFF2F6FD6.toInt()),
+enum class DotColor(
+    val dark: Int,
+    val light: Int,
+    /** Tiled unlit-LED grids for the clock (dark / light backgrounds). */
+    val ghostDark: Int,
+    val ghostLight: Int,
+) {
+    ORANGE(0xFFF2711C.toInt(), 0xFFF2711C.toInt(), R.drawable.dot_ghost_orange_dark, R.drawable.dot_ghost_orange_light),
+    GREEN(0xFF39E27A.toInt(), 0xFF1E9E52.toInt(), R.drawable.dot_ghost_green_dark, R.drawable.dot_ghost_green_light),
+    WHITE(0xFFF2F2F2.toInt(), 0xFF111111.toInt(), R.drawable.dot_ghost_white_dark, R.drawable.dot_ghost_white_light),
+    RED(0xFFFF4D3D.toInt(), 0xFFE03A2E.toInt(), R.drawable.dot_ghost_red_dark, R.drawable.dot_ghost_red_light),
+    BLUE(0xFF4DA3FF.toInt(), 0xFF2F6FD6.toInt(), R.drawable.dot_ghost_blue_dark, R.drawable.dot_ghost_blue_light),
     ;
 
     companion object {
@@ -166,8 +171,14 @@ class DotWidget : GlanceAppWidget() {
         val dark = isDark(context, s.look)
         val lit = if (dark) s.color.dark else s.color.light
         val size: DpSize = LocalSize.current
-        val calendarWidth = 124.dp
-        val calendarHeight = (size.height - 24.dp).coerceAtLeast(80.dp)
+        // Split the width from the real widget size: the left column gets
+        // about half (the clock auto-sizes to fill it), the month the rest —
+        // no dead gap between them on wide launchers.
+        val innerWidth = size.width.value - 28f
+        val innerHeight = (size.height.value - 24f).coerceAtLeast(80f)
+        val leftWidth = (innerWidth * 0.5f).coerceIn(130f, 230f)
+        val calendarWidth = (innerWidth - 10f - leftWidth).coerceAtLeast(100f)
+        val clockHeight = (innerHeight * 0.44f).coerceIn(40f, 78f)
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -178,22 +189,29 @@ class DotWidget : GlanceAppWidget() {
         ) {
             Column(
                 modifier = GlanceModifier
-                    .defaultWeight()
+                    .width(leftWidth.dp)
                     .fillMaxHeight(),
             ) {
-                // Explicit height: the clock must never claim the whole column.
+                // Explicit size: the clock fills its box (auto-sized text) and
+                // never claims the whole column.
                 AndroidRemoteViews(
-                    remoteViews = clockViews(context, s.look, lit, dark),
-                    modifier = GlanceModifier.height(58.dp),
+                    remoteViews = clockViews(context, s.look, s.color, lit, dark),
+                    modifier = GlanceModifier
+                        .width(leftWidth.dp)
+                        .height(clockHeight.dp),
                 )
                 Spacer(modifier = GlanceModifier.height(4.dp))
                 val line = DotRenderer.dateLine(context, today, s.weather, lit)
+                val density = context.resources.displayMetrics.density
+                // Shrink (never stretch) the line to the column width.
+                val lineScale = minOf(1f, leftWidth / (line.width / density))
                 Image(
                     provider = ImageProvider(line),
                     contentDescription = null,
+                    contentScale = ContentScale.Fit,
                     modifier = GlanceModifier.size(
-                        (line.width / context.resources.displayMetrics.density).dp,
-                        (line.height / context.resources.displayMetrics.density).dp,
+                        (line.width / density * lineScale).dp,
+                        (line.height / density * lineScale).dp,
                     ),
                 )
                 Spacer(modifier = GlanceModifier.height(6.dp))
@@ -206,8 +224,8 @@ class DotWidget : GlanceAppWidget() {
                         context = context,
                         data = s.month,
                         today = today,
-                        widthDp = calendarWidth.value,
-                        heightDp = calendarHeight.value,
+                        widthDp = calendarWidth,
+                        heightDp = innerHeight,
                         lit = lit,
                         holiday = if (s.color == DotColor.RED) {
                             if (dark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt()
@@ -224,8 +242,8 @@ class DotWidget : GlanceAppWidget() {
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = GlanceModifier
-                    .width(calendarWidth)
-                    .height(calendarHeight),
+                    .width(calendarWidth.dp)
+                    .height(innerHeight.dp),
             )
         }
     }
@@ -289,24 +307,53 @@ class DotWidget : GlanceAppWidget() {
     }
 
     /**
-     * The layered dot clock. The mask is tinted to the widget's own
-     * background color and faded with its opacity, so on a see-through
-     * widget the dot effect softens instead of leaving a dark slab.
+     * The layered dot clock. Grids are view BACKGROUNDS (backgrounds tile;
+     * an ImageView source would just stretch one dot across the clock).
+     * The mask matches the widget's own background (every pack shares the
+     * same white / near-black paper) and fades with the widget opacity, so a
+     * see-through widget softens the dots instead of showing a dark slab.
      */
-    private fun clockViews(context: Context, look: WidgetLook, lit: Int, dark: Boolean): RemoteViews =
+    private fun clockViews(
+        context: Context,
+        look: WidgetLook,
+        color: DotColor,
+        lit: Int,
+        dark: Boolean,
+    ): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_dot_clock).apply {
-            val surface = koyomiColorScheme(look.pack, dark, look.customColor).surface
-            val background = android.graphics.Color.rgb(
-                (surface.red * 255).toInt(),
-                (surface.green * 255).toInt(),
-                (surface.blue * 255).toInt(),
-            )
             setTextColor(R.id.dot_clock_time, lit)
-            setInt(R.id.dot_clock_ghost, "setColorFilter", lit)
-            setInt(R.id.dot_clock_ghost, "setImageAlpha", 40)
-            setInt(R.id.dot_clock_mask, "setColorFilter", background)
-            setInt(R.id.dot_clock_mask, "setImageAlpha", (look.opacityPercent * 255 / 100).coerceIn(0, 255))
+            setInt(
+                R.id.dot_clock_ghost,
+                "setBackgroundResource",
+                if (dark) color.ghostDark else color.ghostLight,
+            )
+            // Mask tiles are pre-baked at 20% steps of opacity (no runtime
+            // alpha call, which older launchers can't apply to a view).
+            val step = ((look.opacityPercent + 10) / 20).coerceIn(0, 5)
+            if (step == 0) {
+                setViewVisibility(R.id.dot_clock_mask, android.view.View.GONE)
+            } else {
+                setInt(R.id.dot_clock_mask, "setBackgroundResource", maskTile(dark, step))
+            }
         }
+
+    private fun maskTile(dark: Boolean, step: Int): Int = if (dark) {
+        when (step) {
+            1 -> R.drawable.dot_mask_dark_20
+            2 -> R.drawable.dot_mask_dark_40
+            3 -> R.drawable.dot_mask_dark_60
+            4 -> R.drawable.dot_mask_dark_80
+            else -> R.drawable.dot_mask_dark_100
+        }
+    } else {
+        when (step) {
+            1 -> R.drawable.dot_mask_light_20
+            2 -> R.drawable.dot_mask_light_40
+            3 -> R.drawable.dot_mask_light_60
+            4 -> R.drawable.dot_mask_light_80
+            else -> R.drawable.dot_mask_light_100
+        }
+    }
 }
 
 /** Draws the Doto-face parts of the 「ドット」 widget onto bitmaps. */

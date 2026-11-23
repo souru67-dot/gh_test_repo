@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Repeating 4dp dot grid for the 「ドット」 clock (mask layer). -->
+<!-- 「ドット」 clock: unlit blue LEDs (light). Used as a VIEW BACKGROUND so the 4dp grid tiles. -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:antialias="true"
-    android:src="@drawable/dot_mask_tile_px"
+    android:src="@drawable/dot_ghost_blue_light_px"
     android:tileMode="repeat" />
