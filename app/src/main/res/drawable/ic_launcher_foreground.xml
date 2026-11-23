@@ -4,18 +4,18 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!--
-      こよみ brand mark (壱・日めくり), monochrome edition: a solid black
-      tear-off page on white, a hairline cut where the header band would be,
+      こよみ brand mark (壱・日めくり): a solid black tear-off page on white,
+      an orange tear line under the header band (the app's single accent),
       two binding rings, and a bold white "1". Safe zone 24..84.
     -->
     <!-- Page (墨) -->
     <path
         android:fillColor="#111111"
         android:pathData="M39,30h30a7,7 0 0 1 7,7v36a7,7 0 0 1 -7,7h-30a7,7 0 0 1 -7,-7v-36a7,7 0 0 1 7,-7z" />
-    <!-- Hairline separating the header band -->
+    <!-- 橙: the tear line under the header band — the app's one accent -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M32,43h44v1.5h-44z" />
+        android:fillColor="#F2711C"
+        android:pathData="M32,42.5h44v2.5h-44z" />
     <!-- Binding rings: the arcs above the page read black on white -->
     <path
         android:strokeColor="#111111"

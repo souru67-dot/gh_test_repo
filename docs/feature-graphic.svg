@@ -13,7 +13,7 @@
   <!-- ===== 日めくり mark (left) — same drawing as the launcher icon ===== -->
   <g transform="translate(84,140) scale(4) translate(-32,-26)">
     <path d="M39,30h30a7,7 0 0 1 7,7v36a7,7 0 0 1 -7,7h-30a7,7 0 0 1 -7,-7v-36a7,7 0 0 1 7,-7z" fill="#111111"/>
-    <path d="M32,43h44v1.5h-44z" fill="#FFFFFF"/>
+    <path d="M32,42.5h44v2.5h-44z" fill="#F2711C"/>
     <g stroke="#111111" stroke-width="2.5" stroke-linecap="round" fill="none">
       <path d="M41,35v-5a4,4 0 0 1 8,0v5"/>
       <path d="M59,35v-5a4,4 0 0 1 8,0v5"/>
