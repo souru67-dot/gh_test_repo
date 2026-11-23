@@ -4,4 +4,9 @@
     <color name="koyomi_ink">#111111</color>
     <color name="widget_text_primary">#111111</color>
     <color name="widget_text_secondary">#6B6B6B</color>
+    <!-- Dot-matrix widget: theme-independent on purpose (orange reads on both). -->
+    <color name="dot_lit">#F2711C</color>
+    <color name="dot_ghost">#2EF2711C</color>
+    <color name="dot_holiday">#E5534B</color>
+    <color name="dot_on_lit">#FFFFFF</color>
 </resources>

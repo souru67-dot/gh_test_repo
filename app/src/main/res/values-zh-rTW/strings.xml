@@ -282,4 +282,6 @@
     <string name="widget_config_hint">設為透明時,淺色桌布請選擇「淺色」,深色桌布請選擇「深色」,文字會更清晰。</string>
     <string name="widget_hitome_label">一覽</string>
     <string name="widget_hitome_description">今天的日期與天氣、本月行事曆和今天的活動,一目了然。</string>
+    <string name="widget_dot_label">點陣</string>
+    <string name="widget_dot_description">LED 風格的點陣時鐘,搭配日期、本月行事曆以及今天的活動和待辦。</string>
 </resources>

@@ -282,4 +282,6 @@
     <string name="widget_config_hint">Going see-through? Pick Light on a bright wallpaper and Dark on a dark one so the text stays crisp.</string>
     <string name="widget_hitome_label">At a glance</string>
     <string name="widget_hitome_description">Today\'s date and weather, this month, and today\'s events — all in one view.</string>
+    <string name="widget_dot_label">Dot matrix</string>
+    <string name="widget_dot_description">An LED-style dot clock with the date, this month, and today\'s events and to-dos.</string>
 </resources>

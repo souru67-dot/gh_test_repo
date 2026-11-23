@@ -54,6 +54,7 @@ class WidgetUpdateWorker(
                 HimekuriWidget(),
                 MiniMonthWidget(),
                 HitomeWidget(),
+                DotWidget(),
             ).forEach { it.refreshAll(context) }
         }
 

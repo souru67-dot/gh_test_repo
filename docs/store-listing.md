@@ -35,8 +35,8 @@ Play Console の「ストアの掲載情報」にそのまま使える文面で�
 >   (一粒万倍日・天赦日・寅の日・巳の日)
 > ・カレンダーに2週間の天気
 > ・きせかえ全テーマ(桜・若葉・藍・紅葉)+ 好きな色のカスタムテーマ
-> ・ホーム画面ウィジェット全9種(今日の予定・カレンダー・天気をひと目で見る
->   「ひとめ」、日めくり2×2、ミニカレンダー2×2、時計+予定 ほか)。
+> ・ホーム画面ウィジェット全10種(LED風の「ドット」時計、今日の予定・カレンダー・
+>   天気をひと目で見る「ひとめ」、日めくり2×2、ミニカレンダー2×2、時計+予定 ほか)。
 >   背景の透明度を0〜100%で調整でき、壁紙に溶け込む
 > ・時短: 予定テンプレート、複数日への一括複製、スタンプ予定、
 >   ドラッグ&ドロップでの移動
@@ -76,7 +76,7 @@ Your device calendars in a crisp black-and-white design. No ads. Free, with prem
 >   and lucky days
 > - Two-week weather on your calendar
 > - All theme packs + a custom color of your choice
-> - All 9 home-screen widgets, including "At a glance" (today's events,
+> - All 10 home-screen widgets, including the LED-style "Dot matrix" clock, "At a glance" (today's events,
 >   the month and the weather in one view), daily page 2×2 and mini month
 >   2×2 — with background transparency from 0 to 100%
 > - Shortcuts: event templates, multi-day copy, stamp events, drag & drop
@@ -114,7 +114,7 @@ Your device calendars in a crisp black-and-white design. No ads. Free, with prem
 > - 日本历法:六曜、二十四节气、农历、月龄、年号,以及吉日
 > - 日历上的两周天气
 > - 全部主题配色 + 自定义颜色
-> - 全部 9 款主屏小组件(含今日日程・日历・天气一览的「一览」),背景透明度 0〜100%
+> - 全部 10 款主屏小组件(含 LED 风「点阵」时钟、今日日程・日历・天气一览的「一览」),背景透明度 0〜100%
 > - 效率:模板、多日复制、快捷日程、拖放移动
 > - 日本、美国、英国、韩国的公众假期
 > - 换机迁移备份
@@ -149,7 +149,7 @@ Your device calendars in a crisp black-and-white design. No ads. Free, with prem
 > - 日本曆法:六曜、二十四節氣、農曆、月齡、年號,以及吉日
 > - 日曆上的兩週天氣
 > - 全部主題配色 + 自訂顏色
-> - 全部 9 款主畫面小工具(含今日活動・行事曆・天氣一覽的「一覽」),背景透明度 0〜100%
+> - 全部 10 款主畫面小工具(含 LED 風「點陣」時鐘、今日活動・行事曆・天氣一覽的「一覽」),背景透明度 0〜100%
 > - 效率:範本、多日複製、快速活動、拖放移動
 > - 日本、美國、英國、韓國的國定假日
 > - 換機轉移備份
@@ -185,7 +185,7 @@ Your device calendars in a crisp black-and-white design. No ads. Free, with prem
 > - 일본 역법: 로쿠요, 24절기, 음력, 월령, 연호, 그리고 길일
 > - 캘린더 위 2주 날씨
 > - 모든 테마 색상 + 맞춤 색상
-> - 홈 화면 위젯 9종 전체(오늘 일정·달력·날씨를 한눈에 보는 ‘한눈에’ 포함), 배경 투명도 0~100%
+> - 홈 화면 위젯 10종 전체(LED 스타일 ‘도트’ 시계, 오늘 일정·달력·날씨를 한눈에 보는 ‘한눈에’ 포함), 배경 투명도 0~100%
 > - 생산성: 템플릿, 여러 날 복사, 스탬프 일정, 드래그 앤 드롭
 > - 일본·미국·영국·대한민국 공휴일
 > - 기기 변경용 이전 백업
@@ -213,7 +213,7 @@ Your device calendars in a crisp black-and-white design. No ads. Free, with prem
 3. 和の暦(六曜・二十四節気・開運日・和暦)※プレミアム訴求
 4. 年表示
 5. きせかえテーマ+カスタムカラー
-6. ウィジェット9種(「ひとめ」を主役に、透過で壁紙に置いた例も)
+6. ウィジェット10種(「ひとめ」を主役に、透過で壁紙に置いた例も)
 7. ToDo・記念日・日記
 8. こよみ プレミアム画面(価格・解除)
 

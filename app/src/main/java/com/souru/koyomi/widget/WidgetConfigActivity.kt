@@ -79,7 +79,13 @@ class WidgetConfigActivity : ComponentActivity() {
                 }
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
-                    theme = settings.widgetTheme(appWidgetId).first()
+                    // The dot-matrix widget is designed dark-first.
+                    val isDot = runCatching {
+                        AppWidgetManager.getInstance(this@WidgetConfigActivity)
+                            .getAppWidgetInfo(appWidgetId)?.provider?.className
+                    }.getOrNull()?.endsWith("DotWidgetReceiver") == true
+                    theme = settings.widgetThemeOverride(appWidgetId).first()
+                        ?: if (isDot) ThemeMode.DARK else ThemeMode.SYSTEM
                     opacity = (
                         settings.widgetOpacity(appWidgetId).first()
                             ?: settings.widgetOpacityPercent.first()

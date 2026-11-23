@@ -98,11 +98,16 @@ fun widgetScheme(look: WidgetLook, dark: Boolean): androidx.compose.material3.Co
  * falling back to app-wide defaults. The appWidgetId is recovered from the
  * GlanceId's stable string form ("AppWidgetId(appWidgetId=42)").
  */
-suspend fun resolveWidgetLook(context: Context, glanceId: GlanceId): WidgetLook {
+suspend fun resolveWidgetLook(
+    context: Context,
+    glanceId: GlanceId,
+    /** Theme when the user hasn't picked one for this widget (dot widget = DARK). */
+    defaultTheme: ThemeMode = ThemeMode.SYSTEM,
+): WidgetLook {
     val app = context.applicationContext as KoyomiApplication
     val settings = app.container.settingsRepository
     val appWidgetId = glanceId.toString().filter { it.isDigit() }.toIntOrNull() ?: -1
-    val theme = settings.widgetTheme(appWidgetId).first()
+    val theme = settings.widgetThemeOverride(appWidgetId).first() ?: defaultTheme
     val opacity = settings.widgetOpacity(appWidgetId).first()
         ?: settings.widgetOpacityPercent.first()
     val pack = settings.themePack.first()
