@@ -285,4 +285,8 @@
     <string name="widget_dot_label">도트</string>
     <string name="widget_dot_description">LED 스타일의 도트 시계와 날짜, 이번 달 달력, 오늘의 일정과 할 일.</string>
     <string name="widget_dot_color">도트 색상</string>
+    <string name="settings_clock_style">시간 표시</string>
+    <string name="clock_style_system">기기 설정에 따름</string>
+    <string name="clock_style_24h">24시간제</string>
+    <string name="clock_style_12h">12시간제</string>
 </resources>

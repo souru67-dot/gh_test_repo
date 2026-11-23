@@ -285,4 +285,8 @@
     <string name="widget_dot_label">點陣</string>
     <string name="widget_dot_description">LED 風格的點陣時鐘,搭配日期、本月行事曆以及今天的活動和待辦。</string>
     <string name="widget_dot_color">點陣顏色</string>
+    <string name="settings_clock_style">時間格式</string>
+    <string name="clock_style_system">跟隨裝置</string>
+    <string name="clock_style_24h">24 小時制</string>
+    <string name="clock_style_12h">12 小時制</string>
 </resources>

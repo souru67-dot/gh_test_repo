@@ -284,4 +284,8 @@
     <string name="widget_dot_label">ドット</string>
     <string name="widget_dot_description">LEDのようなドット時計に、日付・今月のカレンダー・今日の予定とタスクを。</string>
     <string name="widget_dot_color">ドットの色</string>
+    <string name="settings_clock_style">時刻の表記</string>
+    <string name="clock_style_system">端末に合わせる</string>
+    <string name="clock_style_24h">24時間表記</string>
+    <string name="clock_style_12h">12時間表記</string>
 </resources>

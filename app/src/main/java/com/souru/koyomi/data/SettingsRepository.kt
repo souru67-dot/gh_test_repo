@@ -46,6 +46,7 @@ class SettingsRepository(private val context: Context) {
         val USE_JAPANESE_ERA = booleanPreferencesKey("use_japanese_era")
         val CUSTOM_THEME_COLOR = stringPreferencesKey("custom_theme_color")
         val SHOW_LUCKY_DAYS = booleanPreferencesKey("show_lucky_days")
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
     }
 
     val weekStart: Flow<DayOfWeek> = context.dataStore.data.map { prefs ->
@@ -276,6 +277,16 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setTaskCalendarId(calendarId: Long) {
         context.dataStore.edit { it[Keys.TASK_CALENDAR_ID] = calendarId.toString() }
+    }
+
+    /** 時刻の表記 (follow device / 24h / 12h). */
+    val clockStyle: Flow<com.souru.koyomi.util.ClockStyle> = context.dataStore.data.map { prefs ->
+        com.souru.koyomi.util.ClockStyle.entries.find { it.name == prefs[Keys.CLOCK_STYLE] }
+            ?: com.souru.koyomi.util.ClockStyle.SYSTEM
+    }
+
+    suspend fun setClockStyle(style: com.souru.koyomi.util.ClockStyle) {
+        context.dataStore.edit { it[Keys.CLOCK_STYLE] = style.name }
     }
 
     /** Widget background opacity, 0..100 (%), app-wide default. */

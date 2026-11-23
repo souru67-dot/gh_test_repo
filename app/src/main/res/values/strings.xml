@@ -285,4 +285,8 @@
     <string name="widget_dot_label">Dot matrix</string>
     <string name="widget_dot_description">An LED-style dot clock with the date, this month, and today\'s events and to-dos.</string>
     <string name="widget_dot_color">Dot color</string>
+    <string name="settings_clock_style">Time format</string>
+    <string name="clock_style_system">Follow device</string>
+    <string name="clock_style_24h">24-hour</string>
+    <string name="clock_style_12h">12-hour</string>
 </resources>

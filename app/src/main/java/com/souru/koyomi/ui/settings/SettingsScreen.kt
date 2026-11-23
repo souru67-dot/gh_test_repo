@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,6 +95,24 @@ fun SettingsScreen(
                 selected = state.weekStart == DayOfWeek.MONDAY,
                 onClick = { viewModel.setWeekStart(DayOfWeek.MONDAY) },
             )
+
+            SectionLabel(stringResource(R.string.settings_clock_style))
+            val settingsRepo = (LocalContext.current.applicationContext as com.souru.koyomi.KoyomiApplication)
+                .container.settingsRepository
+            val clockStyle by settingsRepo.clockStyle
+                .collectAsStateWithLifecycle(initialValue = com.souru.koyomi.util.ClockStyle.SYSTEM)
+            val clockScope = androidx.compose.runtime.rememberCoroutineScope()
+            for ((style, labelRes) in listOf(
+                com.souru.koyomi.util.ClockStyle.SYSTEM to R.string.clock_style_system,
+                com.souru.koyomi.util.ClockStyle.H24 to R.string.clock_style_24h,
+                com.souru.koyomi.util.ClockStyle.H12 to R.string.clock_style_12h,
+            )) {
+                RadioRow(
+                    label = stringResource(labelRes),
+                    selected = clockStyle == style,
+                    onClick = { clockScope.launch { settingsRepo.setClockStyle(style) } },
+                )
+            }
 
             SectionLabel(stringResource(R.string.settings_month_scroll))
             Row(

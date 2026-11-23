@@ -752,6 +752,7 @@ fun WidgetClock(
     forcedDark: Boolean? = null,
 ) {
     val views = RemoteViews(context.packageName, R.layout.widget_clock)
+    applyClockStyle(views, R.id.widget_clock_time, h24 = "HH:mm", h12 = "h:mm")
     if (forcedDark != null) {
         views.setTextColor(
             R.id.widget_clock_time,
@@ -769,4 +770,18 @@ fun WidgetClock(
     ) {
         AndroidRemoteViews(views)
     }
+}
+
+/**
+ * Forces a TextClock to the app's 12/24-hour choice (時刻の表記). SYSTEM
+ * leaves the layout's formats, which follow the device setting.
+ */
+fun applyClockStyle(views: RemoteViews, textClockId: Int, h24: String, h12: String) {
+    val format = when (com.souru.koyomi.util.TimeStyle.style) {
+        com.souru.koyomi.util.ClockStyle.H24 -> h24
+        com.souru.koyomi.util.ClockStyle.H12 -> h12
+        com.souru.koyomi.util.ClockStyle.SYSTEM -> return
+    }
+    views.setCharSequence(textClockId, "setFormat12Hour", format)
+    views.setCharSequence(textClockId, "setFormat24Hour", format)
 }

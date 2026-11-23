@@ -79,6 +79,13 @@ class KoyomiApplication : Application() {
                 WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
             }
         }
+        // 12/24-hour choice: mirror into TimeStyle and redraw the widgets.
+        appScope.launch {
+            container.settingsRepository.clockStyle.collect { style ->
+                com.souru.koyomi.util.TimeStyle.style = style
+                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+            }
+        }
         // Redraw widgets when their opacity setting changes.
         appScope.launch {
             container.settingsRepository.widgetOpacityPercent.collect {

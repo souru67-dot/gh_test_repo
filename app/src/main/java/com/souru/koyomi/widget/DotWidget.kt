@@ -113,6 +113,8 @@ class DotWidget : GlanceAppWidget() {
         val month: MonthGridData,
         val events: List<EventInstance>,
         val tasks: List<Task>,
+        /** Tomorrow's first events: fills the column on quiet days. */
+        val tomorrow: List<EventInstance>,
         val weather: DailyWeather?,
         val color: DotColor,
         val look: WidgetLook,
@@ -133,10 +135,12 @@ class DotWidget : GlanceAppWidget() {
         val weather = runCatching {
             app.container.weatherRepository.forecastByDay.first()[today]
         }.getOrNull()
+        val sections = loadDaySections(context, days = 2)
         val appWidgetId = id.toString().filter { it.isDigit() }.toIntOrNull() ?: -1
         return Snapshot(
             month = loadMonthGridData(context),
-            events = loadDaySections(context, days = 1).first().events,
+            events = sections[0].events,
+            tomorrow = sections[1].events.take(3),
             tasks = tasks,
             weather = weather,
             color = DotColor.fromName(
@@ -248,10 +252,14 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
-    /** Today's events, then today's open to-dos — one line each. */
+    /**
+     * Today's events, today's open to-dos, then tomorrow's first events.
+     * Times are drawn in the dot face (one fixed-width column, so titles
+     * line up); titles stay in the system font for Japanese.
+     */
     @Composable
     private fun Agenda(context: Context, s: Snapshot, lit: Int) {
-        val markColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(lit))
+        val is24 = com.souru.koyomi.util.TimeStyle.is24Hour(context)
         LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
             if (s.events.isEmpty() && s.tasks.isEmpty()) {
                 item {
@@ -261,47 +269,96 @@ class DotWidget : GlanceAppWidget() {
                             color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = 10.sp,
                         ),
+                        modifier = GlanceModifier.padding(vertical = 1.dp),
                     )
                 }
             }
             items(s.events) { event ->
                 AgendaLine(
-                    mark = formatWidgetTime(context, event),
+                    context = context,
+                    mark = DotRenderer.mark(context, eventMark(event, is24), square = false, lit = lit, is24 = is24),
                     title = event.title.ifBlank { context.getString(R.string.untitled) },
-                    markColor = markColor,
                 )
             }
             items(s.tasks) { task ->
                 AgendaLine(
-                    mark = task.time?.format(com.souru.koyomi.util.deviceTimeFormatter(context))
-                        ?.let { "□ $it" } ?: "□",
+                    context = context,
+                    mark = DotRenderer.mark(
+                        context,
+                        task.time?.let { clockText(it.hour, it.minute, is24) } ?: "",
+                        square = true,
+                        lit = lit,
+                        is24 = is24,
+                    ),
                     title = task.title,
-                    markColor = markColor,
                 )
+            }
+            if (s.tomorrow.isNotEmpty()) {
+                item {
+                    val label = DotRenderer.label(context, "TOMORROW", lit)
+                    Image(
+                        provider = ImageProvider(label),
+                        contentDescription = null,
+                        modifier = GlanceModifier
+                            .padding(top = 4.dp, bottom = 1.dp)
+                            .size(
+                                (label.width / context.resources.displayMetrics.density).dp,
+                                (label.height / context.resources.displayMetrics.density).dp,
+                            ),
+                    )
+                }
+                items(s.tomorrow) { event ->
+                    AgendaLine(
+                        context = context,
+                        mark = DotRenderer.mark(context, eventMark(event, is24), square = false, lit = lit, is24 = is24, dim = true),
+                        title = event.title.ifBlank { context.getString(R.string.untitled) },
+                        dimTitle = true,
+                    )
+                }
             }
         }
     }
 
+    private fun eventMark(event: EventInstance, is24: Boolean): String {
+        if (event.allDay) return "ALL"
+        val t = java.time.Instant.ofEpochMilli(event.begin)
+            .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        return clockText(t.hour, t.minute, is24)
+    }
+
+    /** "21:30" or "9:30P" — compact, Latin-only for the dot face. */
+    private fun clockText(hour: Int, minute: Int, is24: Boolean): String = if (is24) {
+        "%02d:%02d".format(Locale.ENGLISH, hour, minute)
+    } else {
+        val h = if (hour % 12 == 0) 12 else hour % 12
+        "%d:%02d%s".format(Locale.ENGLISH, h, minute, if (hour < 12) "A" else "P")
+    }
+
     @Composable
     private fun AgendaLine(
-        mark: String,
+        context: Context,
+        mark: Bitmap,
         title: String,
-        markColor: androidx.glance.unit.ColorProvider,
+        dimTitle: Boolean = false,
     ) {
+        val density = context.resources.displayMetrics.density
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = mark,
-                style = TextStyle(color = markColor, fontSize = 9.sp, fontWeight = FontWeight.Medium),
-                maxLines = 1,
-                modifier = GlanceModifier.width(44.dp),
+            Image(
+                provider = ImageProvider(mark),
+                contentDescription = null,
+                modifier = GlanceModifier.size((mark.width / density).dp, (mark.height / density).dp),
             )
             Text(
                 text = title,
-                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 10.sp),
+                style = TextStyle(
+                    color = if (dimTitle) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
+                    fontSize = 10.sp,
+                ),
                 maxLines = 1,
+                modifier = GlanceModifier.padding(start = 6.dp),
             )
         }
     }
@@ -322,6 +379,7 @@ class DotWidget : GlanceAppWidget() {
     ): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_dot_clock).apply {
             setTextColor(R.id.dot_clock_time, lit)
+            applyClockStyle(this, R.id.dot_clock_time, h24 = "HH:mm", h12 = "hh:mm")
             // The unlit-LED grid reads as a panel on a solid widget, but on a
             // see-through one it's just a rectangle floating on the wallpaper
             // — show it only when the widget is mostly opaque.
@@ -437,6 +495,72 @@ private object DotRenderer {
         return bitmap
     }
 
+    /**
+     * The agenda's time column in the dot face, fixed width so titles align:
+     * "21:30" / "9:30P" / "ALL", or a to-do box (with its time if any).
+     */
+    fun mark(
+        context: Context,
+        text: String,
+        square: Boolean,
+        lit: Int,
+        is24: Boolean,
+        dim: Boolean = false,
+    ): Bitmap {
+        val d = context.resources.displayMetrics.density
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = face(context)
+            textSize = sp(context, 10f)
+            color = lit
+            if (dim) alpha = 150
+        }
+        val box = 7 * d
+        val columnText = if (is24) "00:00" else "00:00P"
+        val width = paint.measureText(columnText) + 2 * d
+        val height = paint.fontMetrics.let { it.descent - it.ascent } + 2 * d
+        val bitmap = newBitmap(context, kotlin.math.ceil(width).toInt(), kotlin.math.ceil(height).toInt())
+        val canvas = Canvas(bitmap)
+        val mid = bitmap.height / 2f
+        var x = 0f
+        if (square) {
+            val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f * d
+                color = lit
+                if (dim) alpha = 150
+            }
+            canvas.drawRoundRect(x + 0.6f * d, mid - box / 2, x + box, mid + box / 2, 1.5f * d, 1.5f * d, stroke)
+            x += box + 4 * d
+        }
+        if (text.isNotEmpty()) {
+            canvas.drawText(text, x, mid - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2f, paint)
+        }
+        return bitmap
+    }
+
+    /** A small dim section label in the dot face ("TOMORROW"). */
+    fun label(context: Context, text: String, lit: Int): Bitmap {
+        val d = context.resources.displayMetrics.density
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = face(context)
+            textSize = sp(context, 8.5f)
+            color = lit
+            alpha = 140
+        }
+        val bitmap = newBitmap(
+            context,
+            kotlin.math.ceil(paint.measureText(text) + 2 * d).toInt(),
+            kotlin.math.ceil(paint.fontMetrics.let { it.descent - it.ascent } + 2 * d).toInt(),
+        )
+        Canvas(bitmap).drawText(
+            text,
+            0f,
+            bitmap.height / 2f - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2f,
+            paint,
+        )
+        return bitmap
+    }
+
     private fun weatherIcon(kind: WeatherKind): Int = when (kind) {
         WeatherKind.SUN -> R.drawable.dot_wx_sun
         WeatherKind.PARTLY -> R.drawable.dot_wx_partly
@@ -465,12 +589,15 @@ private object DotRenderer {
         val canvas = Canvas(bitmap)
         val header = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = face(context)
-            textSize = sp(context, 13f)
+            textSize = sp(context, 14f)
             color = lit
             textAlign = Paint.Align.CENTER
         }
-        val cell = Paint(header).apply { textSize = sp(context, 9.5f) }
-        val weekdayPaint = Paint(cell).apply { alpha = 180 }
+        val cell = Paint(header).apply { textSize = sp(context, 11f) }
+        val weekdayPaint = Paint(cell).apply {
+            textSize = sp(context, 9f)
+            alpha = 120
+        }
         fun baseline(p: Paint, centerY: Float) =
             centerY - (p.fontMetrics.ascent + p.fontMetrics.descent) / 2f
 
