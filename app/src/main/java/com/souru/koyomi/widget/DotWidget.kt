@@ -456,6 +456,15 @@ object DotWidgetUpdater {
             } else {
                 context.getColor(R.color.dot_holiday)
             },
+            // Saturdays in the app's blue — unless the LED itself is blue, then
+            // in plain ink so they still stand apart.
+            saturday = if (s.color == DotColor.BLUE) {
+                if (dark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt()
+            } else if (dark) {
+                0xFF8FB0E6.toInt()
+            } else {
+                0xFF3C64A6.toInt()
+            },
             onDisc = if (s.color == DotColor.WHITE && dark) 0xFF111111.toInt() else 0xFFFFFFFF.toInt(),
         )
         canvas.drawBitmap(month, (m.pad + m.leftWidth + 10f) * d, m.padTop * d, null)
@@ -741,6 +750,7 @@ private object DotRenderer {
         heightDp: Float,
         lit: Int,
         holiday: Int,
+        saturday: Int,
         onDisc: Int,
     ): Bitmap {
         val d = context.resources.displayMetrics.density
@@ -774,11 +784,20 @@ private object DotRenderer {
         val colW = w / 7f
         val weekdayH = cell.fontMetrics.let { it.descent - it.ascent } + 5 * d
         orderedWeekDays(data.weekStart).forEachIndexed { i, day ->
+            // Weekday letters echo the day colors (Sun red / Sat blue), kept dim.
+            val letter = Paint(weekdayPaint).apply {
+                when (day) {
+                    DayOfWeek.SUNDAY -> color = holiday
+                    DayOfWeek.SATURDAY -> color = saturday
+                    else -> Unit
+                }
+                alpha = weekdayPaint.alpha
+            }
             canvas.drawText(
                 day.getDisplayName(JavaTextStyle.NARROW, Locale.ENGLISH),
                 colW * (i + 0.5f),
-                baseline(weekdayPaint, headerH + weekdayH / 2f),
-                weekdayPaint,
+                baseline(letter, headerH + weekdayH / 2f),
+                letter,
             )
         }
         val weeks = (0 until 6).filter { week ->
@@ -801,6 +820,8 @@ private object DotRenderer {
                     }
                     Holidays.isRedDay(date) || date.dayOfWeek == DayOfWeek.SUNDAY ->
                         paint.color = holiday
+                    date.dayOfWeek == DayOfWeek.SATURDAY ->
+                        paint.color = saturday
                 }
                 canvas.drawText(date.dayOfMonth.toString(), cx, baseline(paint, cy), paint)
             }
