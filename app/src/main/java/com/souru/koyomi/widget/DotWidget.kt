@@ -72,6 +72,7 @@ class DotWidgetReceiver : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         DotClockTicker.cancel(context)
+        DotClockWatchdog.cancel(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -136,6 +137,42 @@ object DotClockTicker {
 }
 
 /**
+ * Last line of defence for the minute chain: some devices (aggressive OEM
+ * battery managers, app updates, reboots) silently drop pending alarms.
+ * Every 15 minutes WorkManager redraws a stale clock and re-arms the chain.
+ */
+class DotClockWatchdogWorker(
+    context: Context,
+    params: androidx.work.WorkerParameters,
+) : androidx.work.CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        runCatching { DotWidgetUpdater.tickIfStale(applicationContext) }
+        return Result.success()
+    }
+}
+
+object DotClockWatchdog {
+    private const val WORK = "koyomi_dot_clock_watchdog"
+
+    fun ensure(context: Context) {
+        if (DotWidgetUpdater.ids(context).isEmpty()) return
+        runCatching {
+            androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WORK,
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                androidx.work.PeriodicWorkRequestBuilder<DotClockWatchdogWorker>(
+                    java.time.Duration.ofMinutes(15),
+                ).build(),
+            )
+        }
+    }
+
+    fun cancel(context: Context) {
+        runCatching { androidx.work.WorkManager.getInstance(context).cancelUniqueWork(WORK) }
+    }
+}
+
+/**
  * LED colors for the 「ドット」 widget. Each has a variant for light
  * backgrounds, where the bright LED tones would wash out.
  */
@@ -189,8 +226,27 @@ object DotWidgetUpdater {
         .getAppWidgetIds(ComponentName(context, DotWidgetReceiver::class.java))
 
     suspend fun updateAll(context: Context) {
-        for (id in ids(context)) runCatching { update(context, id) }
+        // Re-arm first: a failing redraw must never break the minute chain.
         DotClockTicker.schedule(context)
+        DotClockWatchdog.ensure(context)
+        for (id in ids(context)) runCatching { update(context, id) }
+        lastDrawnMinute = currentMinute()
+    }
+
+    /** Epoch minute last drawn by this process (0 = nothing yet / process restarted). */
+    @Volatile
+    private var lastDrawnMinute = 0L
+
+    private fun currentMinute(): Long = System.currentTimeMillis() / 60_000L
+
+    /**
+     * Safety net for the alarm chain (TIME_TICK / screen-on / watchdog): redraws
+     * only when the shown minute is behind, and re-arms the chain either way.
+     */
+    suspend fun tickIfStale(context: Context) {
+        // Without exact alarms the fallback TextClock ticks on its own.
+        if (ids(context).isEmpty() || !DotClockTicker.canTick(context)) return
+        if (lastDrawnMinute != currentMinute()) tick(context) else DotClockTicker.schedule(context)
     }
 
     private fun metrics(context: Context, appWidgetId: Int): Metrics {
@@ -273,25 +329,31 @@ object DotWidgetUpdater {
 
     /** Minute tick: redraw only the clock image of every dot widget. */
     suspend fun tick(context: Context) {
+        // Re-arm before drawing, so a crash or kill mid-draw can't freeze the clock.
+        DotClockTicker.schedule(context)
+        if (!DotClockTicker.canTick(context)) {
+            // Exact alarms were taken away: switch to the self-ticking fallback
+            // clock instead of leaving a frozen bitmap on screen.
+            updateAll(context)
+            return
+        }
+        lastDrawnMinute = currentMinute()
         val app = context.applicationContext as KoyomiApplication
         val manager = AppWidgetManager.getInstance(context)
-        if (DotClockTicker.canTick(context)) {
-            for (id in ids(context)) {
-                runCatching {
-                    val look = resolveWidgetLook(context, id, defaultTheme = ThemeMode.DARK)
-                    val color = DotColor.fromName(
-                        app.container.settingsRepository.widgetDotColor(id).first(),
-                    )
-                    val views = RemoteViews(context.packageName, R.layout.widget_dot)
-                    views.setImageViewBitmap(
-                        R.id.dot_clock_bitmap,
-                        clockBitmap(context, metrics(context, id), color, isDark(context, look)),
-                    )
-                    manager.partiallyUpdateAppWidget(id, views)
-                }
+        for (id in ids(context)) {
+            runCatching {
+                val look = resolveWidgetLook(context, id, defaultTheme = ThemeMode.DARK)
+                val color = DotColor.fromName(
+                    app.container.settingsRepository.widgetDotColor(id).first(),
+                )
+                val views = RemoteViews(context.packageName, R.layout.widget_dot)
+                views.setImageViewBitmap(
+                    R.id.dot_clock_bitmap,
+                    clockBitmap(context, metrics(context, id), color, isDark(context, look)),
+                )
+                manager.partiallyUpdateAppWidget(id, views)
             }
         }
-        DotClockTicker.schedule(context)
     }
 
     private fun clockBitmap(context: Context, m: Metrics, color: DotColor, dark: Boolean): Bitmap {

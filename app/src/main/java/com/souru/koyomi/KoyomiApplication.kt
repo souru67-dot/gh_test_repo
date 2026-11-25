@@ -51,6 +51,7 @@ class KoyomiApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         createNotificationChannel()
+        registerDotClockNudges()
         // Re-sync the premium entitlement with Play on every cold start.
         container.billingRepository.refresh()
         // Keep widgets fresh across date rollover and calendar changes.
@@ -102,6 +103,36 @@ class KoyomiApplication : Application() {
                     )
                 WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
             }
+        }
+    }
+
+    /**
+     * While the process is alive, the system's own minute tick (and screen-on)
+     * keeps the 「ドット」 clock current even if an alarm was deferred or dropped.
+     * Cheap: it only redraws when the shown minute is actually behind.
+     */
+    private fun registerDotClockNudges() {
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_TIME_TICK)
+            addAction(android.content.Intent.ACTION_SCREEN_ON)
+            addAction(android.content.Intent.ACTION_USER_PRESENT)
+        }
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: android.content.Intent) {
+                appScope.launch {
+                    runCatching {
+                        com.souru.koyomi.widget.DotWidgetUpdater.tickIfStale(this@KoyomiApplication)
+                    }
+                }
+            }
+        }
+        runCatching {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this,
+                receiver,
+                filter,
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
         }
     }
 
