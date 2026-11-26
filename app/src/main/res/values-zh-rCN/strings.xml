@@ -82,10 +82,9 @@
     <string name="settings_week_start">每周开始于</string>
     <string name="week_start_sunday">周日</string>
     <string name="week_start_monday">周一</string>
-    <string name="settings_month_scroll">月视图滚动</string>
     <string name="settings_vertical_scroll">连续纵向滚动</string>
     <string name="settings_multi_day_bars">以横条显示跨天日程</string>
-    <string name="settings_theme">主题</string>
+    <string name="settings_theme">深浅模式</string>
     <string name="theme_system">跟随系统</string>
     <string name="theme_light">浅色</string>
     <string name="theme_dark">深色</string>
@@ -104,7 +103,7 @@
     <string name="settings_lunar_date">显示农历(旧历)日期</string>
     <string name="settings_moon_age">显示月龄</string>
     <string name="settings_japanese_era">以日本年号显示(令和8年)</string>
-    <string name="settings_default_calendar">新建日程使用的日历</string>
+    <string name="settings_default_calendar">新建日程保存到</string>
     <string name="default_calendar_last_used">上次使用的日历</string>
     <string name="settings_holiday_country">公众假期</string>
     <string name="holiday_country_auto">跟随设备地区</string>
@@ -130,7 +129,7 @@
     <string name="restore_done">已恢复 %1$d 条记录</string>
 
     <!-- Sync & notifications -->
-    <string name="settings_sync">Google 日历同步</string>
+    <string name="settings_sync">同步频率</string>
     <string name="sync_15min">每 15 分钟</string>
     <string name="sync_30min">每 30 分钟</string>
     <string name="sync_1hour">每小时</string>
@@ -246,7 +245,7 @@
     <string name="weather_place_none">未设置</string>
     <string name="weather_search_hint">按城市名搜索</string>
     <string name="weather_clear">关闭</string>
-    <string name="settings_widget_opacity">小组件背景不透明度</string>
+    <string name="settings_widget_opacity">小组件背景浓度</string>
     <string name="widget_config_title">小组件设置</string>
     <string name="events_count">%1$d 个日程</string>
     <string name="no_more_today">今天到此为止</string>
@@ -290,4 +289,29 @@
     <string name="widget_dot_battery_oem">此机型可能在锁屏时因省电而停止 Koyomi。锁屏期间会切换为自动走时的简易时钟,时间仍然准确;若想解锁后立即恢复圆点时钟,请为 Koyomi 开启「自启动」,并将省电策略设为「无限制」。</string>
     <string name="widget_dot_autostart">自启动</string>
     <string name="widget_dot_app_info">应用信息</string>
+    <string name="settings_cat_display">显示</string>
+    <string name="settings_cat_koyomi">历法与节假日</string>
+    <string name="settings_cat_appearance">外观</string>
+    <string name="settings_cat_calendars">日历与同步</string>
+    <string name="settings_cat_about">关于</string>
+    <string name="settings_month_paging">月份切换</string>
+    <string name="month_paging_swipe">左右翻页</string>
+    <string name="settings_koyomi_summary">%1$s・显示 %2$d 项</string>
+    <string name="settings_calendars_summary">显示 %1$d 个・%2$s</string>
+    <string name="settings_widget_summary">背景浓度 %1$d%%</string>
+    <string name="settings_widget_opacity_desc" formatted="false">0% 为无背景(透出壁纸)。只想修改某个小组件时,请在桌面长按该小组件并打开其设置。</string>
+    <string name="notifications_on">开</string>
+    <string name="notifications_off">关</string>
+    <string name="settings_data_summary">导出・导入・换机</string>
+    <string name="export_ics_desc">将日程保存为 .ics 文件</string>
+    <string name="import_ics_desc">将 .ics 文件中的日程添加到日历</string>
+    <string name="backup_export_desc">将待办・纪念日・日记・模板・设置保存为一个文件(换机用)</string>
+    <string name="backup_import_desc">从保存的文件恢复</string>
+    <string name="settings_version">版本 %1$s</string>
+    <string name="settings_licenses">开源许可</string>
+    <string name="settings_weather_credit">天气数据:Open-Meteo.com(CC BY 4.0)</string>
+    <string name="settings_premium_only">高级版</string>
+    <string name="settings_multi_day_bars_desc">跨多天的日程以一条横跨日期的色带显示</string>
+    <string name="settings_dynamic_color_desc">使用壁纸颜色作为应用配色(Android 12 及以上)</string>
+    <string name="settings_cat_widgets">小组件</string>
 </resources>

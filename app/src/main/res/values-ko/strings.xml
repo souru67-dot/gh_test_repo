@@ -82,10 +82,9 @@
     <string name="settings_week_start">주 시작 요일</string>
     <string name="week_start_sunday">일요일</string>
     <string name="week_start_monday">월요일</string>
-    <string name="settings_month_scroll">월 보기 스크롤</string>
     <string name="settings_vertical_scroll">연속 세로 스크롤</string>
     <string name="settings_multi_day_bars">여러 날 일정을 막대로 표시</string>
-    <string name="settings_theme">테마</string>
+    <string name="settings_theme">밝기</string>
     <string name="theme_system">시스템 설정 따르기</string>
     <string name="theme_light">라이트</string>
     <string name="theme_dark">다크</string>
@@ -104,7 +103,7 @@
     <string name="settings_lunar_date">음력 날짜 표시</string>
     <string name="settings_moon_age">월령 표시</string>
     <string name="settings_japanese_era">일본 연호로 표시(레이와 8년)</string>
-    <string name="settings_default_calendar">새 일정에 사용할 캘린더</string>
+    <string name="settings_default_calendar">새 일정 저장 위치</string>
     <string name="default_calendar_last_used">마지막으로 사용한 캘린더</string>
     <string name="settings_holiday_country">공휴일</string>
     <string name="holiday_country_auto">기기 지역 따르기</string>
@@ -130,7 +129,7 @@
     <string name="restore_done">%1$d개 항목을 복원했습니다</string>
 
     <!-- Sync & notifications -->
-    <string name="settings_sync">Google 캘린더 동기화</string>
+    <string name="settings_sync">동기화 주기</string>
     <string name="sync_15min">15분마다</string>
     <string name="sync_30min">30분마다</string>
     <string name="sync_1hour">1시간마다</string>
@@ -246,7 +245,7 @@
     <string name="weather_place_none">설정 안 됨</string>
     <string name="weather_search_hint">도시 이름으로 검색</string>
     <string name="weather_clear">끄기</string>
-    <string name="settings_widget_opacity">위젯 배경 불투명도</string>
+    <string name="settings_widget_opacity">위젯 배경 농도</string>
     <string name="widget_config_title">위젯 설정</string>
     <string name="events_count">일정 %1$d개</string>
     <string name="no_more_today">오늘은 여기까지</string>
@@ -290,4 +289,29 @@
     <string name="widget_dot_battery_oem">이 기기는 화면 잠금 중 절전 기능으로 Koyomi를 멈출 수 있습니다. 잠금 중에는 스스로 가는 간이 시계로 바뀌어 시간은 맞지만, 잠금 해제 직후 둥근 도트 시계로 돌아오게 하려면 Koyomi의 \'자동 시작\'을 켜고 배터리 세이버를 \'제한 없음\'으로 설정하세요.</string>
     <string name="widget_dot_autostart">자동 시작</string>
     <string name="widget_dot_app_info">앱 정보</string>
+    <string name="settings_cat_display">표시</string>
+    <string name="settings_cat_koyomi">역법·공휴일</string>
+    <string name="settings_cat_appearance">디자인</string>
+    <string name="settings_cat_calendars">캘린더·동기화</string>
+    <string name="settings_cat_about">앱 정보</string>
+    <string name="settings_month_paging">월 넘기기</string>
+    <string name="month_paging_swipe">좌우로 넘기기</string>
+    <string name="settings_koyomi_summary">%1$s · %2$d개 표시</string>
+    <string name="settings_calendars_summary">%1$d개 표시 · %2$s</string>
+    <string name="settings_widget_summary">배경 농도 %1$d%%</string>
+    <string name="settings_widget_opacity_desc" formatted="false">0%이면 배경 없음(배경화면이 비쳐 보입니다). 위젯 하나만 바꾸려면 홈 화면에서 위젯을 길게 눌러 설정을 여세요.</string>
+    <string name="notifications_on">켜짐</string>
+    <string name="notifications_off">꺼짐</string>
+    <string name="settings_data_summary">내보내기·가져오기·기기 변경</string>
+    <string name="export_ics_desc">일정을 .ics 파일로 저장합니다</string>
+    <string name="import_ics_desc">.ics 파일의 일정을 캘린더에 추가합니다</string>
+    <string name="backup_export_desc">할 일·기념일·일기·템플릿·설정을 파일 하나로 저장합니다(기기 변경용)</string>
+    <string name="backup_import_desc">저장한 파일에서 복원합니다</string>
+    <string name="settings_version">버전 %1$s</string>
+    <string name="settings_licenses">오픈소스 라이선스</string>
+    <string name="settings_weather_credit">날씨 데이터: Open-Meteo.com (CC BY 4.0)</string>
+    <string name="settings_premium_only">프리미엄</string>
+    <string name="settings_multi_day_bars_desc">여러 날 이어지는 일정을 날짜를 가로지르는 막대 하나로 표시합니다</string>
+    <string name="settings_dynamic_color_desc">배경화면 색을 앱 색상으로 사용합니다(Android 12 이상)</string>
+    <string name="settings_cat_widgets">위젯</string>
 </resources>

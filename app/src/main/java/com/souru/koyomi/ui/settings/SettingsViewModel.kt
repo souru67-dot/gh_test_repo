@@ -222,6 +222,14 @@ class SettingsViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
+    /** 時刻の表記 (follow device / 24h / 12h). */
+    val clockStyle: StateFlow<com.souru.koyomi.util.ClockStyle> = settingsRepository.clockStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.souru.koyomi.util.ClockStyle.SYSTEM)
+
+    fun setClockStyle(style: com.souru.koyomi.util.ClockStyle) {
+        viewModelScope.launch { settingsRepository.setClockStyle(style) }
+    }
+
     fun setWeekStart(day: DayOfWeek) {
         viewModelScope.launch { settingsRepository.setWeekStart(day) }
     }
