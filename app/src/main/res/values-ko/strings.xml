@@ -214,7 +214,6 @@
     <string name="drop_move">여기로 이동</string>
     <string name="drop_copy">여기에 복사</string>
     <string name="undo">실행취소</string>
-    <string name="drag_month_limit">드래그는 최대 2개월까지 가능합니다 — 여기에 놓은 뒤 다시 드래그하세요</string>
     <string name="batch_copy">여러 날에 복사</string>
     <string name="batch_copy_confirm">복사(%1$d일)</string>
     <string name="batch_copied">%1$d일에 복사했습니다</string>

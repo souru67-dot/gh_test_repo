@@ -26,6 +26,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -179,73 +180,71 @@ fun MonthScreen(
         initialPage = MonthPages.pageOf(YearMonth.now()),
         pageCount = { MonthPages.COUNT },
     )
-    // Cross-month drag & drop: one shared drag state; each composed month
-    // grid registers a window-space drop resolver, and a drop is answered by
+    // Drag & drop across any number of months: one shared drag state, tracked
+    // by the pager/list container (see eventDragHost); each composed month
+    // grid registers a window-space resolver, and a drop is answered by
     // whichever month the finger is actually over.
     val dragState = remember { EventDragState() }
     val dropResolvers = remember {
         androidx.compose.runtime.mutableStateMapOf<YearMonth, (androidx.compose.ui.geometry.Offset) -> LocalDate?>()
     }
-    val resolveDropAcrossMonths: (androidx.compose.ui.geometry.Offset) -> LocalDate? = { pos ->
-        dropResolvers.values.firstNotNullOfOrNull { it(pos) }
-    }
-    var pagerCoords by remember {
+    val onDragDrop: (EventInstance, LocalDate, androidx.compose.ui.geometry.Offset) -> Unit =
+        { event, source, at ->
+            val target = dropResolvers.values.firstNotNullOfOrNull { it(at) }
+            val days = target?.let { java.time.temporal.ChronoUnit.DAYS.between(source, it) } ?: 0L
+            if (days != 0L) premiumOr { pendingDrop = PendingDrop(event, days) }
+        }
+    var monthsCoords by remember {
         mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null)
     }
-    val edgePx = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
-    // Holding a drag against the left/right edge flips to the previous/next
-    // month after a short dwell. The drag dies if its source month page gets
-    // disposed, so flips are capped at 2 months away from the source — going
-    // BACK toward the source is always allowed — and hitting the cap tells
-    // the user once, quietly, instead of the drag silently breaking.
-    val dragLimitMsg = stringResource(R.string.drag_month_limit)
-    LaunchedEffect(dragState.event != null) {
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = MonthPages.pageOf(YearMonth.now()),
+    )
+    val edgePx = with(androidx.compose.ui.platform.LocalDensity.current) { 40.dp.toPx() }
+    // Holding a drag at the left/right edge flips months (paged mode) after a
+    // short dwell — quicker on each consecutive flip; at the top/bottom edge
+    // the list scrolls (continuous mode). No distance limit either way.
+    LaunchedEffect(dragState.event != null, verticalScroll) {
         if (dragState.event == null) return@LaunchedEffect
         var dwell = 0
-        var limitNotified = false
-        val sourcePage = dragState.sourceDate?.let { MonthPages.pageOf(YearMonth.from(it)) }
-
-        suspend fun flipTo(targetPage: Int) {
-            if (sourcePage != null && abs(targetPage - sourcePage) > 2) {
-                dwell = 0
-                if (!limitNotified) {
-                    limitNotified = true
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = dragLimitMsg,
-                            duration = androidx.compose.material3.SnackbarDuration.Short,
-                        )
-                    }
-                }
-                return
-            }
-            dwell++
-            if (dwell >= 4) {
-                pagerState.animateScrollToPage(targetPage)
-                dwell = 0
-            }
-        }
-
+        var streak = 0
         while (dragState.event != null) {
-            val coords = pagerCoords?.takeIf { it.isAttached }
-            if (coords != null && !verticalScroll) {
-                val left = coords.positionInWindow().x
-                val right = left + coords.size.width
-                val x = dragState.position.x
-                when {
-                    x - left < edgePx && pagerState.currentPage > 0 ->
-                        flipTo(pagerState.currentPage - 1)
-                    right - x < edgePx && pagerState.currentPage < MonthPages.COUNT - 1 ->
-                        flipTo(pagerState.currentPage + 1)
-                    else -> dwell = 0
+            val coords = monthsCoords?.takeIf { it.isAttached }
+            if (coords != null) {
+                val origin = coords.positionInWindow()
+                val pos = dragState.position
+                if (verticalScroll) {
+                    val top = pos.y - origin.y
+                    val bottom = origin.y + coords.size.height - pos.y
+                    val speed = when {
+                        top < edgePx -> -(edgePx - top.coerceAtLeast(0f))
+                        bottom < edgePx -> edgePx - bottom.coerceAtLeast(0f)
+                        else -> 0f
+                    }
+                    if (speed != 0f) listState.scrollBy(speed * 0.6f)
+                    kotlinx.coroutines.delay(16)
+                    continue
+                }
+                val target = when {
+                    pos.x - origin.x < edgePx && pagerState.currentPage > 0 ->
+                        pagerState.currentPage - 1
+                    origin.x + coords.size.width - pos.x < edgePx &&
+                        pagerState.currentPage < MonthPages.COUNT - 1 ->
+                        pagerState.currentPage + 1
+                    else -> null
+                }
+                if (target == null) {
+                    dwell = 0
+                    streak = 0
+                } else if (++dwell >= (if (streak == 0) 5 else 3)) {
+                    pagerState.animateScrollToPage(target)
+                    dwell = 0
+                    streak++
                 }
             }
             kotlinx.coroutines.delay(100)
         }
     }
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = MonthPages.pageOf(YearMonth.now()),
-    )
     LaunchedEffect(pagerState, verticalScroll) {
         if (!verticalScroll) {
             snapshotFlow { pagerState.currentPage }.collect { page ->
@@ -481,20 +480,22 @@ fun MonthScreen(
                     viewModel = viewModel,
                     onCreateEvent = onCreateEvent,
                     onCloseDetail = ::closeDetail,
-                    onDropEvent = { event, days ->
-                        if (days != 0L) premiumOr { pendingDrop = PendingDrop(event, days) }
-                    },
+                    dragState = dragState,
+                    dropResolvers = dropResolvers,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { monthsCoords = it }
+                        .eventDragHost(dragState, onDragDrop),
                 )
             } else {
                 HorizontalPager(
                     state = pagerState,
-                    // 2 pages each side stay composed so a drag survives up to
-                    // two edge flips without its source chip being disposed.
-                    beyondViewportPageCount = 2,
+                    beyondViewportPageCount = 1,
                     key = { it },
                     modifier = Modifier
                         .fillMaxSize()
-                        .onGloballyPositioned { pagerCoords = it },
+                        .onGloballyPositioned { monthsCoords = it }
+                        .eventDragHost(dragState, onDragDrop),
                 ) { page ->
                     val gridMonth = MonthPages.monthAt(page)
                     MonthGrid(
@@ -511,9 +512,6 @@ fun MonthScreen(
                             viewModel.select(date)
                             onCreateEvent(date)
                         },
-                        onMoveEvent = { event, days ->
-                            if (days != 0L) premiumOr { pendingDrop = PendingDrop(event, days) }
-                        },
                         multiDayBars = multiDayBars,
                         showWeekNumbers = showWeekNumbers,
                         showRokuyo = showRokuyo,
@@ -521,7 +519,6 @@ fun MonthScreen(
                         showLuckyDays = showLuckyDays,
                         weatherByDay = weatherByDay,
                         dragState = dragState,
-                        resolveDropDate = resolveDropAcrossMonths,
                         onRegisterDropResolver = { resolver ->
                             if (resolver != null) {
                                 dropResolvers[gridMonth] = resolver
@@ -765,9 +762,11 @@ private fun VerticalMonthList(
     viewModel: MonthViewModel,
     onCreateEvent: (LocalDate) -> Unit,
     onCloseDetail: () -> Unit,
-    onDropEvent: (EventInstance, Long) -> Unit,
+    dragState: EventDragState,
+    dropResolvers: MutableMap<YearMonth, (androidx.compose.ui.geometry.Offset) -> LocalDate?>,
+    modifier: Modifier = Modifier,
 ) {
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+    LazyColumn(state = listState, modifier = modifier) {
         items(count = MonthPages.COUNT, key = { it }) { page ->
             val month = MonthPages.monthAt(page)
             MonthGrid(
@@ -784,7 +783,10 @@ private fun VerticalMonthList(
                     viewModel.select(date)
                     onCreateEvent(date)
                 },
-                onMoveEvent = onDropEvent,
+                dragState = dragState,
+                onRegisterDropResolver = { resolver ->
+                    if (resolver != null) dropResolvers[month] = resolver else dropResolvers.remove(month)
+                },
                 multiDayBars = multiDayBars,
                 showWeekNumbers = showWeekNumbers,
                 showRokuyo = showRokuyo,

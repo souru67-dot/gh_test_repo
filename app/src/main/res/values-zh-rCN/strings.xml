@@ -214,7 +214,6 @@
     <string name="drop_move">移动到此处</string>
     <string name="drop_copy">复制到此处</string>
     <string name="undo">撤销</string>
-    <string name="drag_month_limit">拖动最多可达 2 个月之外 — 先放在这里，再继续拖动</string>
     <string name="batch_copy">复制到多天</string>
     <string name="batch_copy_confirm">复制(%1$d 天)</string>
     <string name="batch_copied">已复制到 %1$d 天</string>

@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,6 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -97,26 +102,66 @@ fun WeekdayHeader(
 }
 
 /**
- * Drag & drop state. [position] is in WINDOW coordinates so a drag that
- * started on one month page stays meaningful after the pager flips to a
- * neighboring month; hoist one instance above the pager to share it.
+ * Drag & drop state, hoisted above the month pager / list and shared by
+ * every month grid. [position] is in WINDOW coordinates.
+ *
+ * A chip only *starts* a drag (long press); from then on the finger is
+ * tracked by [eventDragHost] on the always-present pager/list container.
+ * That's what lets a drag travel any number of months: the source month's
+ * page can be disposed mid-drag without killing the gesture.
  */
 class EventDragState {
     var event by mutableStateOf<EventInstance?>(null)
     var sourceDate by mutableStateOf<LocalDate?>(null)
     var position by mutableStateOf(Offset.Zero)
+    internal var pointerId: PointerId? = null
 
     fun clear() {
         event = null
         sourceDate = null
+        pointerId = null
     }
 }
 
 /**
- * A fixed 6-week grid for [month]. Cell heights stay stable while paging.
- * Long-press a chip to drag the event onto another day; long-press an empty
- * area of a cell to quick-create an event.
+ * Follows the finger of a drag started by a chip and reports the drop
+ * (window position) when it lifts. Runs in the Initial pass so the pager,
+ * list and bottom sheet never see the drag as a scroll.
  */
+fun Modifier.eventDragHost(
+    state: EventDragState,
+    onDrop: (event: EventInstance, source: LocalDate, windowPosition: Offset) -> Unit,
+): Modifier = composed {
+    var hostCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val currentOnDrop by androidx.compose.runtime.rememberUpdatedState(onDrop)
+    this
+        .onGloballyPositioned { hostCoords = it }
+        .pointerInput(state) {
+            awaitPointerEventScope {
+                while (true) {
+                    val pointerEvent = awaitPointerEvent(PointerEventPass.Initial)
+                    val id = state.pointerId ?: continue
+                    val change = pointerEvent.changes.firstOrNull { it.id == id }
+                    if (change == null) {
+                        // The tracked pointer vanished (system cancel): abandon.
+                        if (pointerEvent.changes.none { it.pressed }) state.clear()
+                        continue
+                    }
+                    val coords = hostCoords?.takeIf { it.isAttached }
+                    if (coords != null) state.position = coords.localToWindow(change.position)
+                    change.consume()
+                    if (!change.pressed) {
+                        val event = state.event
+                        val source = state.sourceDate
+                        val at = state.position
+                        state.clear()
+                        if (event != null && source != null) currentOnDrop(event, source, at)
+                    }
+                }
+            }
+        }
+}
+
 /** A multi-day event's stripe within one week row. */
 private data class BarSegment(
     val event: EventInstance,
@@ -176,6 +221,11 @@ private fun weekBarSegments(
     return segments
 }
 
+/**
+ * A fixed 6-week grid for [month]. Cell heights stay stable while paging.
+ * Long-press a chip to drag the event onto another day (see [EventDragState]);
+ * long-press an empty area of a cell to quick-create an event.
+ */
 @Composable
 fun MonthGrid(
     month: YearMonth,
@@ -184,7 +234,7 @@ fun MonthGrid(
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
     onCreateNew: (LocalDate) -> Unit,
-    onMoveEvent: (event: EventInstance, days: Long) -> Unit,
+    dragState: EventDragState,
     modifier: Modifier = Modifier,
     tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
     multiDayBars: Boolean = true,
@@ -193,12 +243,7 @@ fun MonthGrid(
     showSolarTerms: Boolean = false,
     showLuckyDays: Boolean = false,
     weatherByDay: Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather> = emptyMap(),
-    dragState: EventDragState = remember { EventDragState() },
-    /** Window-space drag position updates (for edge auto-paging). */
-    onDragMoved: (Offset) -> Unit = {},
-    /** Resolves a drop across all visible months; null = this grid only. */
-    resolveDropDate: ((Offset) -> LocalDate?)? = null,
-    /** Registers/unregisters this grid's own resolver with the screen. */
+    /** Registers/unregisters this grid's window-position → date resolver with the screen. */
     onRegisterDropResolver: (((Offset) -> LocalDate?)?) -> Unit = {},
 ) {
     // The grid and lane layout are pure functions of their inputs; caching
@@ -314,11 +359,6 @@ fun MonthGrid(
                                 onSelect = onSelect,
                                 onCreateNew = onCreateNew,
                                 dragState = dragState,
-                                onDragMoved = onDragMoved,
-                                onDrop = { event, source, target ->
-                                    onMoveEvent(event, ChronoUnit.DAYS.between(source, target))
-                                },
-                                dropTargetOf = resolveDropDate ?: ::dateAtWindow,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxSize(),
@@ -409,9 +449,6 @@ private fun DayCell(
     onSelect: (LocalDate) -> Unit,
     onCreateNew: (LocalDate) -> Unit,
     dragState: EventDragState,
-    onDragMoved: (Offset) -> Unit,
-    onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
-    dropTargetOf: (Offset) -> LocalDate?,
     modifier: Modifier = Modifier,
 ) {
     val calendarColors = LocalCalendarColors.current
@@ -530,9 +567,6 @@ private fun DayCell(
                     cellDate = date,
                     dimmed = !inCurrentMonth,
                     dragState = dragState,
-                    onDragMoved = onDragMoved,
-                    onDrop = onDrop,
-                    dropTargetOf = dropTargetOf,
                 )
             }
             for (task in shownTasks) {
@@ -652,18 +686,10 @@ private fun DraggableEventChip(
     cellDate: LocalDate,
     dimmed: Boolean,
     dragState: EventDragState,
-    onDragMoved: (Offset) -> Unit,
-    onDrop: (event: EventInstance, source: LocalDate, target: LocalDate) -> Unit,
-    dropTargetOf: (Offset) -> LocalDate?,
 ) {
     var chipCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    // pointerInput is keyed on the event only, so read the callbacks through
-    // updated state — otherwise a drop ran a stale lambda (e.g. one that still
-    // thought the user was on the free tier right after unlocking premium).
-    val currentOnDrop by androidx.compose.runtime.rememberUpdatedState(onDrop)
-    val currentDropTargetOf by androidx.compose.runtime.rememberUpdatedState(dropTargetOf)
-    val currentOnDragMoved by androidx.compose.runtime.rememberUpdatedState(onDragMoved)
     val currentCellDate by androidx.compose.runtime.rememberUpdatedState(cellDate)
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val beingDragged = dragState.event?.let {
         it.eventId == event.eventId && dragState.sourceDate == cellDate
     } ?: false
@@ -674,34 +700,18 @@ private fun DraggableEventChip(
             .padding(horizontal = 1.dp)
             .onGloballyPositioned { chipCoords = it }
             .pointerInput(event.eventId, event.begin) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { startOffset ->
-                        val chip = chipCoords
-                        if (chip != null && chip.isAttached) {
-                            dragState.event = event
-                            dragState.sourceDate = currentCellDate
-                            dragState.position = chip.localToWindow(startOffset)
-                            currentOnDragMoved(dragState.position)
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (dragState.event != null) {
-                            dragState.position += dragAmount
-                            currentOnDragMoved(dragState.position)
-                        }
-                    },
-                    onDragEnd = {
-                        val dragged = dragState.event
-                        val source = dragState.sourceDate
-                        val target = currentDropTargetOf(dragState.position)
-                        if (dragged != null && source != null && target != null) {
-                            currentOnDrop(dragged, source, target)
-                        }
-                        dragState.clear()
-                    },
-                    onDragCancel = { dragState.clear() },
-                )
+                // Long press starts the drag; [eventDragHost] tracks the rest.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val press = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                    val chip = chipCoords?.takeIf { it.isAttached } ?: return@awaitEachGesture
+                    press.consume()
+                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    dragState.position = chip.localToWindow(press.position)
+                    dragState.sourceDate = currentCellDate
+                    dragState.pointerId = press.id
+                    dragState.event = event
+                }
             },
     ) {
         EventChipBody(event = event, dimmed = dimmed, ghosted = beingDragged)
