@@ -290,4 +290,7 @@
     <string name="clock_style_12h">12時間表記</string>
     <string name="widget_dot_exact_alarm">丸ドットの時計は、画面が点いている間に1分ごとに描き直して表示します。こよみの「アラームとリマインダー」を許可するとオンになります(許可するまでは簡易表示の時計になります)。</string>
     <string name="widget_dot_exact_alarm_allow">許可する</string>
+    <string name="widget_dot_battery_oem">この機種は、画面ロック中にこよみを省電力で止めることがあります。ロック中は自動で進む簡易表示の時計に切り替わるので時刻は合ったままですが、解除後すぐに丸ドットの時計へ戻すには、こよみの「自動起動」をオンにし、バッテリーセーバーを「制限なし」にしてください。</string>
+    <string name="widget_dot_autostart">自動起動</string>
+    <string name="widget_dot_app_info">アプリ情報</string>
 </resources>

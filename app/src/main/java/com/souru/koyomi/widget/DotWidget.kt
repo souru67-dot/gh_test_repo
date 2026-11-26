@@ -237,16 +237,35 @@ object DotWidgetUpdater {
     @Volatile
     private var lastDrawnMinute = 0L
 
+    /**
+     * Which clock the widgets show, as far as this process knows: true = the
+     * minute-drawn round-dot bitmap, false = the self-ticking TextClock,
+     * null = unknown (fresh process).
+     */
+    @Volatile
+    private var bitmapShown: Boolean? = null
+
+    /**
+     * Screen on? While it's off the launcher may stop us entirely (aggressive
+     * OEM battery managers freeze apps at lock), so the widget hands the clock
+     * to the self-ticking TextClock — it is right the moment the screen comes
+     * back, even if we can't run — and takes it back on the first tick after.
+     */
+    private fun isInteractive(context: Context): Boolean =
+        context.getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
+
     private fun currentMinute(): Long = System.currentTimeMillis() / 60_000L
 
     /**
-     * Safety net for the alarm chain (TIME_TICK / screen-on / watchdog): redraws
-     * only when the shown minute is behind, and re-arms the chain either way.
+     * Safety net for the alarm chain (TIME_TICK / screen on-off / unlock /
+     * watchdog): redraws when the shown minute is behind or the wrong clock is
+     * showing for the screen state, and re-arms the chain either way.
      */
     suspend fun tickIfStale(context: Context) {
         // Without exact alarms the fallback TextClock ticks on its own.
         if (ids(context).isEmpty() || !DotClockTicker.canTick(context)) return
-        if (lastDrawnMinute != currentMinute()) tick(context) else DotClockTicker.schedule(context)
+        val needed = !isInteractive(context) || bitmapShown != true || lastDrawnMinute != currentMinute()
+        if (needed) tick(context) else DotClockTicker.schedule(context)
     }
 
     private fun metrics(context: Context, appWidgetId: Int): Metrics {
@@ -306,7 +325,7 @@ object DotWidgetUpdater {
                 }
             },
         )
-        val ticking = s.premium && DotClockTicker.canTick(context)
+        val ticking = s.premium && DotClockTicker.canTick(context) && isInteractive(context)
         views.setViewVisibility(R.id.dot_clock_bitmap, if (ticking) android.view.View.VISIBLE else android.view.View.GONE)
         views.setViewVisibility(
             R.id.dot_clock_live,
@@ -325,6 +344,7 @@ object DotWidgetUpdater {
         )
         views.setOnClickPendingIntent(R.id.dot_root, open)
         AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views)
+        if (s.premium) bitmapShown = ticking
     }
 
     /** Minute tick: redraw only the clock image of every dot widget. */
@@ -334,6 +354,16 @@ object DotWidgetUpdater {
         if (!DotClockTicker.canTick(context)) {
             // Exact alarms were taken away: switch to the self-ticking fallback
             // clock instead of leaving a frozen bitmap on screen.
+            updateAll(context)
+            return
+        }
+        if (!isInteractive(context)) {
+            // Going dark: hand the clock to the self-ticking TextClock once.
+            if (bitmapShown != false) updateAll(context)
+            return
+        }
+        if (bitmapShown != true) {
+            // Back from the TextClock (or a fresh process): full redraw.
             updateAll(context)
             return
         }

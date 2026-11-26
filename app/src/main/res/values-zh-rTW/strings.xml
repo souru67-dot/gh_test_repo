@@ -291,4 +291,7 @@
     <string name="clock_style_12h">12 小時制</string>
     <string name="widget_dot_exact_alarm">圓點時鐘會在螢幕亮起時每分鐘重繪一次。為 Koyomi 允許「鬧鐘和提醒」即可開啟,在此之前顯示簡易時鐘。</string>
     <string name="widget_dot_exact_alarm_allow">允許</string>
+    <string name="widget_dot_battery_oem">此機型可能在鎖定畫面時因省電而停止 Koyomi。鎖定期間會切換為自動走時的簡易時鐘,時間仍然正確;若想解鎖後立即恢復圓點時鐘,請為 Koyomi 開啟「自動啟動」,並將省電策略設為「無限制」。</string>
+    <string name="widget_dot_autostart">自動啟動</string>
+    <string name="widget_dot_app_info">應用程式資訊</string>
 </resources>

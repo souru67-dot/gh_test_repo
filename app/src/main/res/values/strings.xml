@@ -291,4 +291,7 @@
     <string name="clock_style_12h">12-hour</string>
     <string name="widget_dot_exact_alarm">To draw the round-dot clock, Koyomi redraws it once a minute while your screen is on. Allow "Alarms &amp; reminders" for Koyomi to turn it on — until then a simpler dot clock is shown.</string>
     <string name="widget_dot_exact_alarm_allow">Allow</string>
+    <string name="widget_dot_battery_oem">On this phone, battery saving can stop Koyomi while the screen is locked. The clock still keeps the right time (it switches to the simple clock while locked), but to get the round-dot clock back right after you unlock, turn on "Autostart" for Koyomi and set its battery saver to "No restrictions".</string>
+    <string name="widget_dot_autostart">Autostart</string>
+    <string name="widget_dot_app_info">App info</string>
 </resources>

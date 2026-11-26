@@ -107,14 +107,16 @@ class KoyomiApplication : Application() {
     }
 
     /**
-     * While the process is alive, the system's own minute tick (and screen-on)
-     * keeps the 「ドット」 clock current even if an alarm was deferred or dropped.
-     * Cheap: it only redraws when the shown minute is actually behind.
+     * While the process is alive, the system's own minute tick and screen
+     * on/off/unlock keep the 「ドット」 clock current (and hand it to the
+     * self-ticking TextClock while the screen is off). Cheap: it only redraws
+     * when the shown clock is actually behind or the wrong kind.
      */
     private fun registerDotClockNudges() {
         val filter = android.content.IntentFilter().apply {
             addAction(android.content.Intent.ACTION_TIME_TICK)
             addAction(android.content.Intent.ACTION_SCREEN_ON)
+            addAction(android.content.Intent.ACTION_SCREEN_OFF)
             addAction(android.content.Intent.ACTION_USER_PRESENT)
         }
         val receiver = object : android.content.BroadcastReceiver() {

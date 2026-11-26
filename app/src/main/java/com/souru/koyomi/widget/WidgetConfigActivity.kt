@@ -237,6 +237,33 @@ class WidgetConfigActivity : ComponentActivity() {
                             }
                         }
 
+                        if (isDot && isAggressiveBatteryOem()) {
+                            // HyperOS / MIUI stop background apps at lock unless
+                            // auto-start is on and battery saving is lifted.
+                            androidx.compose.material3.Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 20.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.widget_dot_battery_oem),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Row {
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { openAutoStartSettings() },
+                                        ) { Text(stringResource(R.string.widget_dot_autostart)) }
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { openAppDetails() },
+                                        ) { Text(stringResource(R.string.widget_dot_app_info)) }
+                                    }
+                                }
+                            }
+                        }
+
                         if (isDot) {
                             Text(
                                 text = stringResource(R.string.widget_dot_color),
@@ -401,6 +428,31 @@ class WidgetConfigActivity : ComponentActivity() {
                 Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId),
             )
             finish()
+        }
+    }
+
+    private fun isAggressiveBatteryOem(): Boolean =
+        android.os.Build.MANUFACTURER.lowercase() in setOf("xiaomi", "redmi", "poco")
+
+    /** MIUI / HyperOS auto-start list; falls back to the app's info page. */
+    private fun openAutoStartSettings() {
+        val autoStart = Intent().setComponent(
+            android.content.ComponentName(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.autostart.AutoStartManagementActivity",
+            ),
+        )
+        if (runCatching { startActivity(autoStart) }.isFailure) openAppDetails()
+    }
+
+    private fun openAppDetails() {
+        runCatching {
+            startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:$packageName"),
+                ),
+            )
         }
     }
 }

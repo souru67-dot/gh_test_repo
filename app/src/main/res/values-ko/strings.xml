@@ -291,4 +291,7 @@
     <string name="clock_style_12h">12시간제</string>
     <string name="widget_dot_exact_alarm">둥근 도트 시계는 화면이 켜져 있는 동안 1분마다 다시 그려 표시합니다. Koyomi에 \'알람 및 리마인더\'를 허용하면 켜집니다(허용 전에는 간이 시계로 표시).</string>
     <string name="widget_dot_exact_alarm_allow">허용</string>
+    <string name="widget_dot_battery_oem">이 기기는 화면 잠금 중 절전 기능으로 Koyomi를 멈출 수 있습니다. 잠금 중에는 스스로 가는 간이 시계로 바뀌어 시간은 맞지만, 잠금 해제 직후 둥근 도트 시계로 돌아오게 하려면 Koyomi의 \'자동 시작\'을 켜고 배터리 세이버를 \'제한 없음\'으로 설정하세요.</string>
+    <string name="widget_dot_autostart">자동 시작</string>
+    <string name="widget_dot_app_info">앱 정보</string>
 </resources>
