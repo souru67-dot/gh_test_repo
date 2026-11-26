@@ -513,32 +513,6 @@ class CalendarRepository(private val context: Context) {
         resolver.delete(uri, null, null) > 0
     }
 
-    /** Partial update of just the DESCRIPTION column (task done-marker toggle). */
-    suspend fun updateDescription(eventId: Long, description: String): Boolean =
-        withContext(Dispatchers.IO) {
-            if (!hasWritePermission()) return@withContext false
-            val values = ContentValues().apply {
-                put(CalendarContract.Events.DESCRIPTION, description)
-            }
-            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
-            resolver.update(uri, values, null, null) > 0
-        }
-
-    /** Current DESCRIPTION of an event (for marker toggles). */
-    suspend fun loadDescription(eventId: Long): String? = withContext(Dispatchers.IO) {
-        if (!hasReadPermission()) return@withContext null
-        resolver.query(
-            ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
-            arrayOf(CalendarContract.Events.DESCRIPTION),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) return@withContext cursor.getString(0)
-        }
-        null
-    }
-
     /**
      * Asks the sync framework to sync every calendar account now. The system
      * throttles this, so calling it on every app resume is fine.

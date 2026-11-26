@@ -2,12 +2,10 @@
     <string name="app_name">Koyomi</string>
 
     <!-- Month screen -->
-    <string name="month_title_pattern">yyyy年M月</string>
     <string name="sheet_date_pattern">M月d日 EEE</string>
     <string name="back_to_today">今天</string>
     <string name="no_events">暂无日程</string>
     <string name="all_day">全天</string>
-    <string name="more_events">+%1$d</string>
     <string name="add_event">添加日程</string>
     <string name="permission_banner">未授予日历访问权限，无法显示日程。</string>
     <string name="open_settings">打开设置</string>
@@ -146,7 +144,6 @@
     <!-- Tasks -->
     <string name="tasks">任务</string>
     <string name="add_task_hint">添加任务</string>
-    <string name="settings_task_calendar">新建任务使用的日历</string>
     <string name="event_label">日程</string>
     <string name="task_date">日期</string>
     <string name="task_time">时间</string>

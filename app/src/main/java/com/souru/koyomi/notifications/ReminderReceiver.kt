@@ -14,8 +14,6 @@ import com.souru.koyomi.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * CalendarProvider fires ACTION_EVENT_REMINDER at each alarm time; we look up

@@ -10,8 +10,6 @@ import androidx.work.WorkerParameters
 import com.souru.koyomi.KoyomiApplication
 import com.souru.koyomi.MainActivity
 import com.souru.koyomi.R
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Posts the reminder notification for a local task. */
 class TaskReminderWorker(

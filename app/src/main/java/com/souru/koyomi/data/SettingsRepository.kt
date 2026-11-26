@@ -33,7 +33,6 @@ class SettingsRepository(private val context: Context) {
         val SYNC_INTERVAL_MINUTES = stringPreferencesKey("sync_interval_minutes")
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
         val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
-        val TASK_CALENDAR_ID = stringPreferencesKey("task_calendar_id")
         val DEFAULT_CALENDAR_ID = stringPreferencesKey("default_calendar_id")
         val CUSTOM_STAMPS = stringPreferencesKey("custom_stamps")
         val HOLIDAY_COUNTRY = stringPreferencesKey("holiday_country")
@@ -270,15 +269,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.CUSTOM_STAMPS] = array.toString() }
     }
 
-    /** Calendar new tasks are created in; null = follow last-used calendar. */
-    val taskCalendarId: Flow<Long?> = context.dataStore.data.map { prefs ->
-        prefs[Keys.TASK_CALENDAR_ID]?.toLongOrNull()
-    }
-
-    suspend fun setTaskCalendarId(calendarId: Long) {
-        context.dataStore.edit { it[Keys.TASK_CALENDAR_ID] = calendarId.toString() }
-    }
-
     /** 時刻の表記 (follow device / 24h / 12h). */
     val clockStyle: Flow<com.souru.koyomi.util.ClockStyle> = context.dataStore.data.map { prefs ->
         com.souru.koyomi.util.ClockStyle.entries.find { it.name == prefs[Keys.CLOCK_STYLE] }
@@ -317,13 +307,6 @@ class SettingsRepository(private val context: Context) {
     private fun widgetOpacityKey(appWidgetId: Int) =
         stringPreferencesKey("widget_opacity_$appWidgetId")
 
-    /** Per-widget theme; SYSTEM follows the device (with Dynamic Color). */
-    fun widgetTheme(appWidgetId: Int): Flow<ThemeMode> = context.dataStore.data.map { prefs ->
-        prefs[widgetThemeKey(appWidgetId)]?.let { name ->
-            ThemeMode.entries.find { it.name == name }
-        } ?: ThemeMode.SYSTEM
-    }
-
     /** Per-widget theme, or null when the user never chose one for it. */
     fun widgetThemeOverride(appWidgetId: Int): Flow<ThemeMode?> =
         context.dataStore.data.map { prefs ->
@@ -356,6 +339,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setWidgetDotColor(appWidgetId: Int, colorName: String) {
         context.dataStore.edit { it[widgetDotColorKey(appWidgetId)] = colorName }
+    }
+
+    /** Forgets a removed widget's overrides so they don't pile up. */
+    suspend fun clearWidget(appWidgetId: Int) {
+        context.dataStore.edit { prefs ->
+            prefs.remove(widgetThemeKey(appWidgetId))
+            prefs.remove(widgetOpacityKey(appWidgetId))
+            prefs.remove(widgetDotColorKey(appWidgetId))
+        }
     }
 
     suspend fun setCalendarHidden(calendarId: Long, hidden: Boolean) {

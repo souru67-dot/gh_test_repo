@@ -9,10 +9,8 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -32,13 +30,8 @@ import java.time.LocalDate
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
-class HimekuriWidgetReceiver : GlanceAppWidgetReceiver() {
+class HimekuriWidgetReceiver : KoyomiWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HimekuriWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetUpdateWorker.schedule(context)
-    }
 }
 
 /**

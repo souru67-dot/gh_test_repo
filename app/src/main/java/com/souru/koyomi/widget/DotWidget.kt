@@ -70,6 +70,10 @@ class DotWidgetReceiver : AppWidgetProvider() {
         WidgetUpdateWorker.schedule(context)
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        forgetWidgets(context, appWidgetIds)
+    }
+
     override fun onDisabled(context: Context) {
         DotClockTicker.cancel(context)
         DotClockWatchdog.cancel(context)

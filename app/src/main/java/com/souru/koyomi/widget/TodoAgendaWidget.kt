@@ -9,15 +9,12 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
-import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
-import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
@@ -35,13 +32,8 @@ import com.souru.koyomi.R
 import com.souru.koyomi.data.task.Task
 import java.time.LocalDate
 
-class TodoAgendaWidgetReceiver : GlanceAppWidgetReceiver() {
+class TodoAgendaWidgetReceiver : KoyomiWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodoAgendaWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetUpdateWorker.schedule(context)
-    }
 }
 
 /**

@@ -2,12 +2,10 @@
     <string name="app_name">Koyomi</string>
 
     <!-- Month screen -->
-    <string name="month_title_pattern">yyyy년 M월</string>
     <string name="sheet_date_pattern">M월 d일 EEE</string>
     <string name="back_to_today">오늘</string>
     <string name="no_events">일정 없음</string>
     <string name="all_day">종일</string>
-    <string name="more_events">+%1$d</string>
     <string name="add_event">일정 추가</string>
     <string name="permission_banner">캘린더 접근 권한이 없어 일정을 표시할 수 없습니다.</string>
     <string name="open_settings">설정 열기</string>
@@ -146,7 +144,6 @@
     <!-- Tasks -->
     <string name="tasks">할 일</string>
     <string name="add_task_hint">할 일 추가</string>
-    <string name="settings_task_calendar">새 할 일에 사용할 캘린더</string>
     <string name="event_label">일정</string>
     <string name="task_date">날짜</string>
     <string name="task_time">시간</string>

@@ -95,8 +95,7 @@ fun widgetScheme(look: WidgetLook, dark: Boolean): androidx.compose.material3.Co
 
 /**
  * Resolves the per-widget theme/opacity chosen in the widget config screen,
- * falling back to app-wide defaults. The appWidgetId is recovered from the
- * GlanceId's stable string form ("AppWidgetId(appWidgetId=42)").
+ * falling back to app-wide defaults.
  */
 suspend fun resolveWidgetLook(
     context: Context,
@@ -105,7 +104,9 @@ suspend fun resolveWidgetLook(
     defaultTheme: ThemeMode = ThemeMode.SYSTEM,
 ): WidgetLook = resolveWidgetLook(
     context,
-    glanceId.toString().filter { it.isDigit() }.toIntOrNull() ?: -1,
+    runCatching {
+        androidx.glance.appwidget.GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+    }.getOrDefault(-1),
     defaultTheme,
 )
 

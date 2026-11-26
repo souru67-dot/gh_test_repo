@@ -2,7 +2,6 @@
     <string name="app_name">こよみ</string>
 
     <!-- Month screen -->
-    <string name="month_title_pattern">yyyy年M月</string>
     <string name="sheet_date_pattern">M月d日(EEE)</string>
     <string name="back_to_today">今日</string>
     <string name="no_events">予定はありません</string>
@@ -145,7 +144,6 @@
     <!-- Tasks -->
     <string name="tasks">タスク</string>
     <string name="add_task_hint">タスクを追加</string>
-    <string name="settings_task_calendar">タスクの作成先カレンダー</string>
     <string name="event_label">予定</string>
     <string name="task_date">日付</string>
     <string name="task_time">時刻</string>

@@ -8,6 +8,7 @@
 -keep class com.souru.koyomi.data.CalendarSyncWorker { <init>(...); }
 -keep class com.souru.koyomi.notifications.TaskReminderWorker { <init>(...); }
 -keep class com.souru.koyomi.widget.WidgetUpdateWorker { <init>(...); }
+-keep class com.souru.koyomi.widget.DotClockWatchdogWorker { <init>(...); }
 
 # Glance app-widget receivers and the widget configuration activity are named
 # in AndroidManifest.xml (so kept), but keep the GlanceAppWidget subclasses

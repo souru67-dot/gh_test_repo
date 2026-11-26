@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
@@ -51,7 +52,6 @@ class KoyomiApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         createNotificationChannel()
-        registerDotClockNudges()
         // Re-sync the premium entitlement with Play on every cold start.
         container.billingRepository.refresh()
         // Keep widgets fresh across date rollover and calendar changes.
@@ -70,40 +70,52 @@ class KoyomiApplication : Application() {
         }
         // (Re)schedule periodic calendar sync, following the setting live.
         appScope.launch {
-            container.settingsRepository.syncIntervalMinutes.collect { minutes ->
+            container.settingsRepository.syncIntervalMinutes.distinctUntilChanged().collect { minutes ->
                 CalendarSyncWorker.schedule(this@KoyomiApplication, minutes)
             }
         }
         // Redraw widgets when a fresh forecast lands (ひとめ shows it).
         appScope.launch {
-            container.weatherRepository.forecastByDay.drop(1).collect {
+            container.weatherRepository.forecastByDay.distinctUntilChanged().drop(1).collect {
                 WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
             }
         }
-        // 12/24-hour choice: mirror into TimeStyle and redraw the widgets.
+        // Settings the widgets render with (DataStore re-emits on ANY key, hence
+        // distinctUntilChanged). Values are mirrored into their static holders
+        // right away; widgets are redrawn only when a value
+        // actually changes — not on every cold start (the 「ドット」 clock starts
+        // the process every minute). A non-default value seen at start-up still
+        // triggers one redraw, in case a widget was drawn before it loaded.
         appScope.launch {
-            container.settingsRepository.clockStyle.collect { style ->
+            var first = true
+            container.settingsRepository.clockStyle.distinctUntilChanged().collect { style ->
                 com.souru.koyomi.util.TimeStyle.style = style
-                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+                if (!first || style != com.souru.koyomi.util.ClockStyle.SYSTEM) {
+                    WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+                }
+                first = false
             }
         }
-        // Redraw widgets when their opacity setting changes.
         appScope.launch {
-            container.settingsRepository.widgetOpacityPercent.collect {
-                WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
-            }
-        }
-        // Keep the active holiday country in sync with the setting (null =
-        // follow the device locale). Static call sites read Holidays.country.
-        appScope.launch {
-            container.settingsRepository.holidayCountry.collect { country ->
+            var first = true
+            container.settingsRepository.holidayCountry.distinctUntilChanged().collect { country ->
                 com.souru.koyomi.data.holiday.Holidays.country = country
                     ?: com.souru.koyomi.data.holiday.HolidayCountry.fromLocale(
                         java.util.Locale.getDefault(),
                     )
+                if (!first || country != null) {
+                    WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
+                }
+                first = false
+            }
+        }
+        // App-wide widget opacity.
+        appScope.launch {
+            container.settingsRepository.widgetOpacityPercent.distinctUntilChanged().drop(1).collect {
                 WidgetUpdateWorker.updateAllWidgets(this@KoyomiApplication)
             }
         }
+        registerDotClockNudges()
     }
 
     /**

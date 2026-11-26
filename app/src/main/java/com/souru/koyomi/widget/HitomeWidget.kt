@@ -9,12 +9,10 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
-import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -43,13 +41,8 @@ import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 import kotlinx.coroutines.flow.first
 
-class HitomeWidgetReceiver : GlanceAppWidgetReceiver() {
+class HitomeWidgetReceiver : KoyomiWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HitomeWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetUpdateWorker.schedule(context)
-    }
 }
 
 /**
