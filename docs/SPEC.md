@@ -22,7 +22,7 @@ _最終更新: 2026年7月16日 / ブランチ: `claude/koyomi-v2`_
 - 予定の実体は **CalendarProvider**(端末カレンダー)。設定は DataStore、
   タスクはローカル SQLite。
 - ウィジェットは Glance、バックグラウンドは WorkManager
-- minSdk 26 / targetSdk 35 / compileSdk 35、JDK 17
+- minSdk 26 / targetSdk 36 / compileSdk 36(Google Play の2026年8月以降の要件)、AGP 8.13、JDK 17
 - 手動DI(`AppContainer`)
 
 ## 3. 画面構成
