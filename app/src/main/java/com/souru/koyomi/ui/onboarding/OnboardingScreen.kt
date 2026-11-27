@@ -84,12 +84,14 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             Spacer(modifier = Modifier.height(40.dp))
             Button(
                 onClick = {
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_CALENDAR,
-                            Manifest.permission.WRITE_CALENDAR,
-                        ),
-                    )
+                    val permissions = buildList {
+                        add(Manifest.permission.READ_CALENDAR)
+                        add(Manifest.permission.WRITE_CALENDAR)
+                        if (android.os.Build.VERSION.SDK_INT >= 33) {
+                            add(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    permissionLauncher.launch(permissions.toTypedArray())
                 },
                 modifier = Modifier
                     .fillMaxWidth()

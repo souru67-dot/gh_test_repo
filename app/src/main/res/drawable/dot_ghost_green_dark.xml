@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「ドット」 clock: unlit green LEDs (dark). Used as a VIEW BACKGROUND so the 4dp grid tiles. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:antialias="true"
+    android:src="@drawable/dot_ghost_green_dark_px"
+    android:tileMode="repeat" />

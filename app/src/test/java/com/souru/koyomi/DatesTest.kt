@@ -39,6 +39,31 @@ class DatesTest {
     }
 
     @Test
+    fun `pages clamp at both ends`() {
+        assertEquals(0, MonthPages.pageOf(YearMonth.of(1969, 12)))
+        assertEquals(MonthPages.COUNT - 1, MonthPages.pageOf(YearMonth.of(2200, 1)))
+        assertEquals(YearMonth.of(2169, 12), MonthPages.monthAt(MonthPages.COUNT - 1))
+    }
+
+    @Test
+    fun `grid always covers the whole month`() {
+        for (month in listOf(
+            YearMonth.of(2026, 2), // starts on the week start (Sunday)
+            YearMonth.of(2028, 2), // leap February
+            YearMonth.of(2026, 12), // year boundary
+        )) {
+            for (weekStart in listOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY)) {
+                val grid = monthGridDays(month, weekStart)
+                assertEquals(42, grid.size)
+                assertEquals(weekStart, grid.first().dayOfWeek)
+                assertEquals(grid.first().plusDays(41), grid.last())
+                assert(grid.first() <= month.atDay(1))
+                assert(grid.last() >= month.atEndOfMonth())
+            }
+        }
+    }
+
+    @Test
     fun `ordered week days`() {
         assertEquals(
             listOf(

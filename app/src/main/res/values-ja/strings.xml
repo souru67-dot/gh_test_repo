@@ -2,7 +2,6 @@
     <string name="app_name">こよみ</string>
 
     <!-- Month screen -->
-    <string name="month_title_pattern">yyyy年M月</string>
     <string name="sheet_date_pattern">M月d日(EEE)</string>
     <string name="back_to_today">今日</string>
     <string name="no_events">予定はありません</string>
@@ -10,6 +9,18 @@
     <string name="add_event">予定を追加</string>
     <string name="permission_banner">カレンダーへのアクセスが許可されていないため、予定を表示できません。</string>
     <string name="open_settings">設定を開く</string>
+    <string name="no_calendars_found">端末にカレンダーアカウントが見つかりません。Googleアカウントを追加するか、カレンダー同期を有効にしてください。</string>
+    <string name="previous_period">前へ</string>
+    <string name="next_period">次へ</string>
+    <string name="chosen_color">選択中の色</string>
+
+    <!-- Search & agenda -->
+    <string name="search">検索</string>
+    <string name="search_hint">予定を検索</string>
+    <string name="search_no_results">見つかりませんでした</string>
+    <string name="agenda_upcoming">これからの予定</string>
+    <string name="search_date_pattern">yyyy年M月d日(EEE)</string>
+    <string name="jump_to_month">年月を選択</string>
 
     <!-- Event detail -->
     <string name="edit">編集</string>
@@ -17,7 +28,15 @@
     <string name="delete">削除</string>
     <string name="close">閉じる</string>
     <string name="delete_confirm_title">この予定を削除しますか?</string>
-    <string name="delete_confirm_message">「%1$s」をカレンダーから削除します。繰り返しの予定はすべての回がまとめて削除されます。</string>
+    <string name="delete_confirm_message">「%1$s」をカレンダーから削除します。</string>
+    <string name="delete_recurring_title">繰り返しの予定を削除</string>
+    <string name="delete_recurring_message">「%1$s」は繰り返しの予定です。削除する範囲を選んでください。</string>
+    <string name="delete_this_occurrence">この予定のみ</string>
+    <string name="delete_all_occurrences">すべての予定</string>
+    <string name="save_scope_title">繰り返しの予定を保存</string>
+    <string name="save_scope_message">この予定は繰り返しです。変更を適用する範囲を選んでください。</string>
+    <string name="save_this_occurrence">この予定のみ</string>
+    <string name="save_all_occurrences">すべての予定</string>
     <string name="cancel">キャンセル</string>
     <string name="untitled">(タイトルなし)</string>
 
@@ -36,6 +55,7 @@
     <string name="ok">OK</string>
     <string name="select_time">時刻を選択</string>
     <string name="no_writable_calendar">書き込み可能なカレンダーが見つかりません。端末にカレンダーアカウントを追加してください。</string>
+    <string name="read_only">読み取り専用</string>
 
     <string name="reminder_none">なし</string>
     <string name="reminder_at_time">予定の時刻</string>
@@ -49,32 +69,198 @@
     <string name="repeat_monthly">毎月</string>
     <string name="repeat_yearly">毎年</string>
     <string name="repeat_custom">カスタム</string>
+    <string name="repeat_until">繰り返しの終了</string>
+    <string name="repeat_until_none">なし</string>
+    <string name="repeat_until_clear">終了日をクリア</string>
 
     <!-- Views & settings -->
     <string name="switch_view">表示切替</string>
     <string name="view_week">週表示</string>
     <string name="view_day">日表示</string>
+    <string name="view_year">年表示</string>
     <string name="settings">設定</string>
     <string name="settings_week_start">週の開始曜日</string>
     <string name="week_start_sunday">日曜日</string>
     <string name="week_start_monday">月曜日</string>
-    <string name="settings_month_scroll">月表示のスクロール</string>
     <string name="settings_vertical_scroll">縦方向に連続スクロール</string>
-    <string name="settings_theme">テーマ</string>
+    <string name="settings_multi_day_bars">連日の予定を帯で表示</string>
+    <string name="settings_theme">明るさ</string>
     <string name="theme_system">システムに合わせる</string>
     <string name="theme_light">ライト</string>
     <string name="theme_dark">ダーク</string>
+    <string name="settings_dynamic_color">壁紙の色を使う(Material You)</string>
+    <string name="settings_theme_pack">きせかえテーマ</string>
+    <string name="pack_sumi">墨と橙</string>
+    <string name="pack_sakura">桜</string>
+    <string name="pack_wakaba">若葉</string>
+    <string name="pack_ai">藍</string>
+    <string name="pack_momiji">紅葉</string>
+    <string name="pack_custom">カスタム</string>
+    <string name="settings_week_numbers">週番号を表示</string>
+    <string name="settings_rokuyo">六曜を表示(大安・仏滅など)</string>
+    <string name="settings_solar_terms">二十四節気を表示(立春・夏至など)</string>
+    <string name="settings_lucky_days">開運日を表示(一粒万倍日・天赦日など)</string>
+    <string name="settings_lunar_date">旧暦の日付を表示</string>
+    <string name="settings_moon_age">月齢を表示</string>
+    <string name="settings_japanese_era">和暦(令和8年)で表示</string>
+    <string name="settings_default_calendar">新しい予定の保存先</string>
+    <string name="default_calendar_last_used">前回使ったカレンダー</string>
+    <string name="settings_holiday_country">祝日</string>
+    <string name="holiday_country_auto">端末の地域に合わせる</string>
+    <string name="holiday_country_jp">日本</string>
+    <string name="holiday_country_us">アメリカ</string>
+    <string name="holiday_country_gb">イギリス</string>
+    <string name="holiday_country_kr">韓国</string>
+    <string name="holiday_country_none">表示しない</string>
     <string name="settings_calendars">表示するカレンダー</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">データ</string>
+    <string name="export_ics">予定を書き出す(.ics)</string>
+    <string name="import_ics">予定を取り込む(.ics)</string>
+    <string name="export_done">%1$d件の予定を書き出しました</string>
+    <string name="export_failed">書き出しに失敗しました</string>
+    <string name="import_done">%1$d件の予定を取り込みました</string>
+    <string name="import_failed">取り込みに失敗しました</string>
+    <string name="import_choose_calendar">取り込み先のカレンダー</string>
+    <string name="backup_export">引き継ぎデータを書き出す(.json)</string>
+    <string name="backup_import">引き継ぎデータを読み込む</string>
+    <string name="backup_done">引き継ぎデータを保存しました</string>
+    <string name="restore_done">%1$d件を復元しました</string>
+
+    <!-- Sync & notifications -->
+    <string name="settings_sync">同期の頻度</string>
+    <string name="sync_15min">15分ごと</string>
+    <string name="sync_30min">30分ごと</string>
+    <string name="sync_1hour">1時間ごと</string>
+    <string name="sync_system_only">システムの自動同期のみ</string>
+    <string name="settings_notifications">通知</string>
+    <string name="notifications_enabled">リマインダー通知は有効です</string>
+    <string name="notifications_disabled">リマインダー通知は無効です</string>
+    <string name="notifications_allow">許可する</string>
+    <string name="notification_channel_reminders">予定のリマインダー</string>
+
+    <!-- Tasks -->
+    <string name="tasks">タスク</string>
+    <string name="add_task_hint">タスクを追加</string>
+    <string name="event_label">予定</string>
+    <string name="task_date">日付</string>
+    <string name="task_time">時刻</string>
+    <string name="tasks_list">ToDoリスト</string>
+    <string name="tasks_overdue">期限切れ</string>
+    <string name="tasks_upcoming">今後</string>
+    <string name="tasks_done">完了</string>
+    <string name="tasks_empty">ToDoはありません</string>
+
+    <!-- Anniversaries -->
+
+    <!-- Diary -->
+
+    <!-- Stamps -->
+
+    <!-- Premium -->
+    <string name="premium_title">こよみ プレミアム</string>
+    <string name="premium_banner">買い切りですべての機能が使えます</string>
+    <string name="premium_lead">一度のご購入で、すべての機能がずっと使えます。サブスクリプションではありません。</string>
+    <string name="premium_feature_koyomi">和の暦: 六曜・二十四節気・開運日・旧暦・月齢・和暦</string>
+    <string name="premium_feature_themes">きせかえ全テーマ+カスタムカラー</string>
+    <string name="premium_feature_widgets">すべてのウィジェット</string>
+    <string name="premium_feature_shortcuts">ドラッグ&amp;ドロップで予定を移動・複製</string>
+    <string name="premium_feature_backup">機種変更の引き継ぎバックアップ</string>
+    <string name="premium_buy">解除する</string>
+    <string name="premium_buy_price">%1$sで解除する</string>
+    <string name="premium_restore">購入を復元</string>
+    <string name="premium_owned">プレミアムは解除済みです。ありがとうございます!</string>
+    <string name="premium_note">購入はGoogle Playで処理され、同じアカウントの端末間で共有されます。</string>
+    <string name="widget_premium_lock">このウィジェットは「こよみ プレミアム」の機能です。\nアプリから解除できます。</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">移動しますか、複製しますか?</string>
+    <string name="drop_message">「%1$s」をどうしますか?</string>
+    <string name="drop_move">ここに移動</string>
+    <string name="drop_copy">ここに複製</string>
+    <string name="event_create_failed">予定を作成できませんでした。書き込み可能なカレンダーを追加してください。</string>
 
     <!-- Widgets -->
     <string name="widget_month_label">月カレンダー</string>
-    <string name="widget_month_description">今月をひと目で。予定のある日にドットを表示します。</string>
+    <string name="widget_month_description">今月をひと目で。予定をカレンダーの色で表示します。</string>
     <string name="widget_today_label">今日の予定</string>
     <string name="widget_today_description">今日と明日の予定を時刻付きで一覧表示します。</string>
+    <string name="widget_himekuri_label">日めくり(2×2)</string>
+    <string name="widget_himekuri_description">今日の日付を大きく。祝日・開運日・六曜もひと目で。</string>
+    <string name="widget_mini_month_label">ミニカレンダー(2×2)</string>
+    <string name="widget_mini_month_description">いちばん小さな月カレンダー。予定はドットで表示します。</string>
+    <string name="settings_weather">天気</string>
+    <string name="weather_place">天気の地点</string>
+    <string name="weather_place_none">未設定</string>
+    <string name="weather_search_hint">市区町村名で検索</string>
+    <string name="weather_clear">表示しない</string>
+    <string name="settings_widget_opacity">ウィジェット背景の濃さ</string>
+    <string name="widget_config_title">ウィジェット設定</string>
+    <string name="events_count">%1$d件の予定</string>
+    <string name="no_more_today">今日はこれで終わりです</string>
+    <string name="tomorrow_label">明日</string>
+
+    <!-- Event color -->
+    <string name="event_color">色</string>
+    <string name="event_color_default">カレンダーの色</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">端末のカレンダーを、そのまま</string>
     <string name="onboarding_body">こよみは、GoogleカレンダーやExchangeなど端末に登録済みのカレンダーをそのまま読み書きします。予定の表示と作成のために、カレンダーへのアクセスを許可してください。</string>
     <string name="onboarding_grant">アクセスを許可</string>
     <string name="onboarding_skip">あとで</string>
+    <string name="billing_unavailable">Google Playに接続できませんでした。通信環境を確認して、もう一度お試しください。</string>
+    <string name="billing_restored">プレミアムを復元しました。ありがとうございます!</string>
+    <string name="billing_nothing_to_restore">このGoogleアカウントでの購入履歴が見つかりませんでした。</string>
+    <string name="billing_pending">お支払いの完了待ちです。完了するとプレミアムが有効になります。</string>
+    <string name="billing_purchased">プレミアムが有効になりました。ありがとうございます!</string>
+    <string name="billing_error">購入を完了できませんでした。もう一度お試しください。</string>
+    <string name="year_title">%1$d年</string>
+    <string name="year_title_with_era">%1$d年(%2$s)</string>
+    <string name="moon_age_label">月齢%1$s</string>
+    <string name="moon_new">新月</string>
+    <string name="moon_first_quarter">上弦</string>
+    <string name="moon_full">満月</string>
+    <string name="moon_last_quarter">下弦</string>
+    <string name="widget_config_hint">透明にする場合は、明るい壁紙なら「ライト」、暗い壁紙なら「ダーク」を選ぶと文字がくっきり読めます。</string>
+    <string name="widget_hitome_label">ひとめ</string>
+    <string name="widget_hitome_description">今日の日付と天気、今月のカレンダー、今日の予定をひと目で。</string>
+    <string name="widget_dot_label">ドット</string>
+    <string name="widget_dot_description">LEDのようなドット時計に、日付・今月のカレンダー・今日の予定とタスクを。</string>
+    <string name="widget_dot_color">ドットの色</string>
+    <string name="settings_clock_style">時刻の表記</string>
+    <string name="clock_style_system">端末に合わせる</string>
+    <string name="clock_style_24h">24時間表記</string>
+    <string name="clock_style_12h">12時間表記</string>
+    <string name="widget_dot_exact_alarm">丸ドットの時計は、画面が点いている間に1分ごとに描き直して表示します。こよみの「アラームとリマインダー」を許可するとオンになります(許可するまでは簡易表示の時計になります)。</string>
+    <string name="widget_dot_exact_alarm_allow">許可する</string>
+    <string name="widget_dot_battery_oem">この機種は、画面ロック中にこよみを省電力で止めることがあります。ロック中は自動で進む簡易表示の時計に切り替わるので時刻は合ったままですが、解除後すぐに丸ドットの時計へ戻すには、こよみの「自動起動」をオンにし、バッテリーセーバーを「制限なし」にしてください。</string>
+    <string name="widget_dot_autostart">自動起動</string>
+    <string name="widget_dot_app_info">アプリ情報</string>
+    <string name="settings_cat_display">表示</string>
+    <string name="settings_cat_koyomi">暦と祝日</string>
+    <string name="settings_cat_appearance">デザイン</string>
+    <string name="settings_cat_calendars">カレンダーと同期</string>
+    <string name="settings_cat_about">このアプリについて</string>
+    <string name="settings_month_paging">月の切り替え</string>
+    <string name="month_paging_swipe">左右にめくる</string>
+    <string name="settings_koyomi_summary">%1$s・%2$d項目を表示</string>
+    <string name="settings_calendars_summary">%1$d件を表示・%2$s</string>
+    <string name="settings_widget_summary">背景の濃さ %1$d%%</string>
+    <string name="settings_widget_opacity_desc" formatted="false">0%で背景なし(壁紙が透けて見えます)。1つのウィジェットだけ変えたいときは、ホーム画面でそのウィジェットを長押しして設定を開いてください。</string>
+    <string name="notifications_on">オン</string>
+    <string name="notifications_off">オフ</string>
+    <string name="settings_data_summary">書き出し・読み込み・機種変更</string>
+    <string name="export_ics_desc">予定を .ics ファイルに書き出します</string>
+    <string name="import_ics_desc">.ics ファイルの予定をカレンダーに追加します</string>
+    <string name="backup_export_desc">ToDoと設定を1つのファイルに保存します(機種変更用)</string>
+    <string name="backup_import_desc">保存したファイルから元に戻します</string>
+    <string name="settings_version">バージョン %1$s</string>
+    <string name="settings_licenses">オープンソースライセンス</string>
+    <string name="settings_weather_credit">天気データ: Open-Meteo.com(CC BY 4.0)</string>
+    <string name="settings_premium_only">プレミアム</string>
+    <string name="settings_multi_day_bars_desc">2日以上続く予定を、日付をまたぐ1本の帯で表示します</string>
+    <string name="settings_dynamic_color_desc">壁紙の色をアプリの配色に使います(Android 12以降)</string>
+    <string name="settings_cat_widgets">ウィジェット</string>
 </resources>

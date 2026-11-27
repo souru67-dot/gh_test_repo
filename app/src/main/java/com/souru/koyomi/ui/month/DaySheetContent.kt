@@ -29,23 +29,36 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.souru.koyomi.R
-import com.souru.koyomi.data.holiday.JapaneseHolidays
+import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.task.Task
 import com.souru.koyomi.ui.theme.LocalCalendarColors
 import java.time.Instant
 import java.time.LocalDate
@@ -61,7 +74,14 @@ import java.util.Locale
 @Composable
 fun DaySheetContent(
     date: LocalDate,
+    rokuyo: String?,
+    solarTerm: String?,
+    luckyDays: List<String> = emptyList(),
+    weather: String? = null,
+    lunarDate: String?,
+    moonAge: String?,
     events: List<EventInstance>,
+    tasks: List<Task>,
     calendars: List<CalendarInfo>,
     detailInstance: EventInstance?,
     detail: EventDetails?,
@@ -71,6 +91,10 @@ fun DaySheetContent(
     onEdit: (EventInstance) -> Unit,
     onDuplicate: (EventInstance) -> Unit,
     onDeleteRequest: (EventInstance) -> Unit,
+    onAddTask: (String) -> Unit,
+    onToggleTask: (Task) -> Unit,
+    onDeleteTask: (Task) -> Unit,
+    onEditTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
@@ -81,9 +105,20 @@ fun DaySheetContent(
         if (shownDetail == null) {
             DayEventList(
                 date = date,
+                rokuyo = rokuyo,
+                solarTerm = solarTerm,
+                luckyDays = luckyDays,
+                weather = weather,
+                lunarDate = lunarDate,
+                moonAge = moonAge,
                 events = events,
+                tasks = tasks,
                 onEventClick = onEventClick,
                 onAdd = onAdd,
+                onAddTask = onAddTask,
+                onToggleTask = onToggleTask,
+                onDeleteTask = onDeleteTask,
+                onEditTask = onEditTask,
             )
         } else {
             EventDetailPane(
@@ -99,28 +134,48 @@ fun DaySheetContent(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DayEventList(
     date: LocalDate,
+    rokuyo: String?,
+    solarTerm: String?,
+    luckyDays: List<String>,
+    weather: String?,
+    lunarDate: String?,
+    moonAge: String?,
     events: List<EventInstance>,
+    tasks: List<Task>,
     onEventClick: (EventInstance) -> Unit,
     onAdd: () -> Unit,
+    onAddTask: (String) -> Unit,
+    onToggleTask: (Task) -> Unit,
+    onDeleteTask: (Task) -> Unit,
+    onEditTask: (Task) -> Unit,
 ) {
     val calendarColors = LocalCalendarColors.current
     val dateFormatter = rememberPatternFormatter(R.string.sheet_date_pattern)
-    val holidayName = JapaneseHolidays.nameFor(date)
+    val holidayName = Holidays.nameFor(date)
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 8.dp),
+                .padding(start = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = date.format(dateFormatter),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            // Date as a tab-like pill — the sheet's own identity.
+            androidx.compose.material3.Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(50),
+            ) {
+                Text(
+                    text = date.format(dateFormatter),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+            }
             if (holidayName != null) {
                 Text(
                     text = holidayName,
@@ -138,25 +193,177 @@ private fun DayEventList(
             }
         }
 
-        if (events.isEmpty()) {
-            Box(
+        // 暦のラベル (二十四節気・六曜・旧暦・月齢): only what the user enabled,
+        // wrapping so any combination fits.
+        val almanac = buildList {
+            weather?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            solarTerm?.let { add(it to MaterialTheme.colorScheme.tertiary) }
+            for (lucky in luckyDays) add(lucky to MaterialTheme.colorScheme.tertiary)
+            rokuyo?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            lunarDate?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+            moonAge?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        if (almanac.isNotEmpty()) {
+            androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 40.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.no_events),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                for ((label, color) in almanac) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = color,
+                    )
+                }
             }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+        }
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (events.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.no_events),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
                 items(events, key = { "${it.eventId}-${it.begin}" }) { event ->
                     EventRow(date = date, event = event, onClick = { onEventClick(event) })
                 }
             }
+
+            item(key = "task-header") {
+                Text(
+                    text = stringResource(R.string.tasks),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 2.dp),
+                )
+            }
+            items(tasks, key = { "task-${it.id}" }) { task ->
+                TaskRow(
+                    task = task,
+                    onToggle = { onToggleTask(task) },
+                    onDelete = { onDeleteTask(task) },
+                    onEdit = { onEditTask(task) },
+                )
+            }
+            item(key = "task-add") {
+                AddTaskRow(onAddTask = onAddTask)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskRow(
+    task: Task,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    // Tapping the row opens the event editor (time / notification / color);
+    // the checkbox toggles completion.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onEdit)
+            .padding(start = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = task.done, onCheckedChange = { onToggle() })
+        task.color?.let { colorInt ->
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        com.souru.koyomi.util.providerColor(colorInt)
+                            ?: MaterialTheme.colorScheme.primary,
+                        CircleShape,
+                    ),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (task.color != null) 8.dp else 0.dp),
+        ) {
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (task.done) TextDecoration.LineThrough else null,
+                color = if (task.done) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            task.time?.let { time ->
+                Text(
+                    text = rememberTimeFormatter().format(time),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.delete),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddTaskRow(onAddTask: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    fun submit() {
+        if (text.isNotBlank()) {
+            onAddTask(text)
+            text = ""
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = { Text(stringResource(R.string.add_task_hint)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = ::submit, enabled = text.isNotBlank()) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.add_task_hint),
+            )
         }
     }
 }
@@ -304,28 +511,12 @@ private fun EventDetailPane(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(top = 8.dp),
-        ) {
-            if (!instance.location.isNullOrBlank()) {
-                DetailRow(icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) }) {
-                    Text(instance.location, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            if (!detail?.description.isNullOrBlank()) {
-                DetailRow(icon = { Icon(Icons.Outlined.Notes, null, Modifier.size(18.dp)) }) {
-                    Text(detail?.description.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
+        // Actions right under the header so they are visible at the sheet's
+        // peek height — no scrolling needed to edit or delete.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(top = 10.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
@@ -347,13 +538,46 @@ private fun EventDetailPane(
                 Text(stringResource(R.string.delete), modifier = Modifier.padding(start = 6.dp))
             }
         }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp, bottom = 12.dp),
+        ) {
+            if (!instance.location.isNullOrBlank()) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                DetailRow(
+                    icon = { Icon(Icons.Outlined.Place, null, Modifier.size(18.dp)) },
+                    modifier = Modifier.clickable {
+                        openLocationInMaps(context, instance.location)
+                    },
+                ) {
+                    Text(
+                        text = instance.location,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                    )
+                }
+            }
+            if (!detail?.description.isNullOrBlank()) {
+                DetailRow(icon = { Icon(Icons.Outlined.Notes, null, Modifier.size(18.dp)) }) {
+                    Text(detail?.description.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun DetailRow(icon: @Composable () -> Unit, content: @Composable () -> Unit) {
+private fun DetailRow(
+    icon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -363,13 +587,29 @@ private fun DetailRow(icon: @Composable () -> Unit, content: @Composable () -> U
     }
 }
 
-@Composable
-private fun rememberTimeFormatter(): DateTimeFormatter {
-    val locale = Locale.getDefault()
-    return androidx.compose.runtime.remember(locale) {
-        DateTimeFormatter.ofPattern("HH:mm", locale)
+/** Opens [location] in a maps app (Google Maps when installed), or the browser. */
+private fun openLocationInMaps(context: android.content.Context, location: String) {
+    val encoded = android.net.Uri.encode(location)
+    val geoIntent = android.content.Intent(
+        android.content.Intent.ACTION_VIEW,
+        android.net.Uri.parse("geo:0,0?q=$encoded"),
+    )
+    runCatching { context.startActivity(geoIntent) }.onFailure {
+        // No maps app — fall back to Google Maps in the browser.
+        runCatching {
+            context.startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://www.google.com/maps/search/?api=1&query=$encoded"),
+                ),
+            )
+        }
     }
 }
+
+@Composable
+private fun rememberTimeFormatter(): DateTimeFormatter =
+    com.souru.koyomi.util.rememberDeviceTimeFormatter()
 
 @Composable
 private fun rememberPatternFormatter(patternRes: Int): DateTimeFormatter {

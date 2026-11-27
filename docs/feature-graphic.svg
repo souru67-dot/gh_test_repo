@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <!-- こよみ Play feature graphic 1024×500. Monochrome: white paper, black ink. -->
+  <rect width="1024" height="500" fill="#FFFFFF"/>
+
+  <!-- Faint month grid on the right for calendar context -->
+  <g stroke="#EDEDED" stroke-width="2" fill="none">
+    <path d="M780 152 H976 M780 180 H976 M780 208 H976 M780 236 H976 M780 264 H976 M780 292 H976 M780 320 H976"/>
+    <path d="M780 152 V320 M808 152 V320 M836 152 V320 M864 152 V320 M892 152 V320 M920 152 V320 M948 152 V320 M976 152 V320"/>
+  </g>
+  <!-- "Today": a solid ink circle in the faint grid, as in the app -->
+  <circle cx="878" cy="250" r="11" fill="#F2711C"/>
+
+  <!-- ===== 日めくり mark (left) — same drawing as the launcher icon ===== -->
+  <g transform="translate(84,140) scale(4) translate(-32,-26)">
+    <path d="M39,30h30a7,7 0 0 1 7,7v36a7,7 0 0 1 -7,7h-30a7,7 0 0 1 -7,-7v-36a7,7 0 0 1 7,-7z" fill="#111111"/>
+    <path d="M32,42.5h44v2.5h-44z" fill="#F2711C"/>
+    <g stroke="#111111" stroke-width="2.5" stroke-linecap="round" fill="none">
+      <path d="M41,35v-5a4,4 0 0 1 8,0v5"/>
+      <path d="M59,35v-5a4,4 0 0 1 8,0v5"/>
+    </g>
+    <circle cx="45" cy="34" r="2" fill="#FFFFFF"/>
+    <circle cx="63" cy="34" r="2" fill="#FFFFFF"/>
+    <path d="M59,50h-6.5l-8.5,6.5v6.5l6.5,-4.5v17.5h8.5z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- ===== Wordmark (center) ===== -->
+  <text x="330" y="232" font-family="'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif"
+        font-size="104" font-weight="700" fill="#111111" letter-spacing="2">こよみ</text>
+
+  <!-- Tagline -->
+  <text x="334" y="292" font-family="'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif"
+        font-size="24" fill="#111111" letter-spacing="7">KOYOMI ・ CALENDAR</text>
+  <!-- Sub-tagline -->
+  <text x="334" y="338" font-family="'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif"
+        font-size="22" fill="#6B6B6B" letter-spacing="2">白と黒の、端正なカレンダー</text>
+
+  <!-- Hairline accent -->
+  <rect x="334" y="362" width="120" height="2" fill="#F2711C"/>
+</svg>

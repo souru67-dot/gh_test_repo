@@ -1,0 +1,266 @@
+<resources>
+    <string name="app_name">Koyomi</string>
+
+    <!-- Month screen -->
+    <string name="sheet_date_pattern">M월 d일 EEE</string>
+    <string name="back_to_today">오늘</string>
+    <string name="no_events">일정 없음</string>
+    <string name="all_day">종일</string>
+    <string name="add_event">일정 추가</string>
+    <string name="permission_banner">캘린더 접근 권한이 없어 일정을 표시할 수 없습니다.</string>
+    <string name="open_settings">설정 열기</string>
+    <string name="no_calendars_found">이 기기에서 캘린더 계정을 찾을 수 없습니다. Google 계정을 추가하거나 캘린더 동기화를 켜세요.</string>
+    <string name="previous_period">이전</string>
+    <string name="next_period">다음</string>
+    <string name="chosen_color">선택한 색상</string>
+
+    <!-- Search & agenda -->
+    <string name="search">검색</string>
+    <string name="search_hint">일정 검색</string>
+    <string name="search_no_results">결과 없음</string>
+    <string name="agenda_upcoming">다가오는 일정</string>
+    <string name="search_date_pattern">yyyy년 M월 d일 EEE</string>
+    <string name="jump_to_month">특정 월로 이동</string>
+
+    <!-- Event detail -->
+    <string name="edit">편집</string>
+    <string name="duplicate">복제</string>
+    <string name="delete">삭제</string>
+    <string name="close">닫기</string>
+    <string name="delete_confirm_title">이 일정을 삭제할까요?</string>
+    <string name="delete_confirm_message">"%1$s"이(가) 캘린더에서 삭제됩니다.</string>
+    <string name="delete_recurring_title">반복 일정 삭제</string>
+    <string name="delete_recurring_message">"%1$s"은(는) 반복 일정입니다. 무엇을 삭제할까요?</string>
+    <string name="delete_this_occurrence">이 일정만</string>
+    <string name="delete_all_occurrences">모든 반복 일정</string>
+    <string name="save_scope_title">반복 일정 저장</string>
+    <string name="save_scope_message">이 일정은 반복됩니다. 변경 사항을 어디에 적용할까요?</string>
+    <string name="save_this_occurrence">이 일정만</string>
+    <string name="save_all_occurrences">모든 반복 일정</string>
+    <string name="cancel">취소</string>
+    <string name="untitled">(제목 없음)</string>
+
+    <!-- Editor -->
+    <string name="new_event">새 일정</string>
+    <string name="edit_event">일정 편집</string>
+    <string name="save">저장</string>
+    <string name="title_hint">제목</string>
+    <string name="starts">시작</string>
+    <string name="ends">종료</string>
+    <string name="calendar">캘린더</string>
+    <string name="location">위치</string>
+    <string name="notification">알림</string>
+    <string name="repeat">반복</string>
+    <string name="memo">메모</string>
+    <string name="ok">확인</string>
+    <string name="select_time">시간 선택</string>
+    <string name="no_writable_calendar">쓰기 가능한 캘린더를 찾을 수 없습니다. 먼저 기기에 캘린더 계정을 추가하세요.</string>
+    <string name="read_only">읽기 전용</string>
+
+    <string name="reminder_none">없음</string>
+    <string name="reminder_at_time">일정 시작 시</string>
+    <string name="reminder_minutes">%1$d분 전</string>
+    <string name="reminder_hours">%1$d시간 전</string>
+    <string name="reminder_days">%1$d일 전</string>
+
+    <string name="repeat_none">반복 안 함</string>
+    <string name="repeat_daily">매일</string>
+    <string name="repeat_weekly">매주</string>
+    <string name="repeat_monthly">매월</string>
+    <string name="repeat_yearly">매년</string>
+    <string name="repeat_custom">맞춤</string>
+    <string name="repeat_until">종료일</string>
+    <string name="repeat_until_none">없음</string>
+    <string name="repeat_until_clear">종료일 지우기</string>
+
+    <!-- Views & settings -->
+    <string name="switch_view">보기 전환</string>
+    <string name="view_week">주</string>
+    <string name="view_day">일</string>
+    <string name="view_year">연</string>
+    <string name="settings">설정</string>
+    <string name="settings_week_start">주 시작 요일</string>
+    <string name="week_start_sunday">일요일</string>
+    <string name="week_start_monday">월요일</string>
+    <string name="settings_vertical_scroll">연속 세로 스크롤</string>
+    <string name="settings_multi_day_bars">여러 날 일정을 막대로 표시</string>
+    <string name="settings_theme">밝기</string>
+    <string name="theme_system">시스템 설정 따르기</string>
+    <string name="theme_light">라이트</string>
+    <string name="theme_dark">다크</string>
+    <string name="settings_dynamic_color">배경화면 색상 (Material You)</string>
+    <string name="settings_theme_pack">테마 색상</string>
+    <string name="pack_sumi">먹과 주황</string>
+    <string name="pack_sakura">벚꽃</string>
+    <string name="pack_wakaba">새잎</string>
+    <string name="pack_ai">쪽빛</string>
+    <string name="pack_momiji">단풍</string>
+    <string name="pack_custom">맞춤 색상</string>
+    <string name="settings_week_numbers">주 번호 표시</string>
+    <string name="settings_rokuyo">로쿠요 표시(일본 길흉일)</string>
+    <string name="settings_solar_terms">24절기 표시(입춘, 하지…)</string>
+    <string name="settings_lucky_days">길일 표시(이치류만바이비, 덴샤일…)</string>
+    <string name="settings_lunar_date">음력 날짜 표시</string>
+    <string name="settings_moon_age">월령 표시</string>
+    <string name="settings_japanese_era">일본 연호로 표시(레이와 8년)</string>
+    <string name="settings_default_calendar">새 일정 저장 위치</string>
+    <string name="default_calendar_last_used">마지막으로 사용한 캘린더</string>
+    <string name="settings_holiday_country">공휴일</string>
+    <string name="holiday_country_auto">기기 지역 따르기</string>
+    <string name="holiday_country_jp">일본</string>
+    <string name="holiday_country_us">미국</string>
+    <string name="holiday_country_gb">영국</string>
+    <string name="holiday_country_kr">대한민국</string>
+    <string name="holiday_country_none">표시 안 함</string>
+    <string name="settings_calendars">표시할 캘린더</string>
+
+    <!-- Data (ICS) -->
+    <string name="settings_data">데이터</string>
+    <string name="export_ics">일정 내보내기 (.ics)</string>
+    <string name="import_ics">일정 가져오기 (.ics)</string>
+    <string name="export_done">일정 %1$d개를 내보냈습니다</string>
+    <string name="export_failed">내보내기 실패</string>
+    <string name="import_done">일정 %1$d개를 가져왔습니다</string>
+    <string name="import_failed">가져오기 실패</string>
+    <string name="import_choose_calendar">가져올 캘린더</string>
+    <string name="backup_export">이전 백업 내보내기 (.json)</string>
+    <string name="backup_import">이전 백업 복원</string>
+    <string name="backup_done">백업을 저장했습니다</string>
+    <string name="restore_done">%1$d개 항목을 복원했습니다</string>
+
+    <!-- Sync & notifications -->
+    <string name="settings_sync">동기화 주기</string>
+    <string name="sync_15min">15분마다</string>
+    <string name="sync_30min">30분마다</string>
+    <string name="sync_1hour">1시간마다</string>
+    <string name="sync_system_only">시스템 자동 동기화만</string>
+    <string name="settings_notifications">알림</string>
+    <string name="notifications_enabled">알림이 켜져 있습니다</string>
+    <string name="notifications_disabled">알림이 꺼져 있습니다</string>
+    <string name="notifications_allow">허용</string>
+    <string name="notification_channel_reminders">일정 알림</string>
+
+    <!-- Tasks -->
+    <string name="tasks">할 일</string>
+    <string name="add_task_hint">할 일 추가</string>
+    <string name="event_label">일정</string>
+    <string name="task_date">날짜</string>
+    <string name="task_time">시간</string>
+    <string name="tasks_list">할 일 목록</string>
+    <string name="tasks_overdue">기한 지남</string>
+    <string name="tasks_upcoming">예정</string>
+    <string name="tasks_done">완료</string>
+    <string name="tasks_empty">할 일이 없습니다</string>
+
+    <!-- Anniversaries -->
+
+    <!-- Diary -->
+
+    <!-- Stamps -->
+
+    <!-- Premium -->
+    <string name="premium_title">Koyomi 프리미엄</string>
+    <string name="premium_banner">한 번 구매로 모든 기능 잠금 해제</string>
+    <string name="premium_lead">한 번의 구매로 모든 기능을 영구히 사용할 수 있습니다. 구독 아님.</string>
+    <string name="premium_feature_koyomi">일본 역법: 로쿠요, 24절기, 길일, 음력, 월령, 연호</string>
+    <string name="premium_feature_themes">모든 테마 색상 + 맞춤 색상</string>
+    <string name="premium_feature_widgets">모든 홈 화면 위젯</string>
+    <string name="premium_feature_shortcuts">드래그 앤 드롭으로 일정 이동·복사</string>
+    <string name="premium_feature_backup">기기 변경용 이전 백업</string>
+    <string name="premium_buy">잠금 해제</string>
+    <string name="premium_buy_price">%1$s에 잠금 해제</string>
+    <string name="premium_restore">구매 복원</string>
+    <string name="premium_owned">프리미엄이 잠금 해제되었습니다. 감사합니다!</string>
+    <string name="premium_note">구매는 Google Play에서 처리되며 기기 간에 공유됩니다.</string>
+    <string name="widget_premium_lock">이 위젯은 Koyomi 프리미엄 기능입니다.\n앱에서 잠금 해제하세요.</string>
+
+    <!-- Drag & drop -->
+    <string name="drop_title">이동 또는 복사?</string>
+    <string name="drop_message">"%1$s"을(를) 어떻게 할까요?</string>
+    <string name="drop_move">여기로 이동</string>
+    <string name="drop_copy">여기에 복사</string>
+    <string name="event_create_failed">일정을 만들 수 없습니다. 먼저 쓰기 가능한 캘린더를 추가하세요.</string>
+
+    <!-- Widgets -->
+    <string name="widget_month_label">월 캘린더</string>
+    <string name="widget_month_description">이번 달을 한눈에, 일정은 캘린더 색상으로 표시.</string>
+    <string name="widget_today_label">오늘 일정</string>
+    <string name="widget_today_description">오늘과 내일 일정을 시간과 함께 표시.</string>
+    <string name="widget_himekuri_label">날짜 페이지 (2×2)</string>
+    <string name="widget_himekuri_description">오늘 날짜를 크게, 공휴일·길일과 함께.</string>
+    <string name="widget_mini_month_label">미니 캘린더 (2×2)</string>
+    <string name="widget_mini_month_description">가장 작은 월 보기, 일정은 점으로 표시.</string>
+    <string name="settings_weather">날씨</string>
+    <string name="weather_place">날씨 지역</string>
+    <string name="weather_place_none">설정 안 됨</string>
+    <string name="weather_search_hint">도시 이름으로 검색</string>
+    <string name="weather_clear">끄기</string>
+    <string name="settings_widget_opacity">위젯 배경 농도</string>
+    <string name="widget_config_title">위젯 설정</string>
+    <string name="events_count">일정 %1$d개</string>
+    <string name="no_more_today">오늘은 여기까지</string>
+    <string name="tomorrow_label">내일</string>
+
+    <!-- Event color -->
+    <string name="event_color">색상</string>
+    <string name="event_color_default">캘린더 기본</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">내 캘린더를 한눈에</string>
+    <string name="onboarding_body">Koyomi는 이 기기에 이미 있는 캘린더(Google 캘린더, Exchange 등)를 읽고 써서 모든 것을 동기화합니다. 일정을 표시하고 만들려면 캘린더 접근을 허용하세요.</string>
+    <string name="onboarding_grant">접근 허용</string>
+    <string name="onboarding_skip">나중에</string>
+    <string name="billing_unavailable">Google Play에 연결할 수 없습니다. 네트워크를 확인한 후 다시 시도해 주세요.</string>
+    <string name="billing_restored">프리미엄이 복원되었습니다. 감사합니다!</string>
+    <string name="billing_nothing_to_restore">이 Google 계정의 구매 내역을 찾을 수 없습니다.</string>
+    <string name="billing_pending">결제 대기 중입니다. 결제가 완료되면 프리미엄이 활성화됩니다.</string>
+    <string name="billing_purchased">프리미엄이 활성화되었습니다. 감사합니다!</string>
+    <string name="billing_error">구매를 완료할 수 없습니다. 다시 시도해 주세요.</string>
+    <string name="year_title">%1$d년</string>
+    <string name="year_title_with_era">%1$d년 (%2$s)</string>
+    <string name="moon_age_label">월령 %1$s</string>
+    <string name="moon_new">삭</string>
+    <string name="moon_first_quarter">상현</string>
+    <string name="moon_full">보름달</string>
+    <string name="moon_last_quarter">하현</string>
+    <string name="widget_config_hint">투명하게 할 때는 밝은 배경화면이면 \'라이트\', 어두운 배경화면이면 \'다크\'를 선택하면 글자가 또렷하게 보입니다.</string>
+    <string name="widget_hitome_label">한눈에</string>
+    <string name="widget_hitome_description">오늘의 날짜와 날씨, 이번 달 달력, 오늘 일정을 한눈에.</string>
+    <string name="widget_dot_label">도트</string>
+    <string name="widget_dot_description">LED 스타일의 도트 시계와 날짜, 이번 달 달력, 오늘의 일정과 할 일.</string>
+    <string name="widget_dot_color">도트 색상</string>
+    <string name="settings_clock_style">시간 표시</string>
+    <string name="clock_style_system">기기 설정에 따름</string>
+    <string name="clock_style_24h">24시간제</string>
+    <string name="clock_style_12h">12시간제</string>
+    <string name="widget_dot_exact_alarm">둥근 도트 시계는 화면이 켜져 있는 동안 1분마다 다시 그려 표시합니다. Koyomi에 \'알람 및 리마인더\'를 허용하면 켜집니다(허용 전에는 간이 시계로 표시).</string>
+    <string name="widget_dot_exact_alarm_allow">허용</string>
+    <string name="widget_dot_battery_oem">이 기기는 화면 잠금 중 절전 기능으로 Koyomi를 멈출 수 있습니다. 잠금 중에는 스스로 가는 간이 시계로 바뀌어 시간은 맞지만, 잠금 해제 직후 둥근 도트 시계로 돌아오게 하려면 Koyomi의 \'자동 시작\'을 켜고 배터리 세이버를 \'제한 없음\'으로 설정하세요.</string>
+    <string name="widget_dot_autostart">자동 시작</string>
+    <string name="widget_dot_app_info">앱 정보</string>
+    <string name="settings_cat_display">표시</string>
+    <string name="settings_cat_koyomi">역법·공휴일</string>
+    <string name="settings_cat_appearance">디자인</string>
+    <string name="settings_cat_calendars">캘린더·동기화</string>
+    <string name="settings_cat_about">앱 정보</string>
+    <string name="settings_month_paging">월 넘기기</string>
+    <string name="month_paging_swipe">좌우로 넘기기</string>
+    <string name="settings_koyomi_summary">%1$s · %2$d개 표시</string>
+    <string name="settings_calendars_summary">%1$d개 표시 · %2$s</string>
+    <string name="settings_widget_summary">배경 농도 %1$d%%</string>
+    <string name="settings_widget_opacity_desc" formatted="false">0%이면 배경 없음(배경화면이 비쳐 보입니다). 위젯 하나만 바꾸려면 홈 화면에서 위젯을 길게 눌러 설정을 여세요.</string>
+    <string name="notifications_on">켜짐</string>
+    <string name="notifications_off">꺼짐</string>
+    <string name="settings_data_summary">내보내기·가져오기·기기 변경</string>
+    <string name="export_ics_desc">일정을 .ics 파일로 저장합니다</string>
+    <string name="import_ics_desc">.ics 파일의 일정을 캘린더에 추가합니다</string>
+    <string name="backup_export_desc">할 일과 설정을 파일 하나로 저장합니다(기기 변경용)</string>
+    <string name="backup_import_desc">저장한 파일에서 복원합니다</string>
+    <string name="settings_version">버전 %1$s</string>
+    <string name="settings_licenses">오픈소스 라이선스</string>
+    <string name="settings_weather_credit">날씨 데이터: Open-Meteo.com (CC BY 4.0)</string>
+    <string name="settings_premium_only">프리미엄</string>
+    <string name="settings_multi_day_bars_desc">여러 날 이어지는 일정을 날짜를 가로지르는 막대 하나로 표시합니다</string>
+    <string name="settings_dynamic_color_desc">배경화면 색을 앱 색상으로 사용합니다(Android 12 이상)</string>
+    <string name="settings_cat_widgets">위젯</string>
+</resources>

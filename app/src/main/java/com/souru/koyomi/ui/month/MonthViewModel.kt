@@ -11,32 +11,50 @@ import com.souru.koyomi.data.SettingsRepository
 import com.souru.koyomi.data.model.CalendarInfo
 import com.souru.koyomi.data.model.EventDetails
 import com.souru.koyomi.data.model.EventInstance
+import com.souru.koyomi.data.task.Task
+import com.souru.koyomi.data.task.TaskRepository
 import com.souru.koyomi.util.monthGridDays
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class MonthUiState(
     val hasPermission: Boolean = true,
     val eventsByDay: Map<LocalDate, List<EventInstance>> = emptyMap(),
+    val tasksByDay: Map<LocalDate, List<Task>> = emptyMap(),
     val calendars: List<CalendarInfo> = emptyList(),
+    /** False until the first provider load finishes; gates the empty banners
+     *  so "no calendars" never flashes during startup. */
+    val loaded: Boolean = false,
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class MonthViewModel(
     private val calendarRepository: CalendarRepository,
-    settingsRepository: SettingsRepository,
+    private val taskRepository: TaskRepository,
+    private val settingsRepository: SettingsRepository,
+    private val weatherRepository: com.souru.koyomi.data.weather.WeatherRepository,
+    billingRepository: com.souru.koyomi.data.billing.BillingRepository,
 ) : ViewModel() {
+
+    /** こよみ プレミアム entitlement; gates the premium-only shortcuts. */
+    val isPremium: StateFlow<Boolean> = billingRepository.isPremium
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _visibleMonth = MutableStateFlow(YearMonth.now())
     val visibleMonth: StateFlow<YearMonth> = _visibleMonth.asStateFlow()
@@ -52,26 +70,70 @@ class MonthViewModel(
     val verticalScroll: StateFlow<Boolean> = settingsRepository.verticalMonthScroll
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val multiDayBars: StateFlow<Boolean> = settingsRepository.multiDayBars
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    val showWeekNumbers: StateFlow<Boolean> = settingsRepository.showWeekNumbers
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showRokuyo: StateFlow<Boolean> = settingsRepository.showRokuyo
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showSolarTerms: StateFlow<Boolean> = settingsRepository.showSolarTerms
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showLuckyDays: StateFlow<Boolean> = settingsRepository.showLuckyDays
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Forecast keyed by date; empty until a place is chosen in settings. */
+    val weatherByDay: StateFlow<Map<LocalDate, com.souru.koyomi.data.weather.DailyWeather>> =
+        weatherRepository.forecastByDay
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Refreshes the forecast if the cache is stale; cheap no-op otherwise. */
+    fun refreshWeather() {
+        viewModelScope.launch { weatherRepository.refreshIfStale() }
+    }
+
+    val showLunarDate: StateFlow<Boolean> = settingsRepository.showLunarDate
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showMoonAge: StateFlow<Boolean> = settingsRepository.showMoonAge
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val useJapaneseEra: StateFlow<Boolean> = settingsRepository.useJapaneseEra
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Re-collect the ContentObserver flow whenever the permission state may have
     // changed, so the observer gets registered right after the grant.
-    private val calendarChanges = permissionTick.flatMapLatest { calendarRepository.changes }
+    private val dataChanges = merge(
+        permissionTick.flatMapLatest { calendarRepository.changes },
+        taskRepository.changes,
+    )
 
     val uiState: StateFlow<MonthUiState> =
         combine(
-            _visibleMonth,
+            // Debounced: while the pager is flinging through months there is
+            // no point querying the provider for every page passed — wait for
+            // the scroll to settle, then load once. Keeps the fling smooth.
+            _visibleMonth.debounce(180),
             weekStart,
             settingsRepository.hiddenCalendarIds,
-            calendarChanges,
+            dataChanges,
         ) { month, weekStart, hidden, _ ->
             Triple(month, weekStart, hidden)
         }.mapLatest { (month, weekStart, hidden) ->
-            // Load the visible month plus one on each side so paging feels instant.
-            val gridStart = monthGridDays(month.minusMonths(1), weekStart).first()
-            val gridEnd = monthGridDays(month.plusMonths(1), weekStart).last().plusDays(1)
+            // Load the visible month plus two on each side: the horizontal pager
+            // only needs ±1, but the vertical scroll mode shows several months
+            // at once and ±1 left the neighbours' outer weeks looking empty.
+            val gridStart = monthGridDays(month.minusMonths(2), weekStart).first()
+            val gridEnd = monthGridDays(month.plusMonths(2), weekStart).last().plusDays(1)
             MonthUiState(
                 hasPermission = calendarRepository.hasReadPermission(),
                 eventsByDay = calendarRepository.loadEventsByDay(gridStart, gridEnd, hidden),
+                tasksByDay = taskRepository.loadTasksByDay(gridStart, gridEnd),
                 calendars = calendarRepository.loadCalendars(),
+                loaded = true,
             )
         }.stateIn(
             viewModelScope,
@@ -99,14 +161,47 @@ class MonthViewModel(
         viewModelScope.launch { calendarRepository.deleteEvent(eventId) }
     }
 
-    fun duplicateEvent(eventId: Long) {
-        viewModelScope.launch { calendarRepository.duplicateEvent(eventId) }
+    /** Removes a single occurrence of a recurring event. */
+    fun deleteEventInstance(eventId: Long, instanceBeginMs: Long) {
+        viewModelScope.launch {
+            calendarRepository.deleteEventInstance(eventId, instanceBeginMs)
+        }
     }
 
-    /** Month-view drag & drop: shift an event by whole days. */
-    fun moveEvent(eventId: Long, days: Long) {
+    /** Month-view drag & drop: shift one occurrence by whole days. */
+    fun moveEvent(event: EventInstance, days: Long) {
         if (days == 0L) return
-        viewModelScope.launch { calendarRepository.moveEventByDays(eventId, days) }
+        viewModelScope.launch { calendarRepository.moveInstanceByDays(event, days) }
+    }
+
+    private val _copyFailed =
+        kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    /** Fires when a 複製 / drag & drop copy could not create the event. */
+    val copyFailed = _copyFailed.receiveAsFlow()
+
+    /** 複製 / drag & drop copy: copy one occurrence onto another day. */
+    fun duplicateEventTo(event: EventInstance, days: Long) {
+        viewModelScope.launch {
+            val created = calendarRepository.duplicateInstance(event, days)
+            if (created == null) _copyFailed.send(Unit)
+        }
+    }
+
+    /** Nudge the sync framework so remote Google Calendar changes come in. */
+    fun syncNow() {
+        if (calendarRepository.hasReadPermission()) calendarRepository.requestSync()
+    }
+
+    fun addTask(title: String, dueDate: LocalDate) {
+        viewModelScope.launch { taskRepository.addTask(title, dueDate) }
+    }
+
+    fun setTaskDone(taskId: Long, done: Boolean) {
+        viewModelScope.launch { taskRepository.setDone(taskId, done) }
+    }
+
+    fun deleteTask(taskId: Long) {
+        viewModelScope.launch { taskRepository.deleteTask(taskId) }
     }
 
     companion object {
@@ -116,7 +211,10 @@ class MonthViewModel(
                     as KoyomiApplication
                 MonthViewModel(
                     calendarRepository = app.container.calendarRepository,
+                    taskRepository = app.container.taskRepository,
                     settingsRepository = app.container.settingsRepository,
+                    weatherRepository = app.container.weatherRepository,
+                    billingRepository = app.container.billingRepository,
                 )
             }
         }

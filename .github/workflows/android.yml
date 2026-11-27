@@ -23,8 +23,18 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Build release bundle (R8 / shrink verification)
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: koyomi-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: koyomi-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: warn

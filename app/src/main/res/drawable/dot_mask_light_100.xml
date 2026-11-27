@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「ドット」 clock mask: light background at 100% with round holes (tiled view background). -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:antialias="true"
+    android:src="@drawable/dot_mask_light_100_px"
+    android:tileMode="repeat" />

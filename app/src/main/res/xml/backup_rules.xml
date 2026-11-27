@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup (Android 11 and below). こよみ stores only app preferences in
+  DataStore; all event data lives in the device CalendarProvider and is never
+  copied here. Backing up the small settings file is safe and convenient.
+-->
+<full-backup-content>
+    <include domain="file" path="datastore/" />
+    <include domain="sharedpref" path="." />
+</full-backup-content>
