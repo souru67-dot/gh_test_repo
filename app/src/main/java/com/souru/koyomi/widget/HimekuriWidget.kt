@@ -15,15 +15,11 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import com.souru.koyomi.KoyomiApplication
-import com.souru.koyomi.R
 import com.souru.koyomi.data.holiday.Holidays
 import com.souru.koyomi.data.rokuyo.Kyureki
 import java.time.LocalDate
@@ -36,7 +32,7 @@ class HimekuriWidgetReceiver : KoyomiWidgetReceiver() {
 
 /**
  * 2x2 日めくり: the app icon come to life — today's number large, with the
- * month/weekday, one almanac line (祝日 > 六曜) and the nearest countdown.
+ * month/weekday and one almanac line (祝日 > 六曜).
  */
 class HimekuriWidget : GlanceAppWidget() {
 
@@ -44,8 +40,6 @@ class HimekuriWidget : GlanceAppWidget() {
         val holiday: String?,
         val rokuyo: String?,
         val lucky: String?,
-        /** "◯◯まであと3日" for the nearest anniversary within 99 days. */
-        val countdown: String?,
     )
 
     private class Snapshot(
@@ -57,13 +51,6 @@ class HimekuriWidget : GlanceAppWidget() {
 
     private suspend fun load(context: Context, id: GlanceId): Snapshot {
         val today = LocalDate.now()
-        val app = context.applicationContext as KoyomiApplication
-        val nearest = runCatching {
-            app.container.anniversaryRepository.loadAll()
-                .map { it to it.daysUntil(today) }
-                .filter { (_, days) -> days in 0..99 }
-                .minByOrNull { (_, days) -> days }
-        }.getOrNull()
         // 六曜・開運日 are Japanese-almanac concepts; only surface them in
         // Japanese so non-JP users don't see untranslatable text (大安 etc.).
         val japanese = Locale.getDefault().language == "ja"
@@ -71,13 +58,6 @@ class HimekuriWidget : GlanceAppWidget() {
             holiday = Holidays.nameFor(today),
             rokuyo = if (japanese) Kyureki.rokuyoFor(today) else null,
             lucky = if (japanese) Kyureki.luckyDaysFor(today).firstOrNull() else null,
-            countdown = nearest?.let { (anniversary, days) ->
-                if (days == 0L) {
-                    context.getString(R.string.himekuri_countdown_today, anniversary.title)
-                } else {
-                    context.getString(R.string.himekuri_countdown, anniversary.title, days)
-                }
-            },
         )
         return Snapshot(today, data, resolveWidgetLook(context, id), isPremiumUnlocked(context))
     }
@@ -156,17 +136,6 @@ class HimekuriWidget : GlanceAppWidget() {
                             GlanceTheme.colors.onSurfaceVariant
                         },
                         fontSize = 12.sp,
-                    ),
-                    maxLines = 1,
-                )
-            }
-            if (data.countdown != null) {
-                Spacer(modifier = GlanceModifier.height(2.dp))
-                Text(
-                    text = data.countdown,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 11.sp,
                     ),
                     maxLines = 1,
                 )

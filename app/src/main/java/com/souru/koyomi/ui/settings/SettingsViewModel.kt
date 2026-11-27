@@ -63,7 +63,7 @@ class SettingsViewModel(
     val isPremium: StateFlow<Boolean> = billingRepository.isPremium
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    /** Writes the transfer backup (settings/ToDo/templates/記念日/日記) to [uri]. */
+    /** Writes the transfer backup (settings and ToDo) to [uri]. */
     fun exportBackup(uri: Uri, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
             val ok = runCatching {

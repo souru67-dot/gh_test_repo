@@ -153,49 +153,19 @@
     <string name="tasks_empty">할 일이 없습니다</string>
 
     <!-- Anniversaries -->
-    <string name="anniversaries_title">기념일</string>
-    <string name="anniversaries_empty">기념일이 없습니다</string>
-    <string name="anniversary_add">기념일 추가</string>
-    <string name="anniversary_title_hint">결혼기념일, 생일…</string>
-    <string name="anniversary_yearly">매년 반복</string>
-    <string name="anniversary_today">오늘입니다!</string>
-    <string name="anniversary_days_left">%1$d일 남음</string>
-    <string name="anniversary_days_ago">%1$d일 지남</string>
 
     <!-- Diary -->
-    <string name="diary_title">한 줄 일기</string>
-    <string name="diary_hint">오늘의 한 줄을 적어보세요…</string>
-    <string name="diary_last_year">작년 오늘</string>
-    <string name="diary_years_ago">%1$d년 전 오늘</string>
 
     <!-- Stamps -->
-    <string name="stamp_title">스탬프 일정</string>
-    <string name="stamp_trash">쓰레기 버리는 날</string>
-    <string name="stamp_payday">월급날</string>
-    <string name="stamp_hospital">병원</string>
-    <string name="stamp_exercise">운동</string>
-    <string name="stamp_lesson">레슨</string>
-    <string name="stamp_eatout">외식</string>
-    <string name="stamp_hair">미용실</string>
-    <string name="stamp_bill">납부</string>
-    <string name="stamp_shopping">장보기</string>
-    <string name="stamp_outing">나들이</string>
-    <string name="stamp_trip">여행</string>
-    <string name="stamp_hobby">취미</string>
-    <string name="stamp_add">스탬프 추가</string>
-    <string name="stamp_emoji">이모지</string>
-    <string name="stamp_name">이름</string>
-    <string name="stamp_delete_hint">내 스탬프를 길게 눌러 삭제</string>
 
     <!-- Premium -->
     <string name="premium_title">Koyomi 프리미엄</string>
     <string name="premium_banner">한 번 구매로 모든 기능 잠금 해제</string>
     <string name="premium_lead">한 번의 구매로 모든 기능을 영구히 사용할 수 있습니다. 구독 아님.</string>
     <string name="premium_feature_koyomi">일본 역법: 로쿠요, 24절기, 길일, 음력, 월령, 연호</string>
-    <string name="premium_feature_weather">캘린더 위 2주 날씨</string>
     <string name="premium_feature_themes">모든 테마 색상 + 맞춤 색상</string>
     <string name="premium_feature_widgets">모든 홈 화면 위젯</string>
-    <string name="premium_feature_shortcuts">템플릿, 여러 날 복사, 스탬프 일정, 드래그 앤 드롭</string>
+    <string name="premium_feature_shortcuts">드래그 앤 드롭으로 일정 이동·복사</string>
     <string name="premium_feature_backup">기기 변경용 이전 백업</string>
     <string name="premium_buy">잠금 해제</string>
     <string name="premium_buy_price">%1$s에 잠금 해제</string>
@@ -209,16 +179,6 @@
     <string name="drop_message">"%1$s"을(를) 어떻게 할까요?</string>
     <string name="drop_move">여기로 이동</string>
     <string name="drop_copy">여기에 복사</string>
-    <string name="undo">실행취소</string>
-    <string name="batch_copy">여러 날에 복사</string>
-    <string name="batch_copy_confirm">복사(%1$d일)</string>
-    <string name="batch_copied">%1$d일에 복사했습니다</string>
-    <string name="template_save">템플릿으로 저장</string>
-    <string name="template_saved">템플릿으로 저장했습니다</string>
-    <string name="template_add">템플릿에서 추가</string>
-    <string name="templates_title">템플릿</string>
-    <string name="template_empty">저장된 템플릿이 없습니다</string>
-    <string name="event_created">일정을 만들었습니다</string>
     <string name="event_create_failed">일정을 만들 수 없습니다. 먼저 쓰기 가능한 캘린더를 추가하세요.</string>
 
     <!-- Widgets -->
@@ -226,20 +186,10 @@
     <string name="widget_month_description">이번 달을 한눈에, 일정은 캘린더 색상으로 표시.</string>
     <string name="widget_today_label">오늘 일정</string>
     <string name="widget_today_description">오늘과 내일 일정을 시간과 함께 표시.</string>
-    <string name="widget_clock_today_label">시계 + 오늘</string>
-    <string name="widget_clock_today_description">시계와 오늘 일정을 나란히 표시.</string>
-    <string name="widget_month_today_label">캘린더 + 오늘</string>
-    <string name="widget_month_today_description">이번 달 캘린더 아래에 오늘 일정을 표시.</string>
-    <string name="widget_agenda_month_label">오늘 + 미니 캘린더</string>
-    <string name="widget_agenda_month_description">오늘 일정과 점으로 표시된 미니 월 캘린더를 나란히.</string>
-    <string name="widget_todo_agenda_label">할 일 + 일정 + 캘린더</string>
-    <string name="widget_todo_agenda_description">할 일과 앞으로 며칠 일정(스크롤 가능), 옆에 미니 월 캘린더.</string>
     <string name="widget_himekuri_label">날짜 페이지 (2×2)</string>
-    <string name="widget_himekuri_description">오늘 날짜를 크게, 공휴일·길일과 가장 가까운 카운트다운.</string>
+    <string name="widget_himekuri_description">오늘 날짜를 크게, 공휴일·길일과 함께.</string>
     <string name="widget_mini_month_label">미니 캘린더 (2×2)</string>
     <string name="widget_mini_month_description">가장 작은 월 보기, 일정은 점으로 표시.</string>
-    <string name="himekuri_countdown">%1$s까지 %2$d일</string>
-    <string name="himekuri_countdown_today">오늘은 %1$s!</string>
     <string name="settings_weather">날씨</string>
     <string name="weather_place">날씨 지역</string>
     <string name="weather_place_none">설정 안 됨</string>
@@ -268,7 +218,6 @@
     <string name="billing_error">구매를 완료할 수 없습니다. 다시 시도해 주세요.</string>
     <string name="year_title">%1$d년</string>
     <string name="year_title_with_era">%1$d년 (%2$s)</string>
-    <string name="anniversary_nth_year">%1$d년째</string>
     <string name="moon_age_label">월령 %1$s</string>
     <string name="moon_new">삭</string>
     <string name="moon_first_quarter">상현</string>
@@ -305,7 +254,7 @@
     <string name="settings_data_summary">내보내기·가져오기·기기 변경</string>
     <string name="export_ics_desc">일정을 .ics 파일로 저장합니다</string>
     <string name="import_ics_desc">.ics 파일의 일정을 캘린더에 추가합니다</string>
-    <string name="backup_export_desc">할 일·기념일·일기·템플릿·설정을 파일 하나로 저장합니다(기기 변경용)</string>
+    <string name="backup_export_desc">할 일과 설정을 파일 하나로 저장합니다(기기 변경용)</string>
     <string name="backup_import_desc">저장한 파일에서 복원합니다</string>
     <string name="settings_version">버전 %1$s</string>
     <string name="settings_licenses">오픈소스 라이선스</string>

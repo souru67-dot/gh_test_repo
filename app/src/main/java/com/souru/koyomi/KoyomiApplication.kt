@@ -25,18 +25,10 @@ class AppContainer(context: Context) {
     val calendarRepository = CalendarRepository(context)
     val settingsRepository = SettingsRepository(context)
     val taskRepository = TaskRepository(context)
-    val templateRepository =
-        com.souru.koyomi.data.template.EventTemplateRepository(context)
     val weatherRepository = com.souru.koyomi.data.weather.WeatherRepository(context)
-    val anniversaryRepository =
-        com.souru.koyomi.data.anniversary.AnniversaryRepository(context)
-    val diaryRepository = com.souru.koyomi.data.diary.DiaryRepository(context)
     val backupManager = com.souru.koyomi.data.backup.BackupManager(
         context = context,
         taskRepository = taskRepository,
-        templateRepository = templateRepository,
-        anniversaryRepository = anniversaryRepository,
-        diaryRepository = diaryRepository,
     )
     val billingRepository = com.souru.koyomi.data.billing.BillingRepository(context)
 }

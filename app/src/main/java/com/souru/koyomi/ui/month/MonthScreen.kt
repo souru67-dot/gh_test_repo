@@ -24,14 +24,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CalendarViewMonth
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
@@ -58,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -96,7 +93,6 @@ fun MonthScreen(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
-    onOpenAnniversaries: () -> Unit,
     onOpenPremium: () -> Unit,
     deepLinkEpochDay: Long?,
     onDeepLinkConsumed: () -> Unit,
@@ -113,11 +109,7 @@ fun MonthScreen(
     val showSolarTerms by viewModel.showSolarTerms.collectAsStateWithLifecycle()
     val showLuckyDays by viewModel.showLuckyDays.collectAsStateWithLifecycle()
     val weatherByDay by viewModel.weatherByDay.collectAsStateWithLifecycle()
-    val anniversaries by viewModel.anniversaries.collectAsStateWithLifecycle()
-    val diary by viewModel.diary.collectAsStateWithLifecycle()
     val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
-    var showDiaryEditor by remember { mutableStateOf(false) }
-    var showStampPicker by remember { mutableStateOf(false) }
     // Premium-only shortcuts fall through to the paywall when locked.
     fun premiumOr(action: () -> Unit) {
         if (isPremium) action() else onOpenPremium()
@@ -133,38 +125,12 @@ fun MonthScreen(
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
     var pendingDrop by remember { mutableStateOf<PendingDrop?>(null) }
     var pendingDuplicate by remember { mutableStateOf<EventInstance?>(null) }
-    var pendingBatchCopy by remember { mutableStateOf<EventInstance?>(null) }
-    var showTemplatePicker by remember { mutableStateOf(false) }
     var showMonthJump by remember { mutableStateOf(false) }
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
-    val templates by viewModel.templates.collectAsStateWithLifecycle()
 
-    // Batch-copy result: a snackbar with an undo that deletes the copies made.
-    val undoLabel = stringResource(R.string.undo)
-    LaunchedEffect(Unit) {
-        viewModel.batchCopied.collect { count ->
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.batch_copied, count),
-                actionLabel = undoLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short,
-            )
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                viewModel.undoBatchCopy()
-            }
-        }
-    }
-    val templateSavedMsg = stringResource(R.string.template_saved)
-    LaunchedEffect(Unit) {
-        viewModel.templateSaved.collect { ok ->
-            if (ok) snackbarHostState.showSnackbar(templateSavedMsg)
-        }
-    }
-    val eventCreatedMsg = stringResource(R.string.event_created)
     val eventCreateFailedMsg = stringResource(R.string.event_create_failed)
     LaunchedEffect(Unit) {
-        viewModel.templateApplied.collect { ok ->
-            snackbarHostState.showSnackbar(if (ok) eventCreatedMsg else eventCreateFailedMsg)
-        }
+        viewModel.copyFailed.collect { snackbarHostState.showSnackbar(eventCreateFailedMsg) }
     }
 
     LifecycleResumeEffect(Unit) {
@@ -319,7 +285,6 @@ fun MonthScreen(
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
                 onOpenYear = onOpenYear,
-                onOpenAnniversaries = onOpenAnniversaries,
                 onMonthClick = { showMonthJump = true },
             )
         },
@@ -342,21 +307,6 @@ fun MonthScreen(
                     emptyList()
                 },
                 weather = weatherByDay[selectedDate]?.let { "${it.emoji} ${it.tempLabel}" },
-                anniversaryLabels = anniversaries
-                    .filter { it.fallsOn(selectedDate) }
-                    .map { anniversary ->
-                        val years = anniversary.yearsOn(selectedDate)
-                        if (anniversary.repeatYearly && years > 0) {
-                            anniversary.title + " · " +
-                                stringResource(R.string.anniversary_nth_year, years)
-                        } else {
-                            anniversary.title
-                        }
-                    },
-                diaryText = diary.text,
-                diaryPast = diary.past,
-                onEditDiary = { showDiaryEditor = true },
-                onOpenStamps = { premiumOr { showStampPicker = true } },
                 lunarDate = if (showLunarDate) {
                     com.souru.koyomi.data.rokuyo.Kyureki.lunarDateLabel(selectedDate)
                 } else {
@@ -395,12 +345,6 @@ fun MonthScreen(
                     onEditEvent(event.eventId, event.begin, event.end)
                 },
                 onDuplicate = { event -> pendingDuplicate = event },
-                onBatchDuplicate = { event -> premiumOr { pendingBatchCopy = event } },
-                onSaveTemplate = { event ->
-                    premiumOr { viewModel.saveTemplateFromEvent(event) }
-                },
-                hasTemplates = templates.isNotEmpty(),
-                onOpenTemplates = { premiumOr { showTemplatePicker = true } },
                 onDeleteRequest = { event ->
                     // `detail` belongs to the event shown in the sheet, so its
                     // RRULE tells us whether this is a recurring series. If it
@@ -567,77 +511,6 @@ fun MonthScreen(
                 }
                 pendingDuplicate = null
                 closeDetail()
-            },
-        )
-    }
-
-    pendingBatchCopy?.let { source ->
-        BatchCopyDialog(
-            source = source,
-            weekStart = weekStart,
-            onDismiss = { pendingBatchCopy = null },
-            onConfirm = { targets ->
-                viewModel.batchDuplicate(source, targets)
-                pendingBatchCopy = null
-                closeDetail()
-            },
-        )
-    }
-
-    if (showTemplatePicker) {
-        TemplatePickerDialog(
-            templates = templates,
-            onDismiss = { showTemplatePicker = false },
-            onPick = { template ->
-                viewModel.applyTemplate(template, selectedDate)
-                showTemplatePicker = false
-            },
-            onDelete = { template -> viewModel.deleteTemplate(template.id) },
-        )
-    }
-
-    if (showStampPicker) {
-        val customStamps by viewModel.customStamps.collectAsStateWithLifecycle()
-        StampPickerDialog(
-            customStamps = customStamps,
-            onDismiss = { showStampPicker = false },
-            onPick = { title ->
-                viewModel.createStampEvent(title, selectedDate)
-                showStampPicker = false
-            },
-            onAddStamp = { emoji, label -> viewModel.addCustomStamp(emoji, label) },
-            onDeleteStamp = { stamp -> viewModel.removeCustomStamp(stamp) },
-        )
-    }
-
-    if (showDiaryEditor) {
-        var diaryDraft by remember(selectedDate, diary.text) {
-            mutableStateOf(diary.text.orEmpty())
-        }
-        AlertDialog(
-            onDismissRequest = { showDiaryEditor = false },
-            title = { Text(stringResource(R.string.diary_title)) },
-            text = {
-                androidx.compose.material3.OutlinedTextField(
-                    value = diaryDraft,
-                    onValueChange = { diaryDraft = it },
-                    placeholder = { Text(stringResource(R.string.diary_hint)) },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.saveDiary(selectedDate, diaryDraft)
-                        showDiaryEditor = false
-                    },
-                ) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiaryEditor = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
             },
         )
     }
@@ -813,7 +686,6 @@ private fun MonthTopBar(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
-    onOpenAnniversaries: () -> Unit,
     onMonthClick: () -> Unit,
 ) {
     var viewMenuOpen by remember { mutableStateOf(false) }
@@ -840,7 +712,6 @@ private fun MonthTopBar(
                 onOpenSearch = onOpenSearch,
                 onOpenTasks = onOpenTasks,
                 onOpenYear = onOpenYear,
-                onOpenAnniversaries = onOpenAnniversaries,
                 onMonthClick = onMonthClick,
                 viewMenuOpen = viewMenuOpen,
                 onViewMenuChange = { viewMenuOpen = it },
@@ -859,7 +730,6 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     onOpenSearch: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenYear: () -> Unit,
-    onOpenAnniversaries: () -> Unit,
     onMonthClick: () -> Unit,
     viewMenuOpen: Boolean,
     onViewMenuChange: (Boolean) -> Unit,
@@ -949,13 +819,6 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
                     onOpenTasks()
                 },
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.anniversaries_title)) },
-                onClick = {
-                    onViewMenuChange(false)
-                    onOpenAnniversaries()
-                },
-            )
         }
     }
     IconButton(onClick = onOpenSettings) {
@@ -967,329 +830,6 @@ private fun androidx.compose.foundation.layout.RowScope.MonthTopBarContent(
     }
 }
 
-/**
- * 複数日への一括複製: a mini month where the user taps several days to place
- * copies of [source] on all of them at once (e.g. shift work).
- */
-@Composable
-private fun BatchCopyDialog(
-    source: EventInstance,
-    weekStart: DayOfWeek,
-    onDismiss: () -> Unit,
-    onConfirm: (List<LocalDate>) -> Unit,
-) {
-    var month by remember { mutableStateOf(YearMonth.from(source.startDate)) }
-    val selected = remember { androidx.compose.runtime.mutableStateListOf<LocalDate>() }
-    val days = remember(month, weekStart) {
-        com.souru.koyomi.util.monthGridDays(month, weekStart)
-    }
-    val locale = Locale.getDefault()
-    val monthLabel = if (locale.language == "ja") "${month.year}年${month.monthValue}月" else
-        month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.batch_copy)) },
-        text = {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = { month = month.minusMonths(1) }) {
-                        Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.previous_period))
-                    }
-                    Text(
-                        text = monthLabel,
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { month = month.plusMonths(1) }) {
-                        Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.next_period))
-                    }
-                }
-                for (week in 0 until 6) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        for (i in 0 until 7) {
-                            val date = days[week * 7 + i]
-                            val inMonth = YearMonth.from(date) == month
-                            val isSel = date in selected
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(2.dp)
-                                    .size(34.dp)
-                                    .background(
-                                        if (isSel) MaterialTheme.colorScheme.tertiary else Color.Transparent,
-                                        CircleShape,
-                                    )
-                                    .clickable {
-                                        if (isSel) selected.remove(date) else selected.add(date)
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = date.dayOfMonth.toString(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = when {
-                                        isSel -> MaterialTheme.colorScheme.onTertiary
-                                        !inMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                        else -> MaterialTheme.colorScheme.onSurface
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(selected.toList()) },
-                enabled = selected.isNotEmpty(),
-            ) { Text(stringResource(R.string.batch_copy_confirm, selected.size)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-}
-
-/** Preset stamps: one tap places an all-day event on the selected day. */
-private val STAMPS = listOf(
-    "🗑" to R.string.stamp_trash,
-    "💰" to R.string.stamp_payday,
-    "💊" to R.string.stamp_hospital,
-    "🏃" to R.string.stamp_exercise,
-    "📚" to R.string.stamp_lesson,
-    "🍽" to R.string.stamp_eatout,
-    "💇" to R.string.stamp_hair,
-    "🧾" to R.string.stamp_bill,
-    "🛒" to R.string.stamp_shopping,
-    "🌸" to R.string.stamp_outing,
-    "🧳" to R.string.stamp_trip,
-    "🎮" to R.string.stamp_hobby,
-)
-
-@OptIn(
-    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
-    androidx.compose.foundation.ExperimentalFoundationApi::class,
-)
-@Composable
-private fun StampPickerDialog(
-    customStamps: List<Pair<String, String>>,
-    onDismiss: () -> Unit,
-    onPick: (title: String) -> Unit,
-    onAddStamp: (emoji: String, label: String) -> Unit,
-    onDeleteStamp: (Pair<String, String>) -> Unit,
-) {
-    var showAdd by remember { mutableStateOf(false) }
-    var pendingDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.stamp_title)) },
-        text = {
-            Column {
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    // Custom stamps first — tap to use, long-press to delete.
-                    for (stamp in customStamps) {
-                        androidx.compose.material3.Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            shape = RoundedCornerShape(50),
-                            modifier = Modifier
-                                .padding(end = 8.dp, bottom = 8.dp)
-                                .combinedClickable(
-                                    onClick = { onPick("${stamp.first} ${stamp.second}") },
-                                    onLongClick = { pendingDelete = stamp },
-                                ),
-                        ) {
-                            Text(
-                                text = "${stamp.first} ${stamp.second}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(
-                                    horizontal = 12.dp,
-                                    vertical = 8.dp,
-                                ),
-                            )
-                        }
-                    }
-                    for ((emoji, labelRes) in STAMPS) {
-                        val label = stringResource(labelRes)
-                        androidx.compose.material3.Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            shape = RoundedCornerShape(50),
-                            modifier = Modifier
-                                .padding(end = 8.dp, bottom = 8.dp)
-                                .clickable { onPick("$emoji $label") },
-                        ) {
-                            Text(
-                                text = "$emoji $label",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(
-                                    horizontal = 12.dp,
-                                    vertical = 8.dp,
-                                ),
-                            )
-                        }
-                    }
-                }
-                TextButton(onClick = { showAdd = true }) {
-                    Text(stringResource(R.string.stamp_add))
-                }
-                if (customStamps.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.stamp_delete_hint),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-
-    if (showAdd) {
-        var emoji by remember { mutableStateOf("") }
-        var label by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAdd = false },
-            title = { Text(stringResource(R.string.stamp_add)) },
-            text = {
-                Column {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = emoji,
-                        onValueChange = { emoji = it },
-                        label = { Text(stringResource(R.string.stamp_emoji)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    androidx.compose.material3.OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text(stringResource(R.string.stamp_name)) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = label.isNotBlank(),
-                    onClick = {
-                        onAddStamp(emoji, label)
-                        showAdd = false
-                    },
-                ) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAdd = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
-
-    pendingDelete?.let { stamp ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.delete)) },
-            text = { Text("${stamp.first} ${stamp.second}") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteStamp(stamp)
-                        pendingDelete = null
-                    },
-                ) { Text(stringResource(R.string.delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
-}
-
-/** Lists saved templates; tap to place on the selected day, trash to remove. */
-@Composable
-private fun TemplatePickerDialog(
-    templates: List<com.souru.koyomi.data.template.EventTemplate>,
-    onDismiss: () -> Unit,
-    onPick: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
-    onDelete: (com.souru.koyomi.data.template.EventTemplate) -> Unit,
-) {
-    val timeFormatter = com.souru.koyomi.util.rememberDeviceTimeFormatter()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.templates_title)) },
-        text = {
-            if (templates.isEmpty()) {
-                Text(
-                    stringResource(R.string.template_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Column {
-                    for (template in templates) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPick(template) }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = template.title.ifBlank {
-                                        stringResource(R.string.untitled)
-                                    },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    text = if (template.allDay) {
-                                        stringResource(R.string.all_day)
-                                    } else {
-                                        java.time.LocalTime
-                                            .of(template.startMinutes / 60, template.startMinutes % 60)
-                                            .format(timeFormatter)
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            IconButton(onClick = { onDelete(template) }) {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    contentDescription = stringResource(R.string.delete),
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-        },
-    )
-}
-
-/** Year stepper + 12-month grid; jumps the pager to the chosen month. */
 @Composable
 private fun MonthJumpDialog(
     initial: YearMonth,

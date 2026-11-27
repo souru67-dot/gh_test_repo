@@ -436,7 +436,7 @@ private fun CalendarsPage(ctx: SettingsContext) {
 
 @Composable
 private fun WeatherPage(ctx: SettingsContext) {
-    WeatherPlaceRow(viewModel = ctx.viewModel, enabled = ctx.isPremium, onLocked = ctx.onOpenPremium)
+    WeatherPlaceRow(viewModel = ctx.viewModel)
     FootNote(stringResource(R.string.settings_weather_credit))
 }
 
@@ -850,11 +850,7 @@ private fun PremiumBannerRow(isPremium: Boolean, onClick: () -> Unit) {
  * (Open-Meteo geocoding). Clearing the place turns weather display off.
  */
 @Composable
-private fun WeatherPlaceRow(
-    viewModel: SettingsViewModel,
-    enabled: Boolean,
-    onLocked: () -> Unit,
-) {
+private fun WeatherPlaceRow(viewModel: SettingsViewModel) {
     val place by viewModel.weatherPlace.collectAsStateWithLifecycle()
     val results by viewModel.weatherResults.collectAsStateWithLifecycle()
     var showDialog by androidx.compose.runtime.remember {
@@ -863,8 +859,7 @@ private fun WeatherPlaceRow(
     ValueRow(
         title = stringResource(R.string.weather_place),
         value = place?.name ?: stringResource(R.string.weather_place_none),
-        premium = !enabled,
-        onClick = { if (enabled) showDialog = true else onLocked() },
+        onClick = { showDialog = true },
     )
     if (showDialog) {
         var query by androidx.compose.runtime.remember {

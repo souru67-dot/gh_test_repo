@@ -11,7 +11,6 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
@@ -610,36 +609,6 @@ private fun androidx.glance.layout.RowScope.MiniDayCell(
 data class WidgetDaySection(val date: LocalDate, val events: List<EventInstance>)
 
 /**
- * The next [maxDays] days that actually HAVE events, searched within
- * [lookaheadDays] from today. Today is included even when empty so the
- * clock widget can lead with "予定はありません".
- */
-suspend fun loadUpcomingDaySections(
-    context: Context,
-    maxDays: Int = 3,
-    lookaheadDays: Long = 14,
-): List<WidgetDaySection> {
-    val app = context.applicationContext as KoyomiApplication
-    val today = LocalDate.now()
-    val hidden = app.container.settingsRepository.hiddenCalendarIds.first()
-    val eventsByDay = app.container.calendarRepository.loadEventsByDay(
-        today,
-        today.plusDays(lookaheadDays),
-        hidden,
-    )
-    val sections = mutableListOf<WidgetDaySection>()
-    var date = today
-    while (date.isBefore(today.plusDays(lookaheadDays)) && sections.size < maxDays) {
-        val events = dropFinishedToday(eventsByDay[date].orEmpty(), date)
-        if (events.isNotEmpty() || date == today) {
-            sections += WidgetDaySection(date, events)
-        }
-        date = date.plusDays(1)
-    }
-    return sections
-}
-
-/**
  * Today's timed events vanish from widgets once they have ended; all-day
  * events stay for the whole day. Other days pass through untouched.
  */
@@ -647,21 +616,6 @@ fun dropFinishedToday(events: List<EventInstance>, date: LocalDate): List<EventI
     if (date != LocalDate.now()) return events
     val now = System.currentTimeMillis()
     return events.filter { it.allDay || it.end > now }
-}
-
-/** 今日 / 明日 / "7月14日(火)" — for section headers in list widgets. */
-fun relativeDayLabel(context: Context, date: LocalDate): String {
-    val today = LocalDate.now()
-    return when (date) {
-        today -> context.getString(R.string.back_to_today)
-        today.plusDays(1) -> context.getString(R.string.tomorrow_label)
-        else -> date.format(
-            DateTimeFormatter.ofPattern(
-                context.getString(R.string.sheet_date_pattern),
-                Locale.getDefault(),
-            ),
-        )
-    }
 }
 
 suspend fun loadDaySections(context: Context, days: Int): List<WidgetDaySection> {
@@ -750,38 +704,6 @@ fun WidgetCenteredMessage(text: String, modifier: GlanceModifier = GlanceModifie
 }
 
 // ---------- Clock ----------
-
-/**
- * Auto-updating clock via RemoteViews TextClock (no periodic redraws needed).
- * The layout's colors follow day/night; a widget forced to light or dark
- * gets explicit colors so the clock never vanishes into its background.
- */
-@Composable
-fun WidgetClock(
-    context: Context,
-    modifier: GlanceModifier = GlanceModifier,
-    forcedDark: Boolean? = null,
-) {
-    val views = RemoteViews(context.packageName, R.layout.widget_clock)
-    applyClockStyle(views, R.id.widget_clock_time, h24 = "HH:mm", h12 = "h:mm")
-    if (forcedDark != null) {
-        views.setTextColor(
-            R.id.widget_clock_time,
-            if (forcedDark) 0xFFF2F2F2.toInt() else 0xFF111111.toInt(),
-        )
-        views.setTextColor(
-            R.id.widget_clock_date,
-            if (forcedDark) 0xFFA3A3A3.toInt() else 0xFF6B6B6B.toInt(),
-        )
-    }
-    Box(
-        modifier = modifier.clickable(
-            actionStartActivity(openDayIntent(context, LocalDate.now())),
-        ),
-    ) {
-        AndroidRemoteViews(views)
-    }
-}
 
 /**
  * Forces a TextClock to the app's 12/24-hour choice (時刻の表記). SYSTEM

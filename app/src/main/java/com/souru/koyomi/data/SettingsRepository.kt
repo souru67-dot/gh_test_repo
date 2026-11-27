@@ -34,7 +34,6 @@ class SettingsRepository(private val context: Context) {
         val WIDGET_OPACITY_PERCENT = stringPreferencesKey("widget_opacity_percent")
         val LAST_USED_CALENDAR_ID = stringPreferencesKey("last_used_calendar_id")
         val DEFAULT_CALENDAR_ID = stringPreferencesKey("default_calendar_id")
-        val CUSTOM_STAMPS = stringPreferencesKey("custom_stamps")
         val HOLIDAY_COUNTRY = stringPreferencesKey("holiday_country")
         val THEME_PACK = stringPreferencesKey("theme_pack")
         val SHOW_WEEK_NUMBERS = booleanPreferencesKey("show_week_numbers")
@@ -246,27 +245,6 @@ class SettingsRepository(private val context: Context) {
                 prefs[Keys.DEFAULT_CALENDAR_ID] = calendarId.toString()
             }
         }
-    }
-
-    /** User-defined stamps as (emoji, label), stored as a JSON array. */
-    val customStamps: Flow<List<Pair<String, String>>> =
-        context.dataStore.data.map { prefs ->
-            val json = prefs[Keys.CUSTOM_STAMPS] ?: return@map emptyList()
-            runCatching {
-                val array = org.json.JSONArray(json)
-                (0 until array.length()).map { i ->
-                    val o = array.getJSONObject(i)
-                    o.getString("e") to o.getString("l")
-                }
-            }.getOrDefault(emptyList())
-        }
-
-    suspend fun setCustomStamps(stamps: List<Pair<String, String>>) {
-        val array = org.json.JSONArray()
-        for ((emoji, label) in stamps) {
-            array.put(org.json.JSONObject().put("e", emoji).put("l", label))
-        }
-        context.dataStore.edit { it[Keys.CUSTOM_STAMPS] = array.toString() }
     }
 
     /** 時刻の表記 (follow device / 24h / 12h). */

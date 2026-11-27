@@ -96,7 +96,6 @@ fun PremiumScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             val features = listOf(
                 R.string.premium_feature_koyomi,
-                R.string.premium_feature_weather,
                 R.string.premium_feature_themes,
                 R.string.premium_feature_widgets,
                 R.string.premium_feature_shortcuts,

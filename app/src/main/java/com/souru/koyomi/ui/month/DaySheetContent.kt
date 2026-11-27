@@ -24,9 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.AddReaction
-import androidx.compose.material.icons.outlined.BookmarkAdd
-import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -81,11 +78,6 @@ fun DaySheetContent(
     solarTerm: String?,
     luckyDays: List<String> = emptyList(),
     weather: String? = null,
-    anniversaryLabels: List<String> = emptyList(),
-    diaryText: String? = null,
-    diaryPast: List<Pair<Int, String>> = emptyList(),
-    onEditDiary: () -> Unit = {},
-    onOpenStamps: () -> Unit = {},
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
@@ -98,11 +90,7 @@ fun DaySheetContent(
     onAdd: () -> Unit,
     onEdit: (EventInstance) -> Unit,
     onDuplicate: (EventInstance) -> Unit,
-    onBatchDuplicate: (EventInstance) -> Unit,
-    onSaveTemplate: (EventInstance) -> Unit,
     onDeleteRequest: (EventInstance) -> Unit,
-    hasTemplates: Boolean,
-    onOpenTemplates: () -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
@@ -121,17 +109,10 @@ fun DaySheetContent(
                 solarTerm = solarTerm,
                 luckyDays = luckyDays,
                 weather = weather,
-                anniversaryLabels = anniversaryLabels,
-                diaryText = diaryText,
-                diaryPast = diaryPast,
-                onEditDiary = onEditDiary,
-                onOpenStamps = onOpenStamps,
                 lunarDate = lunarDate,
                 moonAge = moonAge,
                 events = events,
                 tasks = tasks,
-                hasTemplates = hasTemplates,
-                onOpenTemplates = onOpenTemplates,
                 onEventClick = onEventClick,
                 onAdd = onAdd,
                 onAddTask = onAddTask,
@@ -147,8 +128,6 @@ fun DaySheetContent(
                 onClose = onCloseDetail,
                 onEdit = { onEdit(shownDetail) },
                 onDuplicate = { onDuplicate(shownDetail) },
-                onBatchDuplicate = { onBatchDuplicate(shownDetail) },
-                onSaveTemplate = { onSaveTemplate(shownDetail) },
                 onDelete = { onDeleteRequest(shownDetail) },
             )
         }
@@ -163,17 +142,10 @@ private fun DayEventList(
     solarTerm: String?,
     luckyDays: List<String>,
     weather: String?,
-    anniversaryLabels: List<String>,
-    diaryText: String?,
-    diaryPast: List<Pair<Int, String>>,
-    onEditDiary: () -> Unit,
-    onOpenStamps: () -> Unit,
     lunarDate: String?,
     moonAge: String?,
     events: List<EventInstance>,
     tasks: List<Task>,
-    hasTemplates: Boolean,
-    onOpenTemplates: () -> Unit,
     onEventClick: (EventInstance) -> Unit,
     onAdd: () -> Unit,
     onAddTask: (String) -> Unit,
@@ -213,20 +185,6 @@ private fun DayEventList(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onOpenStamps) {
-                Icon(
-                    imageVector = Icons.Outlined.AddReaction,
-                    contentDescription = stringResource(R.string.stamp_title),
-                )
-            }
-            if (hasTemplates) {
-                IconButton(onClick = onOpenTemplates) {
-                    Icon(
-                        imageVector = Icons.Outlined.Bookmarks,
-                        contentDescription = stringResource(R.string.template_add),
-                    )
-                }
-            }
             IconButton(onClick = onAdd) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -239,7 +197,6 @@ private fun DayEventList(
         // wrapping so any combination fits.
         val almanac = buildList {
             weather?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
-            for (label in anniversaryLabels) add("🎉$label" to MaterialTheme.colorScheme.tertiary)
             solarTerm?.let { add(it to MaterialTheme.colorScheme.tertiary) }
             for (lucky in luckyDays) add(lucky to MaterialTheme.colorScheme.tertiary)
             rokuyo?.let { add(it to MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -303,82 +260,6 @@ private fun DayEventList(
             }
             item(key = "task-add") {
                 AddTaskRow(onAddTask = onAddTask)
-            }
-            if (hasTemplates) {
-                item(key = "template-add") {
-                    androidx.compose.material3.TextButton(
-                        onClick = onOpenTemplates,
-                        modifier = Modifier.padding(start = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.template_add),
-                            modifier = Modifier.padding(start = 6.dp),
-                        )
-                    }
-                }
-            }
-
-            // ひとこと日記 + 過去の今日.
-            item(key = "diary-header") {
-                Text(
-                    text = stringResource(R.string.diary_title),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 2.dp),
-                )
-            }
-            item(key = "diary-entry") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onEditDiary)
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = diaryText ?: stringResource(R.string.diary_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (diaryText != null) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = stringResource(R.string.edit),
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            items(diaryPast, key = { "diary-past-${it.first}" }) { (yearsAgo, text) ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        text = if (yearsAgo == 1) {
-                            stringResource(R.string.diary_last_year)
-                        } else {
-                            stringResource(R.string.diary_years_ago, yearsAgo)
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
     }
@@ -558,8 +439,6 @@ private fun EventDetailPane(
     onClose: () -> Unit,
     onEdit: () -> Unit,
     onDuplicate: () -> Unit,
-    onBatchDuplicate: () -> Unit,
-    onSaveTemplate: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val zone = ZoneId.systemDefault()
@@ -657,26 +536,6 @@ private fun EventDetailPane(
             ) {
                 Icon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.delete), modifier = Modifier.padding(start = 6.dp))
-            }
-        }
-
-        // Secondary actions: 複数日への一括複製 と テンプレート保存。
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.TextButton(onClick = onBatchDuplicate) {
-                Icon(Icons.Outlined.ContentCopy, null, Modifier.size(16.dp))
-                Text(
-                    stringResource(R.string.batch_copy),
-                    modifier = Modifier.padding(start = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-            androidx.compose.material3.TextButton(onClick = onSaveTemplate) {
-                Icon(Icons.Outlined.BookmarkAdd, null, Modifier.size(16.dp))
-                Text(
-                    stringResource(R.string.template_save),
-                    modifier = Modifier.padding(start = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                )
             }
         }
 

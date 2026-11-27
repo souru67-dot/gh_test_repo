@@ -47,10 +47,6 @@ class WidgetUpdateWorker(
             listOf(
                 MonthWidget(),
                 TodayWidget(),
-                ClockTodayWidget(),
-                MonthTodayWidget(),
-                AgendaMonthWidget(),
-                TodoAgendaWidget(),
                 HimekuriWidget(),
                 MiniMonthWidget(),
                 HitomeWidget(),

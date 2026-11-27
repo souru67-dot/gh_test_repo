@@ -153,49 +153,19 @@
     <string name="tasks_empty">ToDoはありません</string>
 
     <!-- Anniversaries -->
-    <string name="anniversaries_title">記念日</string>
-    <string name="anniversaries_empty">記念日はまだありません</string>
-    <string name="anniversary_add">記念日を追加</string>
-    <string name="anniversary_title_hint">結婚記念日、誕生日など</string>
-    <string name="anniversary_yearly">毎年繰り返す</string>
-    <string name="anniversary_today">今日!</string>
-    <string name="anniversary_days_left">あと%1$d日</string>
-    <string name="anniversary_days_ago">%1$d日前</string>
 
     <!-- Diary -->
-    <string name="diary_title">ひとこと日記</string>
-    <string name="diary_hint">今日のひとことを書く…</string>
-    <string name="diary_last_year">去年の今日</string>
-    <string name="diary_years_ago">%1$d年前の今日</string>
 
     <!-- Stamps -->
-    <string name="stamp_title">スタンプ予定</string>
-    <string name="stamp_trash">ゴミの日</string>
-    <string name="stamp_payday">給料日</string>
-    <string name="stamp_hospital">通院</string>
-    <string name="stamp_exercise">運動</string>
-    <string name="stamp_lesson">習い事</string>
-    <string name="stamp_eatout">外食</string>
-    <string name="stamp_hair">美容院</string>
-    <string name="stamp_bill">支払い</string>
-    <string name="stamp_shopping">買い出し</string>
-    <string name="stamp_outing">お出かけ</string>
-    <string name="stamp_trip">旅行</string>
-    <string name="stamp_hobby">趣味</string>
-    <string name="stamp_add">スタンプを追加</string>
-    <string name="stamp_emoji">絵文字</string>
-    <string name="stamp_name">名前</string>
-    <string name="stamp_delete_hint">自作スタンプは長押しで削除できます</string>
 
     <!-- Premium -->
     <string name="premium_title">こよみ プレミアム</string>
     <string name="premium_banner">買い切りですべての機能が使えます</string>
     <string name="premium_lead">一度のご購入で、すべての機能がずっと使えます。サブスクリプションではありません。</string>
     <string name="premium_feature_koyomi">和の暦: 六曜・二十四節気・開運日・旧暦・月齢・和暦</string>
-    <string name="premium_feature_weather">カレンダーに2週間の天気</string>
     <string name="premium_feature_themes">きせかえ全テーマ+カスタムカラー</string>
     <string name="premium_feature_widgets">すべてのウィジェット</string>
-    <string name="premium_feature_shortcuts">テンプレート・複数日一括複製・スタンプ予定・ドラッグ&amp;ドロップ移動</string>
+    <string name="premium_feature_shortcuts">ドラッグ&amp;ドロップで予定を移動・複製</string>
     <string name="premium_feature_backup">機種変更の引き継ぎバックアップ</string>
     <string name="premium_buy">解除する</string>
     <string name="premium_buy_price">%1$sで解除する</string>
@@ -209,16 +179,6 @@
     <string name="drop_message">「%1$s」をどうしますか?</string>
     <string name="drop_move">ここに移動</string>
     <string name="drop_copy">ここに複製</string>
-    <string name="undo">元に戻す</string>
-    <string name="batch_copy">複数日に複製</string>
-    <string name="batch_copy_confirm">複製(%1$d日)</string>
-    <string name="batch_copied">%1$d日に複製しました</string>
-    <string name="template_save">テンプレート保存</string>
-    <string name="template_saved">テンプレートに保存しました</string>
-    <string name="template_add">テンプレートから追加</string>
-    <string name="templates_title">テンプレート</string>
-    <string name="template_empty">保存されたテンプレートはありません</string>
-    <string name="event_created">予定を作成しました</string>
     <string name="event_create_failed">予定を作成できませんでした。書き込み可能なカレンダーを追加してください。</string>
 
     <!-- Widgets -->
@@ -226,20 +186,10 @@
     <string name="widget_month_description">今月をひと目で。予定をカレンダーの色で表示します。</string>
     <string name="widget_today_label">今日の予定</string>
     <string name="widget_today_description">今日と明日の予定を時刻付きで一覧表示します。</string>
-    <string name="widget_clock_today_label">時計+今日の予定</string>
-    <string name="widget_clock_today_description">時計と今日の予定をひと目で確認できます。</string>
-    <string name="widget_month_today_label">カレンダー+今日の予定</string>
-    <string name="widget_month_today_description">今月のカレンダーの下に今日の予定を表示します。</string>
-    <string name="widget_agenda_month_label">今日の予定+ミニカレンダー</string>
-    <string name="widget_agenda_month_description">左に今日の予定、右に予定をドットで示す月カレンダーを並べます。</string>
-    <string name="widget_todo_agenda_label">ToDo+予定+カレンダー</string>
-    <string name="widget_todo_agenda_description">ToDoリストと今日からの予定(スクロールで先の日も)、ミニカレンダーをひとつに。</string>
     <string name="widget_himekuri_label">日めくり(2×2)</string>
-    <string name="widget_himekuri_description">今日の日付を大きく。祝日・開運日・六曜と、いちばん近い記念日のカウントダウン。</string>
+    <string name="widget_himekuri_description">今日の日付を大きく。祝日・開運日・六曜もひと目で。</string>
     <string name="widget_mini_month_label">ミニカレンダー(2×2)</string>
     <string name="widget_mini_month_description">いちばん小さな月カレンダー。予定はドットで表示します。</string>
-    <string name="himekuri_countdown">%1$sまであと%2$d日</string>
-    <string name="himekuri_countdown_today">今日は%1$s!</string>
     <string name="settings_weather">天気</string>
     <string name="weather_place">天気の地点</string>
     <string name="weather_place_none">未設定</string>
@@ -268,7 +218,6 @@
     <string name="billing_error">購入を完了できませんでした。もう一度お試しください。</string>
     <string name="year_title">%1$d年</string>
     <string name="year_title_with_era">%1$d年(%2$s)</string>
-    <string name="anniversary_nth_year">%1$d年目</string>
     <string name="moon_age_label">月齢%1$s</string>
     <string name="moon_new">新月</string>
     <string name="moon_first_quarter">上弦</string>
@@ -305,7 +254,7 @@
     <string name="settings_data_summary">書き出し・読み込み・機種変更</string>
     <string name="export_ics_desc">予定を .ics ファイルに書き出します</string>
     <string name="import_ics_desc">.ics ファイルの予定をカレンダーに追加します</string>
-    <string name="backup_export_desc">ToDo・記念日・日記・テンプレート・設定を1つのファイルに保存します(機種変更用)</string>
+    <string name="backup_export_desc">ToDoと設定を1つのファイルに保存します(機種変更用)</string>
     <string name="backup_import_desc">保存したファイルから元に戻します</string>
     <string name="settings_version">バージョン %1$s</string>
     <string name="settings_licenses">オープンソースライセンス</string>
