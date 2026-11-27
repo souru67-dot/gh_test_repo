@@ -1,0 +1,137 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-jp/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-jp/500.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-jp/700.css">
+<style>
+@font-face{font-family:Doto;src:url(doto.ttf)}
+body{margin:0;background:transparent}
+#w{position:relative;overflow:hidden;box-sizing:border-box;font-family:Inter,"Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+.row{display:flex;align-items:center}.col{display:flex;flex-direction:column}
+.dotf{font-family:Doto;font-weight:700}
+</style></head><body><div id="w"></div><script>
+const T={
+ light:{bg:'#FFFFFF',ink:'#141414',sub:'#7A7A7A',faint:'#C4C4C4',line:'#EBEBEB',sun:'#C2453A',sat:'#3C64A6'},
+ dark:{bg:'#101010',ink:'#F2F2F2',sub:'#9A9A9A',faint:'#4E4E4E',line:'#272727',sun:'#F08A80',sat:'#8FB0E6'}};
+const OR='#F2711C', EV={b:'#3F7DE0',g:'#2E9E6A',o:'#F2711C',p:'#8A5CC8'};
+const L={
+ ja:{mon:'11月',year:'2026',wd:['日','月','火','水','木','金','土'],dow:'木曜日',ym:'2026年11月',today:'今日',
+  ev:[['10:00','打ち合わせ','b'],['12:30','ランチ','g'],['19:00','ジム','o']],tmr:['明日 9:00','歯医者','p'],task:'牛乳を買う',
+  place:'東京',alm:'大安',mshort:'11月',dshort:'木',hol:[3,23],free:'予定はありません'},
+ en:{mon:'November',year:'2026',wd:['S','M','T','W','T','F','S'],dow:'Thursday',ym:'November 2026',today:'Today',
+  ev:[['10:00 AM','Team meeting','b'],['12:30 PM','Lunch with Ken','g'],['7:00 PM','Gym','o']],tmr:['Tomorrow 9:00 AM','Dentist','p'],task:'Buy milk',
+  place:'Tokyo',alm:'',mshort:'Nov',dshort:'Thu',hol:[],free:'No events'}};
+const DOTS={2:'b',5:'go',9:'b',12:'o',14:'g',17:'bo',20:'p',24:'b',26:'bgo',27:'b',30:'g'};
+const TODAY=26;
+function el(tag,css,html=''){const e=document.createElement(tag);e.style.cssText=css;e.innerHTML=html;return e}
+function dayColor(c,l,d,col){if(l.hol.includes(d)||col===0)return c.sun;if(col===6)return c.sat;return c.ink}
+// month grid: Nov 2026 starts on Sunday, 30 days
+function grid(c,l,{size,head=true,dots=true,gap=0}){
+  const g=el('div',`display:grid;grid-template-columns:repeat(7,1fr);row-gap:${gap}px;width:100%`);
+  if(head) l.wd.forEach((w,i)=>g.appendChild(el('div',`text-align:center;font-size:${size*0.72}px;color:${i===0?c.sun:i===6?c.sat:c.sub};padding-bottom:${size*0.35}px`,w)));
+  for(let d=1;d<=35;d++){
+    const col=(d-1)%7, cell=el('div','display:flex;flex-direction:column;align-items:center');
+    if(d<=30){
+      const today=d===TODAY;
+      const n=el('div',`width:${size*1.75}px;height:${size*1.75}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${size}px;font-weight:${today?700:500};color:${today?'#fff':dayColor(c,l,d,col)};background:${today?OR:'transparent'}`,d);
+      cell.appendChild(n);
+      if(dots){const r=el('div',`display:flex;gap:${size*0.16}px;height:${size*0.36}px;margin-top:${size*0.05}px`);(DOTS[d]||'').split('').forEach(k=>r.appendChild(el('div',`width:${size*0.3}px;height:${size*0.3}px;border-radius:50%;background:${EV[k]}`)));cell.appendChild(r)}
+    }
+    g.appendChild(cell);
+  }
+  return g;
+}
+function agendaRow(c,time,title,k,fs,dim){
+  const r=el('div',`display:flex;align-items:center;gap:${fs*0.7}px;opacity:${dim?0.5:1}`);
+  r.appendChild(el('div',`width:${fs*0.28}px;height:${fs*2.3}px;border-radius:3px;background:${EV[k]}`));
+  const t=el('div','display:flex;flex-direction:column;min-width:0');
+  t.appendChild(el('div',`font-size:${fs*0.78}px;color:${c.sub};line-height:1.25`,time));
+  t.appendChild(el('div',`font-size:${fs}px;color:${c.ink};font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`,title));
+  r.appendChild(t);return r;
+}
+const W={
+ month(c,l){ // 4x4
+  const w=el('div','display:flex;flex-direction:column;height:100%;padding:44px 40px 30px');
+  const h=el('div','display:flex;align-items:baseline;gap:16px;margin-bottom:26px');
+  h.appendChild(el('div',`font-size:64px;font-weight:700;color:${c.ink};letter-spacing:-1px`,l.mon));
+  h.appendChild(el('div',`font-size:28px;color:${c.sub}`,l.year));
+  w.appendChild(h);w.appendChild(grid(c,l,{size:30,gap:10}));return w},
+ today(c,l){ // 4x2
+  const w=el('div','display:flex;height:100%;padding:34px 40px;gap:40px');
+  const left=el('div','display:flex;flex-direction:column;justify-content:flex-start;width:170px');
+  left.appendChild(el('div',`font-size:104px;font-weight:700;color:${c.ink};line-height:1;letter-spacing:-3px`,TODAY));
+  left.appendChild(el('div',`font-size:24px;color:${c.sub};margin-top:10px;white-space:nowrap`,l.mshort+' · '+l.dshort));
+  w.appendChild(left);
+  const right=el('div','display:flex;flex-direction:column;justify-content:center;gap:14px;flex:1;min-width:0');
+  l.ev.forEach(([t,n,k])=>right.appendChild(agendaRow(c,t,n,k,25)));
+  w.appendChild(right);return w},
+ hitome(c,l){ // 4x3
+  const w=el('div','display:flex;flex-direction:column;height:100%;padding:30px 36px');
+  const h=el('div','display:flex;align-items:center');
+  h.appendChild(el('div',`font-size:84px;font-weight:700;color:${c.ink};line-height:1;letter-spacing:-2px`,TODAY));
+  const hc=el('div','display:flex;flex-direction:column;margin-left:18px');
+  hc.appendChild(el('div',`font-size:28px;font-weight:500;color:${c.ink}`,l.dow));
+  hc.appendChild(el('div',`font-size:20px;color:${c.sub}`,l.ym));h.appendChild(hc);
+  h.appendChild(el('div','flex:1'));
+  const wx=el('div','display:flex;align-items:center;gap:12px');
+  wx.appendChild(el('div','font-size:48px','☀️'));
+  const wc=el('div','display:flex;flex-direction:column;align-items:flex-end');
+  wc.appendChild(el('div',`font-size:38px;font-weight:500;color:${c.ink}`,'14°'));
+  wc.appendChild(el('div',`font-size:18px;color:${c.sub}`,'6°  '+l.place));wx.appendChild(wc);h.appendChild(wx);
+  w.appendChild(h);w.appendChild(el('div',`height:2px;background:${c.line};margin:20px 0`));
+  const b=el('div','display:flex;gap:28px;flex:1;min-height:0');
+  const gl=el('div','flex:1');gl.appendChild(grid(c,l,{size:19,gap:2,dots:false}));b.appendChild(gl);
+  b.appendChild(el('div',`width:2px;background:${c.line}`));
+  const ag=el('div','flex:1;display:flex;flex-direction:column;gap:14px;min-width:0');
+  ag.appendChild(el('div',`font-size:17px;font-weight:700;color:${OR};letter-spacing:1px`,l.today));
+  l.ev.forEach(([t,n,k])=>ag.appendChild(agendaRow(c,t,n,k,22)));
+  b.appendChild(ag);w.appendChild(b);return w},
+ himekuri(c,l){ // 2x2
+  const w=el('div','display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%');
+  w.appendChild(el('div',`position:absolute;top:0;left:0;right:0;height:14px;background:${OR}`));
+  w.appendChild(el('div',`font-size:26px;color:${c.sub};letter-spacing:1px`,l.mshort+' · '+l.dshort));
+  w.appendChild(el('div',`font-size:150px;font-weight:700;color:${c.ink};line-height:1.05;letter-spacing:-5px`,TODAY));
+  if(l.alm) w.appendChild(el('div',`font-size:24px;color:${OR};font-weight:500`,l.alm));
+  return w},
+ mini(c,l){ // 2x2
+  const w=el('div','display:flex;flex-direction:column;height:100%;padding:28px 22px 18px');
+  w.appendChild(el('div',`font-size:28px;font-weight:700;color:${c.ink};margin:0 0 14px 8px`,l.mshort));
+  w.appendChild(grid(c,l,{size:17,gap:0}));return w},
+};
+// 5x7 round-dot digits for the dot widget clock
+const D5={0:['01110','10001','10011','10101','11001','10001','01110'],1:['00100','01100','00100','00100','00100','00100','01110'],2:['01110','10001','00001','00010','00100','01000','11111'],3:['11111','00010','00100','00010','00001','10001','01110'],4:['00010','00110','01010','10010','11111','00010','00010'],5:['11111','10000','11110','00001','00001','10001','01110'],6:['00110','01000','10000','11110','10001','10001','01110'],7:['11111','00001','00010','00100','01000','01000','01000'],8:['01110','10001','10001','01110','10001','10001','01110'],9:['01110','10001','10001','01111','00001','00010','01100']};
+function dotClock(text,p){
+  const cols=[];for(const ch of text){if(ch===':'){cols.push(['0','0','1','0','1','0','0'].map(x=>x));continue}for(let x=0;x<5;x++)cols.push(D5[ch].map(r=>r[x]));cols.push(Array(7).fill('0'))}
+  cols.pop();
+  const cv=document.createElement('canvas');cv.width=cols.length*p;cv.height=7*p;const g=cv.getContext('2d');
+  cols.forEach((col,x)=>col.forEach((v,y)=>{g.fillStyle=v==='1'?OR:'rgba(242,113,28,0.07)';g.beginPath();g.arc(x*p+p/2,y*p+p/2,p*0.4,0,7);g.fill()}));
+  return cv;
+}
+W.dot=function(c,l){ // 4x2, always dark
+  const w=el('div','display:flex;height:100%;padding:30px 34px;gap:26px');
+  const left=el('div','display:flex;flex-direction:column;width:330px');
+  left.appendChild(dotClock('10:09',14.6));
+  left.appendChild(el('div',`font-family:Doto;font-weight:700;font-size:30px;color:${OR};margin-top:14px;letter-spacing:1px`,'11/26 THU&nbsp;&nbsp;14°'));
+  const ag=el('div','display:flex;flex-direction:column;gap:6px;margin-top:10px');
+  for(const [t,n] of [[l===L.ja?'10:00':'10:00',l.ev[0][1]],[l===L.ja?'12:30':'12:30',l.ev[1][1]],['□',l.task]]){
+    const r=el('div','display:flex;align-items:center;gap:14px');
+    r.appendChild(el('div',`font-family:Doto;font-weight:700;font-size:22px;color:${OR};width:72px`,t));
+    r.appendChild(el('div',`font-size:21px;color:#EDEDED`,n));ag.appendChild(r)}
+  left.appendChild(ag);w.appendChild(left);
+  const right=el('div','flex:1;display:flex;flex-direction:column;align-items:center');
+  right.appendChild(el('div',`font-family:Doto;font-weight:700;font-size:24px;color:${OR};margin-bottom:10px;letter-spacing:2px`,'NOV 2026'));
+  const g=el('div','display:grid;grid-template-columns:repeat(7,1fr);row-gap:6px;width:100%');
+  ['S','M','T','W','T','F','S'].forEach((x,i)=>g.appendChild(el('div',`text-align:center;font-family:Doto;font-weight:700;font-size:15px;color:${i===0?'#E5534B':i===6?'#8FB0E6':'#8A5A3A'}`,x)));
+  for(let d=1;d<=30;d++){const col=(d-1)%7,t=d===TODAY;
+    g.appendChild(el('div','display:flex;justify-content:center',`<div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Doto;font-weight:700;font-size:18px;background:${t?OR:'transparent'};color:${t?'#0B0B0B':col===0?'#E5534B':col===6?'#8FB0E6':OR}">${d}</div>`))}
+  right.appendChild(g);w.appendChild(right);return w};
+const SIZES={month:[720,720],today:[720,340],hitome:[720,500],himekuri:[360,360],mini:[360,360],dot:[720,340]};
+window.render=async(kind,lang,theme)=>{
+  await document.fonts.load('40px Doto');await document.fonts.load('700 40px "Noto Sans JP"');await document.fonts.load('400 40px "Noto Sans JP"');await document.fonts.load('500 40px "Noto Sans JP"');
+  const c=kind==='dot'?{bg:'#0B0B0B'}:T[theme],[w,h]=SIZES[kind];
+  const root=document.getElementById('w');root.innerHTML='';root.style.width=w+'px';root.style.height=h+'px';
+  root.style.background=c.bg;root.style.borderRadius=(kind==='himekuri'||kind==='mini'?44:48)+'px';
+  root.style.border=theme==='light'&&kind!=='dot'?'1.5px solid #E2E2E2':'none';
+  root.appendChild(W[kind](c,L[lang]));
+  await document.fonts.ready;
+};
+</script></body></html>
